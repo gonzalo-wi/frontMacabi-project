@@ -1,3 +1,15 @@
+# Macabi Madrijim (frontend)
+
+SPA en **React 19**, **TypeScript**, **Vite** y **Tailwind CSS v4**, migrada desde el mockup Next.js en la carpeta `mockup/` del monorepo. El backend Go no vive aquí.
+
+**Desarrollo:** `npm install` y `npm run dev`.
+
+**API (`VITE_API_URL`):** en desarrollo (`npm run dev`), Vite carga [`.env.development`](.env.development) (alineado al `PORT` del backend local, por defecto en repo `http://localhost:8081`) y podés **sobrescribir sin tocar el repo** con `.env.development.local` o `.env.local` (los `*.local` están en [`.gitignore`](.gitignore)). Para `npm run build` (modo production), Vite no usa `.env.development`: definí la variable en CI, en `.env.production` o en `.env`. Detalle en [`.env.example`](.env.example). La validación está en [`src/config/env.ts`](src/config/env.ts); el HTTP en [`src/lib/api/apiClient.ts`](src/lib/api/apiClient.ts) y auth en [`src/lib/api/auth.ts`](src/lib/api/auth.ts).
+
+**Producción (SPA):** rutas como `/app/micros` deben resolver al mismo `index.html` (fallback en nginx, Netlify `_redirects`, S3+CloudFront error document, etc.); de lo contrario un refresh en una ruta profunda devuelve 404.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
