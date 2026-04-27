@@ -333,7 +333,7 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
     onUpload: (f: File) => void
     onClear: () => void
     uploading: boolean
-    fileRef: React.RefObject<HTMLInputElement>
+    fileRef: React.RefObject<HTMLInputElement | null>
     label: string
   }) => (
     <div className="flex flex-col gap-1.5">

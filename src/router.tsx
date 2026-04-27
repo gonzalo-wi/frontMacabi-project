@@ -4,18 +4,16 @@ import { RequireAuth } from '@/auth/RequireAuth'
 import { AppShellLayout } from '@/layouts/AppShellLayout'
 import LoginPage from '@/pages/LoginPage'
 import RecuperarPasswordPage from '@/pages/RecuperarPasswordPage'
+import RegisterPage from '@/pages/RegisterPage'
 import PanelPage from '@/pages/PanelPage'
-import MicrosPage from '@/pages/MicrosPage'
 import ComidasPage from '@/pages/ComidasPage'
-import ReembolsosPage from '@/pages/ReembolsosPage'
-import ReservasPage from '@/pages/ReservasPage'
 import AdminComidasPage from '@/pages/AdminComidasPage'
-import AdminMicrosPage from '@/pages/AdminMicrosPage'
 import AdminUsuariosPage from '@/pages/AdminUsuariosPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '/recuperar-password', element: <RecuperarPasswordPage /> },
+  { path: '/register', element: <RegisterPage /> },
   {
     path: '/app',
     element: <RequireAuth />,
@@ -24,12 +22,8 @@ export const router = createBrowserRouter([
         element: <AppShellLayout />,
         children: [
           { index: true, element: <PanelPage /> },
-          { path: 'micros', element: <MicrosPage /> },
           { path: 'comidas', element: <ComidasPage /> },
-          { path: 'reembolsos', element: <ReembolsosPage /> },
-          { path: 'reservas', element: <ReservasPage /> },
           { path: 'admin/comidas',   element: <AdminComidasPage /> },
-          { path: 'admin/micros',    element: <AdminMicrosPage /> },
           { path: 'admin/usuarios',  element: <AdminUsuariosPage /> },
         ],
       },

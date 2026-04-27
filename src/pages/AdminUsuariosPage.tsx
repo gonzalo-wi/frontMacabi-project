@@ -40,9 +40,9 @@ const ROLE_META: Record<string, {
   icon: React.ElementType
   classes: string
 }> = {
-  SuperAdmin: { label: 'Super Admin', icon: ShieldAlert, classes: 'bg-red-50 text-red-700 border-red-200' },
-  Admin:      { label: 'Admin',       icon: ShieldCheck,  classes: 'bg-blue-50 text-blue-700 border-blue-200' },
-  User:       { label: 'Usuario',     icon: User,          classes: 'bg-slate-100 text-slate-600 border-slate-200' },
+  super_admin: { label: 'Super Admin', icon: ShieldAlert, classes: 'bg-red-50 text-red-700 border-red-200' },
+  admin:       { label: 'Admin',       icon: ShieldCheck,  classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+  user:        { label: 'Usuario',     icon: User,          classes: 'bg-slate-100 text-slate-600 border-slate-200' },
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -103,7 +103,7 @@ export default function AdminUsuariosPage() {
   const { token, user: me } = useAuth()
   const queryClient = useQueryClient()
   const isDesktop = useIsDesktop()
-  const isSuperAdmin = me?.role === 'super_admin' || me?.role === 'SuperAdmin'
+  const isSuperAdmin = me?.role === 'super_admin'
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<UserDTO | null>(null)
 
@@ -427,9 +427,9 @@ export default function AdminUsuariosPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="User">Usuario</SelectItem>
-                          <SelectItem value="Admin">Admin</SelectItem>
-                          <SelectItem value="SuperAdmin">Super Admin</SelectItem>
+                          <SelectItem value="user">Usuario</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="super_admin">Super Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     </section>

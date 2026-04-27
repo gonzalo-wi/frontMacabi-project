@@ -14,6 +14,12 @@ export type LoginBody = {
   password: string
 }
 
+export type RegisterBody = {
+  name: string
+  email: string
+  password: string
+}
+
 export type LoginResponseDTO = {
   token: string
   user: UserDTO
@@ -119,7 +125,7 @@ export type PaginatedUsersDTO = {
 
 /** PATCH /api/users/:id/role */
 export type UpdateUserRoleBody = {
-  role: 'Admin' | 'User' | 'SuperAdmin'
+  role: 'admin' | 'user' | 'super_admin'
 }
 
 /** PATCH /api/users/:id/status */

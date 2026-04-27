@@ -36,14 +36,10 @@ import { changePassword } from '@/lib/api/auth'
 
 const navItems = [
   { label: 'Panel', href: '/app', icon: LayoutDashboard },
-  { label: 'Micros', href: '/app/micros', icon: Bus },
   { label: 'Comidas', href: '/app/comidas', icon: UtensilsCrossed },
-  { label: 'Reembolsos', href: '/app/reembolsos', icon: Receipt },
-  { label: 'Reservas', href: '/app/reservas', icon: Package },
 ]
 const adminNavItems = [
   { label: 'Comidas',   href: '/app/admin/comidas',   icon: UtensilsCrossed },
-  { label: 'Micros',   href: '/app/admin/micros',    icon: Bus },
   { label: 'Usuarios', href: '/app/admin/usuarios',  icon: Users },
 ]
 
