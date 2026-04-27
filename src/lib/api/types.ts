@@ -5,6 +5,7 @@ export type UserDTO = {
   name: string
   email: string
   role: string
+  active?: boolean
   created_at: string
 }
 
@@ -74,13 +75,66 @@ export type DailySummaryDTO = {
   porMenu: DailySummaryMenu[]
 }
  
-/** POST /api/meals — body */
-export type CreateMealBody = {
+/** GET|POST /api/meal-templates */
+export type MealTemplateDTO = {
+  id: string
   title: string
   image_url: string
   description: string
   category: string
   type: string
+  created_at: string
+}
+
+export type ListMealTemplatesDTO = {
+  data: MealTemplateDTO[]
+}
+
+export type CreateMealTemplateBody = {
+  title: string
+  image_url: string
+  description: string
+  category: string
+  type: string
+}
+
+/** PUT /api/meal-templates/:id — todos los campos son opcionales */
+export type UpdateMealTemplateBody = Partial<CreateMealTemplateBody>
+
+/** POST /api/meals — body (usa template_id) */
+export type CreateMealBody = {
+  template_id: string
   available_count: number
   date: string
+}
+
+/** GET /api/users */
+export type PaginatedUsersDTO = {
+  data: UserDTO[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+/** PATCH /api/users/:id/role */
+export type UpdateUserRoleBody = {
+  role: 'Admin' | 'User' | 'SuperAdmin'
+}
+
+/** PATCH /api/users/:id/status */
+export type UpdateUserStatusBody = {
+  active: boolean
+}
+
+/** PUT /api/users/:id */
+export type UpdateUserBody = {
+  name?: string
+  email?: string
+}
+
+/** PATCH /api/me/password */
+export type ChangePasswordBody = {
+  current_password: string
+  new_password: string
 }

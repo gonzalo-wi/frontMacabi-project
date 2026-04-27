@@ -1,9 +1,22 @@
 import { apiRequest } from './apiClient'
-import type { DailySummaryDTO, ListMealsDTO, MealDTO, CreateMealBody } from './types'
+import type {
+  DailySummaryDTO,
+  ListMealsDTO,
+  MealDTO,
+  CreateMealBody,
+  MealTemplateDTO,
+  ListMealTemplatesDTO,
+  CreateMealTemplateBody,
+  UpdateMealTemplateBody,
+  PaginatedUsersDTO,
+  UpdateUserRoleBody,
+  UpdateUserStatusBody,
+  UpdateUserBody,
+  UserDTO,
+} from './types'
 
 /**
  * GET /api/admin/bookings/daily-summary?date=YYYY-MM-DD
- * Requiere rol admin o superadmin.
  */
 export async function getAdminDailySummary(
   token: string,
@@ -18,7 +31,6 @@ export async function getAdminDailySummary(
 
 /**
  * GET /api/meals?date=YYYY-MM-DD
- * Trae los menús disponibles para una fecha.
  */
 export async function getAdminMealsByDate(
   token: string,
@@ -33,7 +45,7 @@ export async function getAdminMealsByDate(
 
 /**
  * POST /api/meals
- * Crea un nuevo menú. Requiere rol admin o superadmin.
+ * Programa una vianda para una fecha usando un template.
  */
 export async function createMeal(
   token: string,
@@ -44,4 +56,116 @@ export async function createMeal(
     token,
     body,
   })
+}
+
+/**
+ * GET /api/meal-templates
+ */
+export async function getMealTemplates(
+  token: string,
+): Promise<ListMealTemplatesDTO> {
+  return apiRequest<ListMealTemplatesDTO>('/api/meal-templates', {
+    method: 'GET',
+    token,
+  })
+}
+
+/**
+ * POST /api/meal-templates
+ */
+export async function createMealTemplate(
+  token: string,
+  body: CreateMealTemplateBody,
+): Promise<MealTemplateDTO> {
+  return apiRequest<MealTemplateDTO>('/api/meal-templates', {
+    method: 'POST',
+    token,
+    body,
+  })
+}
+
+/**
+ * PUT /api/meal-templates/:id
+ */
+export async function updateMealTemplate(
+  token: string,
+  id: string,
+  body: UpdateMealTemplateBody,
+): Promise<MealTemplateDTO> {
+  return apiRequest<MealTemplateDTO>(`/api/meal-templates/${id}`, {
+    method: 'PUT',
+    token,
+    body,
+  })
+}
+
+/**
+ * DELETE /api/meal-templates/:id
+ */
+export async function deleteMealTemplate(
+  token: string,
+  id: string,
+): Promise<void> {
+  return apiRequest<void>(`/api/meal-templates/${id}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+/**
+ * DELETE /api/meals/:id
+ */
+export async function deleteMeal(
+  token: string,
+  id: string,
+): Promise<void> {
+  return apiRequest<void>(`/api/meals/${id}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+/**
+ * GET /api/users?page=1&page_size=20
+ */
+export async function getUsers(
+  token: string,
+  page = 1,
+  pageSize = 20,
+): Promise<PaginatedUsersDTO> {
+  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  return apiRequest<PaginatedUsersDTO>(`/api/users?${q}`, { method: 'GET', token })
+}
+
+/**
+ * PATCH /api/users/:id/role
+ */
+export async function updateUserRole(
+  token: string,
+  id: string,
+  body: UpdateUserRoleBody,
+): Promise<UserDTO> {
+  return apiRequest<UserDTO>(`/api/users/${id}/role`, { method: 'PATCH', token, body })
+}
+
+/**
+ * PATCH /api/users/:id/status
+ */
+export async function updateUserStatus(
+  token: string,
+  id: string,
+  body: UpdateUserStatusBody,
+): Promise<UserDTO> {
+  return apiRequest<UserDTO>(`/api/users/${id}/status`, { method: 'PATCH', token, body })
+}
+
+/**
+ * PUT /api/users/:id
+ */
+export async function updateUser(
+  token: string,
+  id: string,
+  body: UpdateUserBody,
+): Promise<UserDTO> {
+  return apiRequest<UserDTO>(`/api/users/${id}`, { method: 'PUT', token, body })
 }

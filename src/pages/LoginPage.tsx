@@ -54,7 +54,30 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
+
+      {/* ── Mobile hero (dark top section) ───────────────── */}
+      <div className="lg:hidden relative bg-sidebar overflow-hidden flex-shrink-0">
+        {/* Dot grid */}
+        <div
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+        {/* Glow blobs */}
+        <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-sidebar-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-sidebar-primary/8 blur-2xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col items-center text-center px-8 pt-14 pb-16">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shadow-xl mb-4">
+            <img src="/logo_macabi.png" alt="Macabi" className="w-9 h-9 object-contain brightness-0 invert" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight leading-tight">Macabi</h1>
+          <p className="text-sm text-sidebar-muted-foreground mt-1">Organización Hebrea Argentina</p>
+        </div>
+      </div>
 
       {/* ── Left branding panel (desktop only) ───────────── */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[50%] bg-sidebar flex-col justify-between p-10 relative overflow-hidden">
@@ -125,26 +148,16 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Right form panel ───────────────────────────────── */}
-      <div className="flex-1 flex flex-col bg-background">
+      {/* ── Right / bottom form panel ──────────────────────── */}
+      <div className="flex-1 flex flex-col bg-background rounded-t-3xl lg:rounded-none -mt-6 lg:mt-0 relative z-10 shadow-[0_-4px_24px_rgba(0,0,0,0.12)] lg:shadow-none">
 
-        {/* Mobile brand header */}
-        <div className="lg:hidden flex items-center gap-3 px-6 pt-12 pb-6">
-          <div className="w-12 h-12 rounded-2xl bg-sidebar flex items-center justify-center shadow-lg shrink-0">
-            <img
-              src="/logo_macabi.png"
-              alt="Macabi"
-              className="w-7 h-7 object-contain brightness-0 invert"
-            />
-          </div>
-          <div>
-            <p className="font-bold text-lg tracking-tight">Macabi</p>
-            <p className="text-xs text-muted-foreground">Organización Hebrea Argentina</p>
-          </div>
+        {/* Drag handle (mobile only) */}
+        <div className="lg:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-muted-foreground/20" />
         </div>
 
         {/* Form container — centered vertically on desktop */}
-        <div className="flex-1 flex items-center justify-center px-6 lg:px-16 py-8">
+        <div className="flex-1 flex items-start lg:items-center justify-center px-6 lg:px-16 pt-6 pb-8 lg:py-8">
           <div className="w-full max-w-sm">
 
             {/* Heading */}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -6,10 +7,32 @@ import {
   Receipt,
   Package,
   LogOut,
+  Menu,
+  ShieldCheck,
+  Users,
+  KeyRound,
+  X,
+  Loader2,
 } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerClose,
+} from '@/components/ui/drawer'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { changePassword } from '@/lib/api/auth'
 
 const navItems = [
   { label: 'Panel', href: '/app', icon: LayoutDashboard },
@@ -19,18 +42,51 @@ const navItems = [
   { label: 'Reservas', href: '/app/reservas', icon: Package },
 ]
 const adminNavItems = [
-  { label: 'Comidas', href: '/app/admin/comidas', icon: UtensilsCrossed },
-  { label: 'Micros',  href: '/app/admin/micros',  icon: Bus },
+  { label: 'Comidas',   href: '/app/admin/comidas',   icon: UtensilsCrossed },
+  { label: 'Micros',   href: '/app/admin/micros',    icon: Bus },
+  { label: 'Usuarios', href: '/app/admin/usuarios',  icon: Users },
 ]
 
 export function AppShellLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
+  const { user, logout, token } = useAuth()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [pwOpen, setPwOpen] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState(false)
 
   const handleLogout = () => {
     logout()
     navigate('/', { replace: true })
+  }
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
+
+  const pwMutation = useMutation({
+    mutationFn: () => changePassword(token!, { current_password: currentPw, new_password: newPw }),
+    onSuccess: () => {
+      setPwSuccess(true)
+      setCurrentPw('')
+      setNewPw('')
+      setTimeout(() => { setPwOpen(false); setPwSuccess(false) }, 1500)
+    },
+    onError: () => setPwError('Contraseña actual incorrecta o error al cambiar'),
+  })
+
+  function openPw() {
+    setCurrentPw(''); setNewPw(''); setPwError(''); setPwSuccess(false)
+    setPwOpen(true)
+  }
+
+  function handlePwSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError('')
+    if (!currentPw || !newPw) { setPwError('Completá ambos campos'); return }
+    if (newPw.length < 6) { setPwError('La nueva contraseña debe tener al menos 6 caracteres'); return }
+    pwMutation.mutate()
   }
 
   return (
@@ -115,7 +171,7 @@ export function AppShellLayout() {
           )}
         </nav>
 
-        {/* User footer */}
+        {/* User footer — desktop sidebar */}
         {user && (
           <div className="shrink-0 px-3 py-4 border-t border-sidebar-border">
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/60">
@@ -128,6 +184,13 @@ export function AppShellLayout() {
                 <p className="text-sm font-medium text-sidebar-foreground truncate leading-none">{user.name}</p>
                 <p className="text-[11px] text-sidebar-muted-foreground truncate mt-0.5">{user.email}</p>
               </div>
+              <button
+                onClick={openPw}
+                className="p-1.5 rounded-md text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                title="Cambiar contraseña"
+              >
+                <KeyRound className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={handleLogout}
                 className="p-1.5 rounded-md text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
@@ -142,48 +205,240 @@ export function AppShellLayout() {
 
       {/* ── Main content area ─────────────────────────────── */}
       <main className="lg:pl-64 min-h-screen">
-        <div className="pb-20 lg:pb-0">
+        <div className="pb-24 lg:pb-0">
           <Outlet />
         </div>
       </main>
 
-      {/* ── Mobile bottom nav ─────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-md border-t border-border safe-area-bottom z-50">
-        <div className="flex items-stretch justify-around h-16 max-w-lg mx-auto px-1">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/app' && pathname.startsWith(item.href))
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  'flex flex-col items-center justify-center flex-1 h-full gap-1 px-1 relative transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground',
-                )}
-              >
-                {isActive && (
-                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-primary" />
-                )}
-                <div className={cn(
-                  'p-1 rounded-lg transition-colors',
-                  isActive ? 'bg-primary/10' : '',
-                )}>
-                  <Icon className="w-5 h-5" />
+      {/* ── Mobile: floating menu button ──────────────────── */}
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="flex items-center gap-2.5 bg-[#0D1B2A] text-white pl-4 pr-5 py-3 rounded-full shadow-xl shadow-black/30 border border-white/10 active:scale-95 transition-transform"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-sm font-semibold tracking-wide">Menú</span>
+        </button>
+      </div>
+
+      {/* ── Mobile: drawer ────────────────────────────────── */}
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">
+        <DrawerContent className="w-[80vw] max-w-[300px] h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-none border-r border-sidebar-border p-0">
+
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+              <img src="/logo_macabi.png" alt="Macabi" className="w-5 h-5 object-contain brightness-0 invert" />
+            </div>
+            <div>
+              <p className="font-bold text-base text-sidebar-foreground leading-none">Macabi</p>
+              <p className="text-[11px] text-sidebar-muted-foreground mt-0.5">Madrijim</p>
+            </div>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+            {navItems.map((item) => {
+              const isActive =
+                pathname === item.href ||
+                (item.href !== '/app' && pathname.startsWith(item.href))
+              const Icon = item.icon
+              return (
+                <DrawerClose key={item.href} asChild>
+                  <Link
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-white/15 text-white'
+                        : 'text-sidebar-muted-foreground hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <Icon className={cn('w-5 h-5 shrink-0', isActive ? 'text-blue-300' : '')} />
+                    <span className="flex-1">{item.label}</span>
+                    {isActive && <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />}
+                  </Link>
+                </DrawerClose>
+              )
+            })}
+
+            {isAdmin && (
+              <>
+                <div className="h-px bg-sidebar-border mx-2 my-3" />
+                <div className="flex items-center gap-2 px-4 mb-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-400">
+                    Administración
+                  </p>
                 </div>
-                <span className={cn(
-                  'text-[10px] leading-none',
-                  isActive ? 'font-semibold' : 'font-medium',
-                )}>
-                  {item.label}
-                </span>
-              </Link>
-            )
-          })}
-        </div>
-      </nav>
+                {adminNavItems.map((item) => {
+                  const isActive = pathname.startsWith(item.href)
+                  const Icon = item.icon
+                  return (
+                    <DrawerClose key={item.href} asChild>
+                      <Link
+                        to={item.href}
+                        className={cn(
+                          'flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all',
+                          isActive
+                            ? 'bg-amber-500/20 text-amber-200'
+                            : 'text-sidebar-muted-foreground hover:bg-amber-500/10 hover:text-amber-200',
+                        )}
+                      >
+                        <Icon className={cn('w-5 h-5 shrink-0', isActive ? 'text-amber-400' : '')} />
+                        <span className="flex-1">{item.label}</span>
+                        {isActive && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />}
+                      </Link>
+                    </DrawerClose>
+                  )
+                })}
+              </>
+            )}
+          </nav>
+
+          {/* User footer — mobile drawer */}
+          {user && (
+            <div className="shrink-0 px-3 py-4 border-t border-sidebar-border">
+              <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/8">
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback className="bg-white/15 text-white font-semibold text-xs">
+                    {user.name.split(' ').map((n) => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate leading-none">{user.name}</p>
+                  <p className="text-[11px] text-sidebar-muted-foreground truncate mt-0.5">{user.email}</p>
+                </div>
+                <DrawerClose asChild>
+                  <button
+                    onClick={openPw}
+                    className="p-2 rounded-lg text-sidebar-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                    title="Cambiar contraseña"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                </DrawerClose>
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg text-sidebar-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </DrawerContent>
+      </Drawer>
+
+      {/* ── Change password — Dialog (desktop) ─────────── */}
+      <Dialog open={pwOpen} onOpenChange={(o) => !o && setPwOpen(false)}>
+        <DialogContent className="hidden lg:grid sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña</DialogTitle>
+          </DialogHeader>
+          <PwForm
+            pwSuccess={pwSuccess}
+            currentPw={currentPw}
+            setCurrentPw={setCurrentPw}
+            newPw={newPw}
+            setNewPw={setNewPw}
+            pwError={pwError}
+            isPending={pwMutation.isPending}
+            onSubmit={handlePwSubmit}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Change password — Drawer (mobile) ───────────── */}
+      <Drawer open={pwOpen} onOpenChange={(o) => !o && setPwOpen(false)} direction="bottom">
+        <DrawerContent className="lg:hidden px-0 pb-0">
+          <div className="px-5 pt-4 pb-8 space-y-5 max-w-md mx-auto w-full">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-base">Cambiar contraseña</h3>
+              <button
+                onClick={() => setPwOpen(false)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <PwForm
+              pwSuccess={pwSuccess}
+              currentPw={currentPw}
+              setCurrentPw={setCurrentPw}
+              newPw={newPw}
+              setNewPw={setNewPw}
+              pwError={pwError}
+              isPending={pwMutation.isPending}
+              onSubmit={handlePwSubmit}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
+  )
+}
+
+function PwForm({
+  pwSuccess, currentPw, setCurrentPw, newPw, setNewPw, pwError, isPending, onSubmit,
+}: {
+  pwSuccess: boolean
+  currentPw: string
+  setCurrentPw: (v: string) => void
+  newPw: string
+  setNewPw: (v: string) => void
+  pwError: string
+  isPending: boolean
+  onSubmit: (e: React.FormEvent) => void
+}) {
+  if (pwSuccess) {
+    return (
+      <div className="flex flex-col items-center py-6 gap-2 text-green-600">
+        <KeyRound className="w-8 h-8" />
+        <p className="font-medium">¡Contraseña actualizada!</p>
+      </div>
+    )
+  }
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="current-pw">Contraseña actual</Label>
+        <Input
+          id="current-pw"
+          type="password"
+          value={currentPw}
+          onChange={(e) => setCurrentPw(e.target.value)}
+          placeholder="••••••••"
+          className="h-11"
+          autoComplete="current-password"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="new-pw">Nueva contraseña</Label>
+        <Input
+          id="new-pw"
+          type="password"
+          value={newPw}
+          onChange={(e) => setNewPw(e.target.value)}
+          placeholder="••••••••"
+          className="h-11"
+          autoComplete="new-password"
+        />
+      </div>
+
+      {pwError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+          {pwError}
+        </p>
+      )}
+
+      <Button type="submit" className="w-full h-11" disabled={isPending}>
+        {isPending
+          ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</>
+          : 'Cambiar contraseña'
+        }
+      </Button>
+    </form>
   )
 }
