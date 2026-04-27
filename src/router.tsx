@@ -10,6 +10,10 @@ import ComidasPage from '@/pages/ComidasPage'
 import ReembolsosPage from '@/pages/ReembolsosPage'
 import ReservasPage from '@/pages/ReservasPage'
 
+//Vistas admin
+import AdminComidasPage from '@/pages/AdminComidasPage'
+import AdminMicrosPage from '@/pages/AdminMicrosPage'
+
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '/recuperar-password', element: <RecuperarPasswordPage /> },
@@ -25,6 +29,10 @@ export const router = createBrowserRouter([
           { path: 'comidas', element: <ComidasPage /> },
           { path: 'reembolsos', element: <ReembolsosPage /> },
           { path: 'reservas', element: <ReservasPage /> },
+          // ── Vistas admin ──────────────────────────────────
+          // Solo accesibles para rol admin y superadmin.
+          { path: 'admin/comidas', element: <AdminComidasPage /> },
+          { path: 'admin/micros',  element: <AdminMicrosPage /> },
         ],
       },
     ],
