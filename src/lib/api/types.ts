@@ -55,3 +55,32 @@ export type PaginatedBookingsDTO = {
   page_size: number
   total_pages: number
 }
+
+/** GET /api/admin/bookings/daily-summary?date= */
+export type DailySummaryPersona = {
+  nombre: string
+}
+ 
+export type DailySummaryMenu = {
+  menuId: string
+  nombre: string
+  cantidad: number
+  personas: DailySummaryPersona[]
+}
+ 
+export type DailySummaryDTO = {
+  fecha: string
+  totalMenus: number
+  porMenu: DailySummaryMenu[]
+}
+ 
+/** POST /api/meals — body */
+export type CreateMealBody = {
+  title: string
+  image_url: string
+  description: string
+  category: string
+  type: string
+  available_count: number
+  date: string
+}

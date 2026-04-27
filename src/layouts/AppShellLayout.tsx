@@ -18,6 +18,10 @@ const navItems = [
   { label: 'Reembolsos', href: '/app/reembolsos', icon: Receipt },
   { label: 'Reservas', href: '/app/reservas', icon: Package },
 ]
+const adminNavItems = [
+  { label: 'Comidas', href: '/app/admin/comidas', icon: UtensilsCrossed },
+  { label: 'Micros',  href: '/app/admin/micros',  icon: Bus },
+]
 
 export function AppShellLayout() {
   const { pathname } = useLocation()
@@ -81,6 +85,34 @@ export function AppShellLayout() {
               </Link>
             )
           })}
+          {(user?.role === 'admin' || user?.role === 'super_admin') && (
+            <>
+              <div className="h-px bg-sidebar-border mx-1 my-2" />
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground mb-1">
+                Administración
+              </p>
+              {adminNavItems.map((item) => {
+                const isActive = pathname.startsWith(item.href)
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                      isActive
+                        ? 'bg-sidebar-accent text-sidebar-foreground'
+                        : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+                    )}
+                  >
+                    <Icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-sidebar-primary' : '')} />
+                    <span className="flex-1">{item.label}</span>
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />}
+                  </Link>
+                )
+              })}
+            </>
+          )}
         </nav>
 
         {/* User footer */}
