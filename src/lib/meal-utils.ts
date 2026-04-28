@@ -115,3 +115,21 @@ export function isMealBookingOpen(isoMealDate: string): boolean {
 export function bookingDeadlineIsoForMealYmd(eventDayYmd: string): string {
   return reservationDeadlineAsDate(eventDayYmd).toISOString()
 }
+
+/**
+ * Próximo sábado (o hoy mismo si hoy es sábado) como YYYY-MM-DD, usando hora Argentina.
+ * Evita depender del timezone del PC/browser o de toISOString() (que devuelve UTC).
+ */
+export function nextSaturdayYmd(now: Date = new Date()): string {
+  const todayAr = toYyyyMmDd(now, TIMEZONE_ARGENTINA)
+  const [y, m, d] = todayAr.split('-').map(Number)
+  // Anclar al mediodía UTC para que getUTCDay() refleje el día correcto sin ambigüedad
+  const noonUtc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
+  const dayOfWeek = noonUtc.getUTCDay() // 0=dom … 6=sáb
+  const daysUntil = dayOfWeek === 6 ? 0 : (6 - dayOfWeek + 7) % 7
+  const satUtc = new Date(Date.UTC(y, m - 1, d + daysUntil, 12, 0, 0))
+  const sy = satUtc.getUTCFullYear()
+  const sm = String(satUtc.getUTCMonth() + 1).padStart(2, '0')
+  const sd = String(satUtc.getUTCDate()).padStart(2, '0')
+  return `${sy}-${sm}-${sd}`
+}

@@ -14,7 +14,7 @@ import {
   bookingDeadlineIsoForMealYmd,
   formatEventDateAR,
   isMealBookingOpen,
-  todayMealYmd,
+  nextSaturdayYmd,
 } from '@/lib/meal-utils'
 import {
   AlertDialog,
@@ -208,7 +208,7 @@ function MealSection({
 export default function ComidasPage() {
   const queryClient = useQueryClient()
   const { token, isRestoring } = useAuth()
-  const defaultDate = useMemo(() => todayMealYmd(), [])
+  const defaultDate = useMemo(() => nextSaturdayYmd(), [])
   const [selectedDate, setSelectedDate] = useState(defaultDate)
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)

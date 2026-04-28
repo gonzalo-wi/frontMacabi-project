@@ -6,17 +6,7 @@ import { uploadMealImage } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { getAdminDailySummary, getAdminMealsByDate, createMeal, getMealTemplates, createMealTemplate, updateMealTemplate, deleteMealTemplate, deleteMeal } from '@/lib/api/admin'
 import type { DailySummaryDTO, MealDTO, MealTemplateDTO, CreateMealTemplateBody, UpdateMealTemplateBody } from '@/lib/api/types'
-
-// ─── Helpers ────────────────────────────────────────────────
-
-function nextSaturdayISO(): string {
-  const today = new Date()
-  const day = today.getDay()
-  const daysUntilSaturday = day === 6 ? 0 : (6 - day)
-  const sat = new Date(today)
-  sat.setDate(today.getDate() + daysUntilSaturday)
-  return sat.toISOString().split('T')[0]
-}
+import { nextSaturdayYmd } from '@/lib/meal-utils'
 
 function formatDateLabel(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -769,7 +759,7 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
 
 export default function AdminComidasPage() {
   const { token } = useAuth()
-  const [date, setDate] = useState(nextSaturdayISO)
+  const [date, setDate] = useState(nextSaturdayYmd)
   const [activeTab, setActiveTab] = useState<Tab>('preparacion')
 
   const summaryQuery = useQuery({

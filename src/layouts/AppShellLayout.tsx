@@ -2,10 +2,7 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
-  Bus,
   UtensilsCrossed,
-  Receipt,
-  Package,
   LogOut,
   Menu,
   ShieldCheck,

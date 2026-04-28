@@ -1,29 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
-  Bell,
-  Bus,
   UtensilsCrossed,
-  Receipt,
-  Package,
-  ChevronRight,
-  Clock,
   LogOut,
   User,
+  CheckCircle2,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-import { notifications, micros, expenses, userReservations, getTimeRemaining } from '@/lib/mock-data'
 import { listMealsByDate } from '@/lib/api/meals'
 import { listMyBookings } from '@/lib/api/bookings'
+import type { BookingDTO, MealDTO } from '@/lib/api/types'
 import {
-  bookingDeadlineIsoForMealYmd,
   isMealBookingOpen,
   mealDateYmd,
-  todayMealYmd,
+  nextSaturdayYmd,
+  formatEventDateAR,
 } from '@/lib/meal-utils'
 import {
   DropdownMenu,
@@ -34,10 +30,91 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  pastas:             { label: 'Pastas',       color: 'bg-amber-400' },
+  milanesas:          { label: 'Milanesas',    color: 'bg-rose-400' },
+  ensaladas:          { label: 'Ensaladas',    color: 'bg-emerald-400' },
+  sandwiches_y_wraps: { label: 'Sandwiches',   color: 'bg-sky-400' },
+  pollo:              { label: 'Pollo',        color: 'bg-orange-400' },
+  carne:              { label: 'Carne',        color: 'bg-violet-400' },
+}
+
+function MealServiceCard({
+  type,
+  mealDayYmd,
+  booking,
+  meals,
+  hasBookable,
+  isLoading,
+}: {
+  type: 'almuerzo' | 'cena'
+  mealDayYmd: string
+  booking: BookingDTO | undefined
+  meals: MealDTO[]
+  hasBookable: boolean
+  isLoading: boolean
+}) {
+  const label = type === 'almuerzo' ? 'Almuerzo' : 'Cena'
+  const ServiceIcon = type === 'almuerzo' ? Sun : Moon
+  return (
+    <Link to="/app/comidas">
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group">
+        <div className={`relative px-5 pt-5 pb-4 ${
+          booking
+            ? 'bg-gradient-to-br from-emerald-600 to-emerald-500'
+            : hasBookable
+              ? 'bg-gradient-to-br from-[#0D1B2A] to-[#1a3a5c]'
+              : 'bg-gradient-to-br from-muted to-muted/60'
+        }`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className={`text-[11px] font-semibold uppercase tracking-wider mb-1 ${
+                booking ? 'text-emerald-100' : hasBookable ? 'text-blue-300' : 'text-muted-foreground'
+              }`}>
+                {label} · {formatEventDateAR(mealDayYmd)}
+              </p>
+              {isLoading ? (
+                <div className="h-6 w-32 bg-white/20 rounded animate-pulse" />
+              ) : booking?.meal ? (
+                <p className="text-white font-bold text-lg leading-snug truncate">{booking.meal.title}</p>
+              ) : hasBookable ? (
+                <p className="text-white font-bold text-lg">Sin confirmar</p>
+              ) : (
+                <p className="text-muted-foreground font-semibold text-base">
+                  {meals.length === 0 ? 'Sin menú publicado' : 'Sin cupo disponible'}
+                </p>
+              )}
+            </div>
+            <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${
+              booking ? 'bg-white/20' : hasBookable ? 'bg-white/10' : 'bg-muted'
+            }`}>
+              {booking
+                ? <CheckCircle2 className="w-5 h-5 text-white" />
+                : <ServiceIcon className={`w-5 h-5 ${hasBookable ? 'text-blue-300' : 'text-muted-foreground'}`} />}
+            </div>
+          </div>
+        </div>
+        <CardContent className="px-5 py-3 flex items-center justify-between">
+          <p className={`text-xs font-medium ${
+            booking ? 'text-emerald-600 dark:text-emerald-400' : hasBookable ? 'text-primary' : 'text-muted-foreground'
+          }`}>
+            {booking ? '✓ Reserva confirmada' : hasBookable ? 'Reservar ahora →' : 'Ver menú →'}
+          </p>
+          {booking?.meal?.category && (
+            <span className="text-[10px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+              {CATEGORY_META[booking.meal.category]?.label ?? booking.meal.category}
+            </span>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  )
+}
+
 export default function PanelPage() {
   const navigate = useNavigate()
   const { user, logout, token, isRestoring } = useAuth()
-  const mealDayYmd = useMemo(() => todayMealYmd(), [])
+  const mealDayYmd = useMemo(() => nextSaturdayYmd(), [])
 
   const mealsForDay = useQuery({
     queryKey: ['meals', mealDayYmd],
@@ -58,11 +135,21 @@ export default function PanelPage() {
       mealDateYmd(b.meal.date) === mealDayYmd,
   )
 
+  const cenaBookingToday = myBookings.data?.data.find(
+    (b) =>
+      b.meal?.type === 'cena' &&
+      b.meal &&
+      mealDateYmd(b.meal.date) === mealDayYmd,
+  )
+
   const lunchMealsToday =
     mealsForDay.data?.data.filter((m) => m.type === 'almuerzo' && mealDateYmd(m.date) === mealDayYmd) ?? []
 
+  const cenaMealsToday =
+    mealsForDay.data?.data.filter((m) => m.type === 'cena' && mealDateYmd(m.date) === mealDayYmd) ?? []
+
   const hasBookableLunch = lunchMealsToday.some((m) => !m.sold_out && isMealBookingOpen(m.date))
-  const lunchDeadlineIso = bookingDeadlineIsoForMealYmd(mealDayYmd)
+  const hasBookableCena = cenaMealsToday.some((m) => !m.sold_out && isMealBookingOpen(m.date))
 
   const lunchStatLabel =
     mealsForDay.isLoading || myBookings.isLoading
@@ -76,192 +163,91 @@ export default function PanelPage() {
             : 'Sin cupo'
 
   const showMealPending = Boolean(!lunchBookingToday && hasBookableLunch)
-  const [notifs, setNotifs] = useState(notifications)
-  const unreadCount = notifs.filter((n) => !n.read).length
 
-  const availableMicro = micros.find((m) => !m.userReserved)
-  const pendingExpenses = expenses.filter((e) => e.status === 'pending').length
-  const activeReservations = userReservations.filter((r) => !r.returned).length
+  const satBookings = useMemo(
+    () => myBookings.data?.data.filter((b) => b.meal && mealDateYmd(b.meal.date) === mealDayYmd) ?? [],
+    [myBookings.data?.data, mealDayYmd],
+  )
+
+  const nextSatBooking = satBookings[0]
+
+  const categoryBreakdown = useMemo(() => {
+    const meals = myBookings.data?.data.flatMap((b) => (b.meal ? [b.meal] : [])) ?? []
+    const counts: Record<string, number> = {}
+    for (const meal of meals) {
+      counts[meal.category] = (counts[meal.category] ?? 0) + 1
+    }
+    const max = Math.max(...Object.values(counts), 1)
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cat, count]) => ({
+        cat,
+        count,
+        pct: Math.round((count / max) * 100),
+        meta: CATEGORY_META[cat] ?? { label: cat, color: 'bg-muted-foreground' },
+      }))
+  }, [myBookings.data?.data])
+
+  const totalMealsBooked = myBookings.data?.data.filter((b) => b.meal).length ?? 0
 
   const handleLogout = () => {
     logout()
     navigate('/', { replace: true })
   }
 
-  const markAsRead = (id: string) => {
-    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
   if (!user) return null
-
-  const statsCards = [
-    {
-      href: '/app/micros',
-      icon: Bus,
-      label: 'Próximo micro',
-      value: availableMicro ? `${45 - availableMicro.reservedSeats} lugares` : 'Reservado',
-      colorClass: 'bg-primary/10 text-primary',
-    },
-    {
-      href: '/app/comidas',
-      icon: UtensilsCrossed,
-      label: 'Almuerzo hoy',
-      value: lunchStatLabel,
-      colorClass: 'bg-accent/15 text-accent',
-    },
-    {
-      href: '/app/reembolsos',
-      icon: Receipt,
-      label: 'Gastos pendientes',
-      value: String(pendingExpenses),
-      colorClass: 'bg-warning/20 text-warning-foreground',
-    },
-    {
-      href: '/app/reservas',
-      icon: Package,
-      label: 'Reservas activas',
-      value: String(activeReservations),
-      colorClass: 'bg-success/15 text-success',
-    },
-  ]
 
   return (
     <div className="min-h-screen">
       {/* ── Mobile header ── */}
       <header className="bg-sidebar text-sidebar-foreground px-4 pt-6 pb-4 safe-area-top lg:hidden">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="focus:outline-none">
-                  <Avatar className="h-9 w-9 border border-sidebar-border">
-                    <AvatarFallback className="bg-sidebar-accent text-sidebar-primary font-semibold text-xs">
-                      {user.name.split(' ').map((n) => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  {user.name}
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-muted-foreground text-xs">
-                  {user.email}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <div>
-              <p className="text-xs text-sidebar-muted-foreground">¡Hola,</p>
-              <h1 className="text-base font-bold text-sidebar-foreground leading-none">
-                {user.name.split(' ')[0]}!
-              </h1>
-            </div>
-          </div>
-
+        <div className="flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors">
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive rounded-full text-[9px] font-bold flex items-center justify-center text-white">
-                    {unreadCount}
-                  </span>
-                )}
+              <button className="focus:outline-none">
+                <Avatar className="h-9 w-9 border border-sidebar-border">
+                  <AvatarFallback className="bg-sidebar-accent text-sidebar-primary font-semibold text-xs">
+                    {user.name.split(' ').map((n) => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel className="flex items-center justify-between">
-                Notificaciones
-                {unreadCount > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {unreadCount} nuevas
-                  </Badge>
-                )}
-              </DropdownMenuLabel>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {notifs.slice(0, 5).map((notif) => (
-                <DropdownMenuItem
-                  key={notif.id}
-                  className="flex flex-col items-start gap-1 py-3"
-                  onClick={() => markAsRead(notif.id)}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    {!notif.read && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                    )}
-                    <span className={`font-medium text-sm ${notif.read ? 'pl-3.5' : ''}`}>
-                      {notif.title}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 pl-3.5">
-                    {notif.message}
-                  </p>
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                {user.name}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-muted-foreground text-xs">
+                {user.email}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar sesión
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <div>
+            <p className="text-xs text-sidebar-muted-foreground">¡Hola,</p>
+            <h1 className="text-base font-bold text-sidebar-foreground leading-none">
+              {user.name.split(' ')[0]}!
+            </h1>
+          </div>
         </div>
       </header>
 
       {/* ── Desktop top bar ── */}
-      <div className="hidden lg:flex items-center justify-between h-16 px-6 border-b border-border bg-card/80 sticky top-0 z-10 backdrop-blur-md">
+      <div className="hidden lg:flex items-center h-16 px-6 border-b border-border bg-card/80 sticky top-0 z-10 backdrop-blur-md">
         <div>
           <h2 className="text-sm font-semibold leading-none">
             ¡Hola, {user.name.split(' ')[0]}!
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Aquí está tu resumen de hoy</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Aquí está tu resumen</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive rounded-full text-[9px] font-bold flex items-center justify-center text-destructive-foreground">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between">
-              Notificaciones
-              {unreadCount > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {unreadCount} nuevas
-                </Badge>
-              )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifs.slice(0, 5).map((notif) => (
-              <DropdownMenuItem
-                key={notif.id}
-                className="flex flex-col items-start gap-1 py-3"
-                onClick={() => markAsRead(notif.id)}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  {!notif.read && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                  )}
-                  <span className={`font-medium text-sm ${notif.read ? 'pl-3.5' : ''}`}>
-                    {notif.title}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 pl-3.5">
-                  {notif.message}
-                </p>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {/* ── Content ── */}
@@ -271,138 +257,92 @@ export default function PanelPage() {
           {/* Main column */}
           <div className="lg:col-span-2 space-y-4">
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              {statsCards.map(({ href, icon: Icon, label, value, colorClass }) => (
-                <Link key={href} to={href}>
-                  <Card className="hover:shadow-md transition-all duration-200 cursor-pointer group">
-                    <CardContent className="p-4">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${colorClass}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-                      <p className="font-bold text-base leading-tight group-hover:text-primary transition-colors">
-                        {value}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
+            {/* Almuerzo sábado */}
+            <MealServiceCard
+              type="almuerzo"
+              mealDayYmd={mealDayYmd}
+              booking={lunchBookingToday}
+              meals={lunchMealsToday}
+              hasBookable={hasBookableLunch}
+              isLoading={mealsForDay.isLoading || myBookings.isLoading}
+            />
 
-            {/* Pending actions */}
-            {(availableMicro || showMealPending) && (
-              <Card className="border-primary/20 bg-primary/5 shadow-sm">
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-primary/15 flex items-center justify-center">
-                      <Clock className="w-3 h-3 text-primary" />
-                    </div>
-                    Acciones pendientes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 px-4 pb-4">
-                  {availableMicro && !micros.some((m) => m.userReserved) && (
-                    <Link to="/app/micros">
-                      <div className="flex items-center justify-between p-3 bg-card rounded-lg hover:bg-muted/50 transition-colors border border-border/50">
-                        <div className="flex items-center gap-3">
-                          <div className="p-1.5 rounded-md bg-primary/10">
-                            <Bus className="w-4 h-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Reservar lugar en micro</p>
-                            <p className="text-xs text-muted-foreground">
-                              {getTimeRemaining(availableMicro.reservationDeadline)}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </Link>
-                  )}
-
-                  {showMealPending && (
-                    <Link to="/app/comidas">
-                      <div className="flex items-center justify-between p-3 bg-card rounded-lg hover:bg-muted/50 transition-colors border border-border/50">
-                        <div className="flex items-center gap-3">
-                          <div className="p-1.5 rounded-md bg-accent/15">
-                            <UtensilsCrossed className="w-4 h-4 text-accent" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Reservar almuerzo</p>
-                            <p className="text-xs text-muted-foreground">
-                              {getTimeRemaining(lunchDeadlineIso)}
-                            </p>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Cena sábado — solo si hay menú o reserva */}
+            {(cenaBookingToday || cenaMealsToday.length > 0) && (
+              <MealServiceCard
+                type="cena"
+                mealDayYmd={mealDayYmd}
+                booking={cenaBookingToday}
+                meals={cenaMealsToday}
+                hasBookable={hasBookableCena}
+                isLoading={mealsForDay.isLoading || myBookings.isLoading}
+              />
             )}
           </div>
 
           {/* Sidebar column */}
           <div className="space-y-4">
 
-            {/* Upcoming Events */}
+
+
+            {/* Mis comidas */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold">Próximos eventos</CardTitle>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <UtensilsCrossed className="w-4 h-4 text-accent" />
+                  Mis comidas
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2 px-4 pb-4">
-                {[
-                  { day: '25', month: 'Abr', title: 'Jornada en el campo', place: 'Campo Macabi · Ezeiza' },
-                  { day: '02', month: 'May', title: 'Reunión de madrijim', place: 'Sede central' },
-                ].map((evt) => (
-                  <div key={evt.day + evt.month} className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex flex-col items-center justify-center shrink-0">
-                      <p className="text-sm font-bold text-primary leading-none">{evt.day}</p>
-                      <p className="text-[9px] text-primary/70 uppercase font-medium mt-0.5">{evt.month}</p>
+              <CardContent className="px-4 pb-4 space-y-4">
+                {/* Reserva próximo sábado */}
+                {myBookings.isLoading ? (
+                  <div className="h-14 bg-muted/50 rounded-lg animate-pulse" />
+                ) : nextSatBooking?.meal ? (
+                  <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                    <div className="p-1.5 rounded-md bg-emerald-100 dark:bg-emerald-900 shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{evt.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{evt.place}</p>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium uppercase tracking-wide">Reservado · sábado</p>
+                      <p className="text-sm font-semibold truncate">{nextSatBooking.meal.title}</p>
                     </div>
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-semibold">Actividad reciente</CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4">
-                <div className="space-y-3">
-                  {notifs.slice(0, 3).map((notif) => (
-                    <div key={notif.id} className="flex items-start gap-3">
-                      <div
-                        className={`p-1.5 rounded-lg shrink-0 ${
-                          notif.type === 'micro'
-                            ? 'bg-primary/10'
-                            : notif.type === 'meal'
-                              ? 'bg-accent/15'
-                              : notif.type === 'expense'
-                                ? 'bg-success/15'
-                                : 'bg-muted'
-                        }`}
-                      >
-                        {notif.type === 'micro' && <Bus className="w-3 h-3 text-primary" />}
-                        {notif.type === 'meal' && <UtensilsCrossed className="w-3 h-3 text-accent" />}
-                        {notif.type === 'expense' && <Receipt className="w-3 h-3 text-success" />}
-                        {notif.type === 'reservation' && <Package className="w-3 h-3 text-muted-foreground" />}
+                ) : (
+                  <Link to="/app/comidas">
+                    <div className="flex items-center gap-3 p-3 bg-muted/40 border border-border/50 rounded-lg hover:bg-muted/70 transition-colors">
+                      <div className="p-1.5 rounded-md bg-muted shrink-0">
+                        <UtensilsCrossed className="w-4 h-4 text-muted-foreground" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{notif.title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{notif.message}</p>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Sin reserva para el sábado</p>
+                        <p className="text-sm font-medium text-primary">Ver menú →</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </Link>
+                )}
+
+                {/* Historial por categoría */}
+                {categoryBreakdown.length > 0 && (
+                  <div className="space-y-2.5">
+                    <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                      Historial · {totalMealsBooked} {totalMealsBooked === 1 ? 'reserva' : 'reservas'}
+                    </p>
+                    {categoryBreakdown.map(({ cat, count, pct, meta }) => (
+                      <div key={cat}>
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">{meta.label}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${meta.color}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
