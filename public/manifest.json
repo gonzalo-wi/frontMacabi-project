@@ -1,6 +1,6 @@
 {
   "name": "Macabi Madrijim",
-  "short_name": "Macabi",
+  "short_name": "Macabi Madrijim",
   "description": "App de gestión para madrijim de Macabi",
   "start_url": "/",
   "display": "standalone",
@@ -9,9 +9,15 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/logo_macabi.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo_macabi.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
