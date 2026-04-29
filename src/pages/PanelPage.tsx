@@ -151,19 +151,6 @@ export default function PanelPage() {
   const hasBookableLunch = lunchMealsToday.some((m) => !m.sold_out && isMealBookingOpen(m.date))
   const hasBookableCena = cenaMealsToday.some((m) => !m.sold_out && isMealBookingOpen(m.date))
 
-  const lunchStatLabel =
-    mealsForDay.isLoading || myBookings.isLoading
-      ? '…'
-      : lunchBookingToday
-        ? 'Confirmado'
-        : hasBookableLunch
-          ? 'Sin confirmar'
-          : lunchMealsToday.length === 0
-            ? 'Sin menú'
-            : 'Sin cupo'
-
-  const showMealPending = Boolean(!lunchBookingToday && hasBookableLunch)
-
   const satBookings = useMemo(
     () => myBookings.data?.data.filter((b) => b.meal && mealDateYmd(b.meal.date) === mealDayYmd) ?? [],
     [myBookings.data?.data, mealDayYmd],
