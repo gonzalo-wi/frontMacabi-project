@@ -4,6 +4,7 @@ import { RequireAuth } from '@/auth/RequireAuth'
 import { AppShellLayout } from '@/layouts/AppShellLayout'
 import LoginPage from '@/pages/LoginPage'
 import RecuperarPasswordPage from '@/pages/RecuperarPasswordPage'
+import RestablecerContrasenaPage from '@/pages/RestablecerContrasenaPage'
 import RegisterPage from '@/pages/RegisterPage'
 import PanelPage from '@/pages/PanelPage'
 import ComidasPage from '@/pages/ComidasPage'
@@ -13,6 +14,7 @@ import AdminUsuariosPage from '@/pages/AdminUsuariosPage'
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '/recuperar-password', element: <RecuperarPasswordPage /> },
+  { path: '/restablecer-contrasena', element: <RestablecerContrasenaPage /> },
   { path: '/register', element: <RegisterPage /> },
   {
     path: '/app',

@@ -25,6 +25,15 @@ export type LoginResponseDTO = {
   user: UserDTO
 }
 
+export type MessageResponseDTO = {
+  message: string
+}
+
+export type ConfirmPasswordResetBody = {
+  token: string
+  new_password: string
+}
+
 export type ErrorResponseDTO = {
   error: string
 }
