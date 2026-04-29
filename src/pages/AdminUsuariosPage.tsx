@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, Loader2, X,
   CheckCircle2, XCircle, Eye, EyeOff,
   KeyRound, UserCheck, UserX,
+  UserPlus, Mail, RefreshCw, Ban,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -16,10 +17,26 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/useAuth'
-import { getUsers, updateUserRole, updateUserStatus, updateUser } from '@/lib/api/admin'
+import { getUsers, updateUserRole, updateUserStatus, updateUser, createUserInvitation, getPendingInvitations, resendUserInvitation, revokeUserInvitation } from '@/lib/api/admin'
 import { changePassword } from '@/lib/api/auth'
-import type { UserDTO, UpdateUserRoleBody } from '@/lib/api/types'
+import { ApiError } from '@/lib/api/apiClient'
+import type { UserDTO, UpdateUserRoleBody, PendingInvitationDTO } from '@/lib/api/types'
 
 const PAGE_SIZE = 20
 
@@ -58,6 +75,10 @@ function RoleBadge({ role }: { role: string }) {
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function isInviteExpired(inv: PendingInvitationDTO) {
+  return new Date(inv.expires_at).getTime() < Date.now()
 }
 
 function PasswordField({
@@ -107,7 +128,13 @@ export default function AdminUsuariosPage() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<UserDTO | null>(null)
 
-  // Edit fields
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user')
+  const [inviteError, setInviteError] = useState('')
+  const [revokeTarget, setRevokeTarget] = useState<PendingInvitationDTO | null>(null)
+  const [revokeError, setRevokeError] = useState('')
   const [editName, setEditName]   = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editError, setEditError] = useState('')
@@ -123,6 +150,54 @@ export default function AdminUsuariosPage() {
     queryKey: ['admin-users', page],
     queryFn: () => getUsers(token!, page, PAGE_SIZE),
     enabled: Boolean(token),
+  })
+
+  const pendingQuery = useQuery({
+    queryKey: ['admin-pending-invitations'],
+    queryFn: () => getPendingInvitations(token!),
+    enabled: Boolean(token),
+  })
+
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      createUserInvitation(token!, {
+        email: inviteEmail.trim(),
+        name: inviteName.trim(),
+        ...(isSuperAdmin ? { role: inviteRole } : {}),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
+      setInviteEmail('')
+      setInviteName('')
+      setInviteRole('user')
+      setInviteError('')
+      setInviteOpen(false)
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof ApiError ? err.message : 'No se pudo enviar la invitación'
+      setInviteError(message)
+    },
+  })
+
+  const resendInviteMutation = useMutation({
+    mutationFn: (invitationId: string) => resendUserInvitation(token!, invitationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
+    },
+  })
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (invitationId: string) => revokeUserInvitation(token!, invitationId),
+    onMutate: () => setRevokeError(''),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
+      setRevokeTarget(null)
+    },
+    onError: (err: unknown) => {
+      setRevokeError(err instanceof ApiError ? err.message : 'No se pudo revocar la invitación')
+    },
   })
 
   const roleMutation = useMutation({
@@ -168,6 +243,27 @@ export default function AdminUsuariosPage() {
     onError: () => setPwError('Contraseña actual incorrecta'),
   })
 
+  function handleInviteOpenChange(open: boolean) {
+    setInviteOpen(open)
+    if (!open) {
+      setInviteEmail('')
+      setInviteName('')
+      setInviteRole('user')
+      setInviteError('')
+      inviteMutation.reset()
+    }
+  }
+
+  function handleInviteSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setInviteError('')
+    if (!inviteEmail.trim() || !inviteName.trim()) {
+      setInviteError('Completá email y nombre')
+      return
+    }
+    inviteMutation.mutate()
+  }
+
   function openDrawer(u: UserDTO) {
     setSelected(u)
     setEditName(u.name)
@@ -212,10 +308,26 @@ export default function AdminUsuariosPage() {
   const data = usersQuery.data
   const totalPages = data?.total_pages ?? 1
   const isOwnAccount = Boolean(selected && me && selected.id === me.id)
+  const pendingInvites = pendingQuery.data?.data ?? []
+  const pendingCount = pendingInvites.length
 
   return (
     <div className="min-h-screen">
-      <PageHeader icon={Users} title="Usuarios" subtitle="Listado y gestión de usuarios" />
+      <PageHeader
+        icon={Users}
+        title="Usuarios"
+        subtitle="Listado y gestión de usuarios"
+        action={
+          <Button
+            size="sm"
+            className="h-9 gap-1.5"
+            onClick={() => handleInviteOpenChange(true)}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Invitar</span>
+          </Button>
+        }
+      />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
@@ -232,6 +344,12 @@ export default function AdminUsuariosPage() {
           </div>
         )}
 
+        {pendingQuery.isError && (
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+            No se pudieron cargar las invitaciones pendientes. Intentá actualizar la página.
+          </div>
+        )}
+
         {/* ── User list ── */}
         {data && (
           <>
@@ -244,24 +362,129 @@ export default function AdminUsuariosPage() {
                   Usuario
                   <span className="ml-2 text-muted-foreground/50 font-normal normal-case tracking-normal">
                     — {data.total} en total
+                    {pendingCount > 0 ? ` · ${pendingCount} invitado(s) pendiente(s)` : ''}
                   </span>
                 </p>
                 <p className="w-28 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rol</p>
                 <p className="w-24 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</p>
-                <div className="w-5 shrink-0" />
+                <div className="w-[168px] shrink-0 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:block pr-1">
+                  Acciones
+                </div>
               </div>
 
               {/* Mobile header */}
               <div className="flex md:hidden items-center justify-between px-4 py-2.5 border-b border-border bg-muted/40">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {data.total} usuario{data.total !== 1 ? 's' : ''}
-                </p>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {data.total} usuario{data.total !== 1 ? 's' : ''}
+                    {pendingCount > 0 && (
+                      <span className="block text-[10px] font-normal normal-case tracking-normal text-amber-800/90 mt-0.5">
+                        {pendingCount} invitado(s) pendiente(s)
+                      </span>
+                    )}
+                  </p>
+                </div>
                 {totalPages > 1 && (
                   <p className="text-xs text-muted-foreground">Pág. {data.page}/{data.total_pages}</p>
                 )}
               </div>
 
               <ul className="divide-y divide-border">
+                {pendingQuery.isLoading && pendingCount === 0 && (
+                  <li className="flex items-center gap-3 px-4 md:px-5 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    Cargando invitaciones pendientes…
+                  </li>
+                )}
+                {pendingInvites.map((inv) => {
+                  const expired = isInviteExpired(inv)
+                  const resending =
+                    resendInviteMutation.isPending && resendInviteMutation.variables === inv.id
+                  const revoking =
+                    revokeInviteMutation.isPending && revokeInviteMutation.variables === inv.id
+                  const rowBusy = resending || revoking
+                  return (
+                    <li
+                      key={`invite-${inv.id}`}
+                      className="group flex items-center gap-3 md:gap-4 px-4 md:px-5 py-3.5 bg-amber-50/50 dark:bg-amber-950/20"
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-amber-200/80 dark:border-amber-800/50">
+                          <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
+                            <Mail className="w-4 h-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card bg-amber-400" title="Invitación enviada" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm font-medium leading-none truncate">{inv.name}</p>
+                          <span
+                            className={`md:hidden shrink-0 text-[10px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded border ${
+                              expired
+                                ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-200 dark:border-orange-800'
+                                : 'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:border-amber-800'
+                            }`}
+                          >
+                            {expired ? 'Expirada' : 'Invitado'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{inv.email}</p>
+                      </div>
+                      <div className="hidden md:flex shrink-0 md:w-28 justify-center">
+                        <RoleBadge role={inv.role} />
+                      </div>
+                      <div className="hidden md:flex w-24 justify-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                            expired
+                              ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-800'
+                              : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-800'
+                          }`}
+                        >
+                          {expired ? 'Link expirado' : 'Invitado'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-end shrink-0 md:w-[168px] gap-1 flex-wrap md:flex-nowrap">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 gap-1 border-amber-200/80 dark:border-amber-800 bg-background"
+                          disabled={rowBusy}
+                          title="Reenviar correo con nuevo enlace"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            resendInviteMutation.mutate(inv.id)
+                          }}
+                        >
+                          {resending ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          )}
+                          <span className="hidden sm:inline text-xs">Reenviar</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2 gap-1 border-destructive/25 text-destructive hover:bg-destructive/10"
+                          disabled={rowBusy}
+                          title="Revocar invitación"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setRevokeError('')
+                            setRevokeTarget(inv)
+                          }}
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline text-xs">Revocar</span>
+                        </Button>
+                      </div>
+                    </li>
+                  )
+                })}
                 {data.data.map((u: UserDTO) => {
                   const isActive = u.active !== false
                   return (
@@ -305,7 +528,9 @@ export default function AdminUsuariosPage() {
                         </span>
                       </div>
 
-                      <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 transition-colors" />
+                      <div className="flex items-center justify-end shrink-0 md:w-[168px]">
+                        <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 transition-colors" />
+                      </div>
                     </li>
                   )
                 })}
@@ -544,6 +769,125 @@ export default function AdminUsuariosPage() {
           })()}
         </DrawerContent>
       </Drawer>
+
+      <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invitar usuario</DialogTitle>
+            <p className="text-sm text-muted-foreground font-normal pt-1">
+              Se enviará un correo con un enlace para que elija su contraseña.
+            </p>
+          </DialogHeader>
+          <form onSubmit={handleInviteSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-email">Email</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="correo@ejemplo.org"
+                className="h-11"
+                autoComplete="off"
+                disabled={inviteMutation.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-name">Nombre</Label>
+              <Input
+                id="invite-name"
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+                placeholder="Nombre completo"
+                className="h-11"
+                disabled={inviteMutation.isPending}
+              />
+            </div>
+            {isSuperAdmin && (
+              <div className="space-y-1.5">
+                <Label>Rol al aceptar</Label>
+                <Select
+                  value={inviteRole}
+                  onValueChange={(v) => setInviteRole(v as 'user' | 'admin')}
+                  disabled={inviteMutation.isPending}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">Usuario</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {inviteError && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 border border-destructive/20">
+                {inviteError}
+              </p>
+            )}
+            <Button type="submit" className="w-full h-11" disabled={inviteMutation.isPending}>
+              {inviteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Enviar invitación
+                </>
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRevokeTarget(null)
+            setRevokeError('')
+            revokeInviteMutation.reset()
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Revocar invitación?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  {revokeTarget
+                    ? `Se anulará el enlace enviado a ${revokeTarget.email}. La persona no podrá registrarse con ese correo salvo que envíes una invitación nueva.`
+                    : null}
+                </p>
+                {revokeError ? (
+                  <p className="text-destructive font-medium">{revokeError}</p>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revokeInviteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={revokeInviteMutation.isPending || !revokeTarget}
+              onClick={() => {
+                if (revokeTarget) revokeInviteMutation.mutate(revokeTarget.id)
+              }}
+            >
+              {revokeInviteMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Ban className="mr-2 h-4 w-4" />
+              )}
+              Revocar
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

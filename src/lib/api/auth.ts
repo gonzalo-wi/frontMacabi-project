@@ -1,5 +1,5 @@
 import { apiRequest } from './apiClient'
-import type { LoginBody, LoginResponseDTO, RegisterBody, UserDTO, ChangePasswordBody } from './types'
+import type { LoginBody, LoginResponseDTO, UserDTO, ChangePasswordBody, AcceptInvitationBody } from './types'
 
 export async function login(body: LoginBody): Promise<LoginResponseDTO> {
   return apiRequest<LoginResponseDTO>('/auth/login', {
@@ -8,8 +8,8 @@ export async function login(body: LoginBody): Promise<LoginResponseDTO> {
   })
 }
 
-export async function register(body: RegisterBody): Promise<void> {
-  return apiRequest<void>('/auth/register', {
+export async function acceptInvitation(body: AcceptInvitationBody): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/accept-invitation', {
     method: 'POST',
     body,
   })

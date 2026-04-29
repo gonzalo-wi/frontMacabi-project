@@ -13,6 +13,8 @@ import type {
   UpdateUserStatusBody,
   UpdateUserBody,
   UserDTO,
+  CreateUserInvitationBody,
+  ListPendingInvitationsDTO,
 } from './types'
 
 /**
@@ -168,4 +170,54 @@ export async function updateUser(
   body: UpdateUserBody,
 ): Promise<UserDTO> {
   return apiRequest<UserDTO>(`/api/users/${id}`, { method: 'PUT', token, body })
+}
+
+/**
+ * POST /api/users/invitations
+ */
+export async function createUserInvitation(
+  token: string,
+  body: CreateUserInvitationBody,
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/api/users/invitations', {
+    method: 'POST',
+    token,
+    body,
+  })
+}
+
+/**
+ * GET /api/users/invitations
+ */
+export async function getPendingInvitations(token: string): Promise<ListPendingInvitationsDTO> {
+  return apiRequest<ListPendingInvitationsDTO>('/api/users/invitations', {
+    method: 'GET',
+    token,
+  })
+}
+
+/**
+ * POST /api/users/invitations/:id/resend
+ */
+export async function resendUserInvitation(
+  token: string,
+  invitationId: string,
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(
+    `/api/users/invitations/${encodeURIComponent(invitationId)}/resend`,
+    { method: 'POST', token },
+  )
+}
+
+/**
+ * DELETE /api/users/invitations/:id
+ */
+export async function revokeUserInvitation(
+  token: string,
+  invitationId: string,
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(
+    `/api/users/invitations/${encodeURIComponent(invitationId)}`,
+    { method: 'DELETE', token },
+  )
 }

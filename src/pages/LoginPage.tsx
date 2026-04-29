@@ -245,10 +245,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-8 text-xs text-muted-foreground text-center leading-relaxed">
-              ¿No tenés cuenta?{' '}
-              <Link to="/register" className="text-primary hover:underline font-medium">
-                Registrate
-              </Link>
+              El acceso es solo por invitación. Pedile una invitación a un administrador de tu sede.
             </p>
 
           </div>
