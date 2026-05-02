@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { UtensilsCrossed, Clock, Calendar, CheckCircle2, XCircle, Sun, Moon, AlertCircle } from 'lucide-react'
+import { UtensilsCrossed, Clock, Calendar, CheckCircle2, XCircle, Sun, Moon, AlertCircle, ArrowLeft, Ban } from 'lucide-react'
 import { getTimeRemaining } from '@/lib/mock-data'
 import { useAuth } from '@/hooks/useAuth'
 import { listMealsByDate } from '@/lib/api/meals'
@@ -44,6 +45,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   carne: 'Carne',
 }
 
+function mapBookingError(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'No se pudo completar la operación'
+  const msg = err.message
+  if (msg.includes('agotada')) return 'Esta vianda ya no tiene stock disponible'
+  if (msg.includes('otro proyecto')) return 'Ya tenés una reserva en otro proyecto para este día. No podés asistir a dos proyectos el mismo día'
+  if (msg.includes('almuerzo y cena')) return 'No podés reservar almuerzo y cena para el mismo día'
+  if (msg.includes('plazo')) return 'El plazo para reservar ya cerró (viernes 23:59)'
+  if (msg.includes('guarnición')) return msg
+  return msg
+}
+
 interface MealCardProps {
   meal: MealDTO
   selectedDate: string
@@ -52,6 +64,8 @@ interface MealCardProps {
   onCancelRequest: (bookingId: string) => void
   isBookPending: boolean
   isCancelPending: boolean
+  isBlockedByOtherProject: boolean
+  isBlockedByType: boolean
 }
 
 function MealCard({
@@ -62,20 +76,25 @@ function MealCard({
   onCancelRequest,
   isBookPending,
   isCancelPending,
+  isBlockedByOtherProject,
+  isBlockedByType,
 }: MealCardProps) {
   const open = isMealBookingOpen(selectedDate)
   const bookingId = bookingForMeal(meal.id, bookings)
   const reserved = Boolean(bookingId)
-  const canReserve = !reserved && !meal.sold_out && open
+  const isBlocked = isBlockedByOtherProject || isBlockedByType
+  const canReserve = !reserved && !meal.sold_out && open && !isBlocked
 
   return (
     <div
       className={`relative rounded-2xl overflow-hidden border-2 bg-card transition-all duration-200 ${
         reserved
           ? 'border-emerald-400/60 shadow-md shadow-emerald-100/60 dark:shadow-emerald-900/20'
-          : meal.sold_out
-            ? 'border-border opacity-60'
-            : 'border-border hover:border-primary/40 hover:shadow-md'
+          : isBlocked
+            ? 'border-border opacity-50'
+            : meal.sold_out
+              ? 'border-border opacity-60'
+              : 'border-border hover:border-primary/40 hover:shadow-md'
       }`}
     >
       {/* Status badge */}
@@ -93,7 +112,21 @@ function MealCard({
           </span>
         </div>
       )}
-      {!reserved && !meal.sold_out && !open && (
+      {!reserved && isBlockedByOtherProject && (
+        <div className="absolute top-3 right-3 z-10">
+          <span className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-orange-200">
+            <Ban className="w-3 h-3" /> Otro proyecto
+          </span>
+        </div>
+      )}
+      {!reserved && isBlockedByType && !isBlockedByOtherProject && (
+        <div className="absolute top-3 right-3 z-10">
+          <span className="flex items-center gap-1 bg-orange-100 text-orange-700 text-[11px] font-bold px-2.5 py-1 rounded-full border border-orange-200">
+            <Ban className="w-3 h-3" /> No disponible
+          </span>
+        </div>
+      )}
+      {!reserved && !isBlocked && !meal.sold_out && !open && (
         <div className="absolute top-3 right-3 z-10">
           <span className="bg-muted text-muted-foreground text-[11px] font-semibold px-2.5 py-1 rounded-full border">
             Cerrado
@@ -149,6 +182,10 @@ function MealCard({
             >
               {isBookPending ? (
                 'Reservando...'
+              ) : isBlockedByOtherProject ? (
+                'Reservaste en otro proyecto'
+              ) : isBlockedByType ? (
+                'Ya tenés el otro turno'
               ) : !open ? (
                 'Reserva cerrada'
               ) : meal.sold_out ? (
@@ -177,46 +214,73 @@ function MealCard({
   )
 }
 
-function MealSection({
-  title,
-  icon: Icon,
-  iconClass,
-  meals,
-  ...cardProps
+type MealTab = 'almuerzo' | 'cena'
+
+function MealTypeSwitch({
+  active,
+  onChange,
+  almuerzoCount,
+  cenaCount,
 }: {
-  title: string
-  icon: React.ElementType
-  iconClass: string
-  meals: MealDTO[]
-} & Omit<MealCardProps, 'meal'>) {
+  active: MealTab
+  onChange: (tab: MealTab) => void
+  almuerzoCount: number
+  cenaCount: number
+}) {
   return (
-    <section>
-      <div className="flex items-center gap-2.5 mb-4">
-        <Icon className={`w-4 h-4 ${iconClass} shrink-0`} />
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</h2>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {meals.map((meal) => (
-          <MealCard key={meal.id} meal={meal} {...cardProps} />
-        ))}
-      </div>
-    </section>
+    <div className="flex p-1 bg-muted rounded-2xl gap-1">
+      <button
+        type="button"
+        onClick={() => onChange('almuerzo')}
+        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+          active === 'almuerzo'
+            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 shadow-sm border border-amber-200 dark:border-amber-800/50'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Sun className="w-4 h-4" />
+        Almuerzo
+        {almuerzoCount > 0 && (
+          <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${active === 'almuerzo' ? 'bg-amber-200 dark:bg-amber-800/60 text-amber-900 dark:text-amber-200' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+            {almuerzoCount}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('cena')}
+        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+          active === 'cena'
+            ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 shadow-sm border border-indigo-200 dark:border-indigo-800/50'
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Moon className="w-4 h-4" />
+        Cena
+        {cenaCount > 0 && (
+          <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${active === 'cena' ? 'bg-indigo-200 dark:bg-indigo-800/60 text-indigo-900 dark:text-indigo-200' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+            {cenaCount}
+          </span>
+        )}
+      </button>
+    </div>
   )
 }
 
 export default function ComidasPage() {
   const queryClient = useQueryClient()
   const { token, isRestoring } = useAuth()
+  const { projectId = '' } = useParams<{ projectId: string }>()
   const defaultDate = useMemo(() => nextSaturdayYmd(), [])
   const [selectedDate, setSelectedDate] = useState(defaultDate)
+  const [activeMealTab, setActiveMealTab] = useState<MealTab>('almuerzo')
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const mealsQuery = useQuery({
-    queryKey: ['meals', selectedDate],
-    queryFn: () => listMealsByDate(token!, selectedDate),
-    enabled: Boolean(token) && !isRestoring,
+    queryKey: ['meals', selectedDate, projectId],
+    queryFn: () => listMealsByDate(token!, selectedDate, projectId || undefined),
+    enabled: Boolean(token) && !isRestoring && Boolean(projectId),
   })
 
   const bookingsQuery = useQuery({
@@ -233,7 +297,7 @@ export default function ComidasPage() {
       void queryClient.invalidateQueries({ queryKey: ['my-bookings'] })
     },
     onError: (err: unknown) => {
-      setActionError(err instanceof ApiError ? err.message : 'No se pudo reservar')
+      setActionError(mapBookingError(err))
     },
   })
 
@@ -272,6 +336,36 @@ export default function ComidasPage() {
   const bookingsForDate =
     bookingsQuery.data?.data.filter((b) => b.meal_id && mealIdsForSelectedDay.has(b.meal_id)) ?? []
 
+  // Bookings del usuario para la fecha seleccionada (usando meal.date del objeto anidado)
+  const bookingsOnSelectedDate = useMemo(
+    () =>
+      (bookingsQuery.data?.data ?? []).filter((b) =>
+        b.meal?.date?.startsWith(selectedDate),
+      ),
+    [bookingsQuery.data?.data, selectedDate],
+  )
+
+  // ¿Tiene una reserva en OTRO proyecto para este día?
+  const hasBookingInOtherProject = useMemo(
+    () =>
+      bookingsOnSelectedDate.some(
+        (b) => b.meal?.project_id && b.meal.project_id !== projectId,
+      ),
+    [bookingsOnSelectedDate, projectId],
+  )
+
+  // Tipos de comida ya reservados en ESTE proyecto para este día
+  const bookedTypesThisProject = useMemo(
+    () =>
+      new Set(
+        bookingsOnSelectedDate
+          .filter((b) => b.meal?.project_id === projectId)
+          .map((b) => b.meal?.type)
+          .filter(Boolean),
+      ),
+    [bookingsOnSelectedDate, projectId],
+  )
+
   const sharedCardProps = {
     selectedDate,
     bookings: bookingsQuery.data?.data,
@@ -279,6 +373,7 @@ export default function ComidasPage() {
     onCancelRequest: setCancelBookingId,
     isBookPending: bookMutation.isPending,
     isCancelPending: cancelMutation.isPending,
+    isBlockedByOtherProject: hasBookingInOtherProject,
   }
 
   return (
@@ -286,6 +381,15 @@ export default function ComidasPage() {
       <PageHeader icon={UtensilsCrossed} title="Comidas" subtitle="Reservá tu lugar para el día elegido" />
 
       <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-5">
+
+        {/* Back to projects */}
+        <Link
+          to="/app/comidas"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Volver a proyectos
+        </Link>
 
         {/* Date picker + deadline */}
         <div className="flex gap-3 flex-wrap">
@@ -323,6 +427,17 @@ export default function ComidasPage() {
           <div className="flex items-start gap-2.5 text-sm text-destructive bg-destructive/10 rounded-xl px-4 py-3 border border-destructive/20">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{actionError}</span>
+          </div>
+        )}
+
+        {/* Aviso: reserva en otro proyecto */}
+        {hasBookingInOtherProject && (
+          <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3.5">
+            <Ban className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-orange-800">Ya tenés una reserva en otro proyecto para este día</p>
+              <p className="text-xs text-orange-600 mt-0.5">No podés asistir a dos proyectos el mismo día. Canelá la reserva anterior si querés cambiar de proyecto.</p>
+            </div>
           </div>
         )}
 
@@ -366,26 +481,33 @@ export default function ComidasPage() {
           </Card>
         )}
 
-        {/* Almuerzo */}
-        {almuerzoMeals.length > 0 && (
-          <MealSection
-            title="Almuerzo"
-            icon={Sun}
-            iconClass="text-amber-500"
-            meals={almuerzoMeals}
-            {...sharedCardProps}
+        {/* Almuerzo / Cena switch */}
+        {!mealsQuery.isLoading && !mealsQuery.isError && sortedMeals.length > 0 && (
+          <MealTypeSwitch
+            active={activeMealTab}
+            onChange={setActiveMealTab}
+            almuerzoCount={almuerzoMeals.length}
+            cenaCount={cenaMeals.length}
           />
         )}
 
-        {/* Cena */}
-        {cenaMeals.length > 0 && (
-          <MealSection
-            title="Cena"
-            icon={Moon}
-            iconClass="text-indigo-500"
-            meals={cenaMeals}
-            {...sharedCardProps}
-          />
+        {/* Meals grid */}
+        {!mealsQuery.isLoading && !mealsQuery.isError && sortedMeals.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(activeMealTab === 'almuerzo' ? almuerzoMeals : cenaMeals).map((meal) => (
+              <MealCard
+                key={meal.id}
+                meal={meal}
+                {...sharedCardProps}
+                isBlockedByType={!bookedTypesThisProject.has(meal.type) && bookedTypesThisProject.size > 0}
+              />
+            ))}
+            {(activeMealTab === 'almuerzo' ? almuerzoMeals : cenaMeals).length === 0 && (
+              <div className="sm:col-span-2 py-10 text-center text-sm text-muted-foreground">
+                No hay opciones de {activeMealTab} para este día.
+              </div>
+            )}
+          </div>
         )}
 
         {/* Reservations summary */}

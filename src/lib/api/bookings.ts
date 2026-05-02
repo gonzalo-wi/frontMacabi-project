@@ -13,10 +13,16 @@ export async function listMyBookings(
   return apiRequest<PaginatedBookingsDTO>(`/api/bookings/mine?${q}`, { method: 'GET', token })
 }
 
-export async function bookMeal(token: string, mealId: string): Promise<BookingDTO> {
+export async function bookMeal(
+  token: string,
+  mealId: string,
+  garnishOptionId?: string,
+): Promise<BookingDTO> {
+  const body: { meal_id: string; garnish_option_id?: string } = { meal_id: mealId }
+  if (garnishOptionId) body.garnish_option_id = garnishOptionId
   return apiRequest<BookingDTO>('/api/bookings', {
     method: 'POST',
-    body: { meal_id: mealId },
+    body,
     token,
   })
 }

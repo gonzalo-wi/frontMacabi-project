@@ -1,14 +1,18 @@
 import { useState, useRef } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, UtensilsCrossed, Plus, ChefHat, Calendar, X, BookOpen, CheckSquare, Square, Pencil, Trash2, ImagePlus, Sun, Moon } from 'lucide-react'
+import { Loader2, UtensilsCrossed, Plus, ChefHat, Calendar, X, BookOpen, CheckSquare, Square, Pencil, Trash2, ImagePlus, Sun, Moon, ArrowLeft } from 'lucide-react'
 import { uploadMealImage } from '@/lib/supabase'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 import { useAuth } from '@/hooks/useAuth'
 import { getAdminDailySummary, getAdminMealsByDate, createMeal, getMealTemplates, createMealTemplate, updateMealTemplate, deleteMealTemplate, deleteMeal } from '@/lib/api/admin'
+import { getProject } from '@/lib/api/projects'
 import type { DailySummaryDTO, MealDTO, MealTemplateDTO, CreateMealTemplateBody, UpdateMealTemplateBody } from '@/lib/api/types'
 import { nextSaturdayYmd } from '@/lib/meal-utils'
 
-function formatDateLabel(iso: string): string {
+function formatDateLabel(iso: string | undefined): string {
+  if (!iso) return ''
   const [y, m, d] = iso.split('-')
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
   const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado']
@@ -40,6 +44,9 @@ const CATEGORIES = [
 // ─── Tab: Preparación del sábado ────────────────────────────
 
 function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
+  const project = summary.projects?.[0]
+  const porMenu = project?.meal_summaries ?? []
+  const totalMenus = project?.total_menus ?? summary.total_menus ?? 0
   return (
     <div className="space-y-6">
       {/* Hero total */}
@@ -51,8 +58,8 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
             <p className="text-blue-300 text-xs sm:text-sm font-medium tracking-wide uppercase mb-1">
               Total de porciones a preparar
             </p>
-            <p className="text-5xl sm:text-8xl font-black leading-none tabular-nums">{summary.totalMenus}</p>
-            <p className="text-blue-400 text-sm mt-3">para el {formatDateLabel(summary.fecha)}</p>
+            <p className="text-5xl sm:text-8xl font-black leading-none tabular-nums">{totalMenus}</p>
+            <p className="text-blue-400 text-sm mt-3">para el {formatDateLabel(summary.date)}</p>
           </div>
           <div className="hidden sm:flex flex-col items-center gap-1 bg-white/10 rounded-2xl px-8 py-5">
             <ChefHat className="h-10 w-10 text-blue-300" />
@@ -61,30 +68,30 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
         </div>
 
         {/* Barra de proporción */}
-        {summary.porMenu.length > 0 && (
+        {porMenu.length > 0 && (
           <>
             <div className="relative mt-6 flex rounded-full overflow-hidden h-2.5 gap-px">
-              {summary.porMenu.map((menu, i) => {
+              {porMenu.map((menu, i) => {
                 const color = CARD_COLORS[i % CARD_COLORS.length]
-                const pct = (menu.cantidad / summary.totalMenus) * 100
+                const pct = (menu.quantity / totalMenus) * 100
                 return (
                   <div
-                    key={menu.menuId}
+                    key={menu.meal_id}
                     className={`${color.badge} transition-all`}
                     style={{ width: `${pct}%` }}
-                    title={`${menu.nombre}: ${menu.cantidad}`}
+                    title={`${menu.title}: ${menu.quantity}`}
                   />
                 )
               })}
             </div>
             {/* Leyenda de colores */}
             <div className="relative mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
-              {summary.porMenu.map((menu, i) => {
+              {porMenu.map((menu, i) => {
                 const color = CARD_COLORS[i % CARD_COLORS.length]
                 return (
-                  <div key={menu.menuId} className="flex items-center gap-1.5">
+                    <div key={menu.meal_id} className="flex items-center gap-1.5">
                     <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color.badge}`} />
-                    <span className="text-xs text-blue-200 font-medium">{menu.nombre}</span>
+                    <span className="text-xs text-blue-200 font-medium">{menu.title}</span>
                   </div>
                 )
               })}
@@ -94,7 +101,7 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
       </div>
 
       {/* Sin pedidos */}
-      {summary.porMenu.length === 0 && (
+      {porMenu.length === 0 && (
         <div className="bg-white border-2 border-dashed border-gray-200 rounded-2xl p-16 text-center">
           <UtensilsCrossed className="h-10 w-10 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No hay pedidos para esta fecha</p>
@@ -104,27 +111,27 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
 
       {/* Cards por menú */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {summary.porMenu.map((menu, i) => {
+        {porMenu.map((menu, i) => {
           const color = CARD_COLORS[i % CARD_COLORS.length]
-          const pct = summary.totalMenus > 0
-            ? Math.round((menu.cantidad / summary.totalMenus) * 100)
+          const pct = totalMenus > 0
+            ? Math.round((menu.quantity / totalMenus) * 100)
             : 0
 
           return (
             <div
-              key={menu.menuId}
+              key={menu.meal_id}
               className={`bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4 ${color.border} overflow-hidden`}
             >
               <div className="px-5 pt-5 pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 text-base leading-snug">{menu.nombre}</p>
+                    <p className="font-bold text-gray-900 text-base leading-snug">{menu.title}</p>
                     <p className={`text-xs font-semibold mt-0.5 ${color.text}`}>{pct}% del total</p>
                   </div>
                   <div className={`${color.light} ${color.text} rounded-xl px-3 py-1.5 text-center min-w-[56px]`}>
-                    <p className="text-3xl font-black leading-none">{menu.cantidad}</p>
+                    <p className="text-3xl font-black leading-none">{menu.quantity}</p>
                     <p className="text-[10px] font-semibold mt-0.5">
-                      {menu.cantidad === 1 ? 'porción' : 'porciones'}
+                      {menu.quantity === 1 ? 'porción' : 'porciones'}
                     </p>
                   </div>
                 </div>
@@ -141,12 +148,12 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
                   Quiénes pidieron este menú
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {menu.personas.map((p, j) => (
+                  {(menu.persons ?? []).map((nombre, j) => (
                     <div key={j} className="flex items-center gap-1.5">
                       <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-[10px] font-bold ${color.avatar} flex-shrink-0`}>
-                        {getInitials(p.nombre)}
+                        {getInitials(nombre)}
                       </span>
-                      <span className="text-sm text-gray-700 font-medium">{p.nombre}</span>
+                      <span className="text-sm text-gray-700 font-medium">{nombre}</span>
                     </div>
                   ))}
                 </div>
@@ -161,7 +168,7 @@ function TabPreparacion({ summary }: { summary: DailySummaryDTO }) {
 
 // ─── Tab: Gestionar menús ────────────────────────────────────
 
-function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
+function TabMenus({ date, projectId, meals }: { date: string; projectId: string; meals: MealDTO[] }) {
   const { token } = useAuth()
   const queryClient = useQueryClient()
 
@@ -250,7 +257,7 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
   const programMutation = useMutation({
     mutationFn: async (entries: { template_id: string; available_count: number }[]) => {
       for (const e of entries) {
-        await createMeal(token!, { ...e, date: `${date}T00:00:00Z` })
+        await createMeal(token!, { ...e, project_id: projectId, date: `${date}T00:00:00Z` })
       }
     },
     onSuccess: () => {
@@ -464,21 +471,15 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
           </div>
         )}
 
-        {/* Formulario: editar */}
-        {editingTemplate && (
-          <div className="bg-white rounded-2xl border border-amber-200 ring-1 ring-amber-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-gray-800">
-                Editando: <span className="text-amber-700">{editingTemplate.title}</span>
-              </p>
-              <button
-                onClick={() => { setEditingTemplate(null); setEditForm({}) }}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Formulario: editar — Dialog */}
+        <Dialog open={Boolean(editingTemplate)} onOpenChange={open => { if (!open) { setEditingTemplate(null); setEditForm({}) } }}>
+          <DialogContent className="max-w-lg w-full">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-bold text-gray-800">
+                Editando: <span className="text-amber-700">{editingTemplate?.title}</span>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-gray-600">Nombre</label>
                 <input
@@ -526,7 +527,7 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
             </div>
             <div className="flex justify-end mt-4">
               <button
-                onClick={() => updateTemplateMutation.mutate({ id: editingTemplate.id, body: editForm })}
+                onClick={() => editingTemplate && updateTemplateMutation.mutate({ id: editingTemplate.id, body: editForm })}
                 disabled={updateTemplateMutation.isPending}
                 className="px-5 py-2.5 bg-[#0D1B2A] text-white text-sm font-semibold rounded-xl disabled:opacity-60 hover:bg-[#1a3a5c] transition-all"
               >
@@ -535,8 +536,8 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
                   : 'Guardar cambios'}
               </button>
             </div>
-          </div>
-        )}
+          </DialogContent>
+        </Dialog>
 
         {/* Grid de template cards */}
         {templatesQuery.isLoading ? (
@@ -579,12 +580,12 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
                           <UtensilsCrossed className="h-8 w-8 text-gray-200" />
                         </div>
                     }
-                    {/* Overlay de acciones */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    {/* Acciones siempre visibles */}
+                    <div className="absolute top-2 right-2 flex gap-1.5">
                       <button
                         onClick={() => startEdit(tpl)}
                         title="Editar"
-                        className="p-2 bg-white rounded-full text-blue-700 hover:bg-blue-50 shadow-md transition-colors"
+                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full text-blue-700 hover:bg-white shadow-md transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -592,7 +593,7 @@ function TabMenus({ date, meals }: { date: string; meals: MealDTO[] }) {
                         onClick={() => deleteTemplateMutation.mutate(tpl.id)}
                         disabled={deleteTemplateMutation.isPending}
                         title="Eliminar"
-                        className="p-2 bg-white rounded-full text-red-600 hover:bg-red-50 shadow-md transition-colors disabled:opacity-40"
+                        className="p-1.5 bg-white/90 backdrop-blur-sm rounded-full text-red-600 hover:bg-white shadow-md transition-colors disabled:opacity-40"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -759,18 +760,26 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ElementTyp
 
 export default function AdminComidasPage() {
   const { token } = useAuth()
+  const { projectId = '' } = useParams<{ projectId: string }>()
   const [date, setDate] = useState(nextSaturdayYmd)
   const [activeTab, setActiveTab] = useState<Tab>('preparacion')
 
+  const projectQuery = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => getProject(token!, projectId),
+    enabled: !!token && Boolean(projectId),
+    staleTime: 5 * 60 * 1000,
+  })
+
   const summaryQuery = useQuery({
-    queryKey: ['admin-daily-summary', date],
-    queryFn: () => getAdminDailySummary(token!, date),
-    enabled: !!token,
+    queryKey: ['admin-daily-summary', date, projectId],
+    queryFn: () => getAdminDailySummary(token!, date, projectId || undefined),
+    enabled: !!token && Boolean(projectId),
   })
 
   const mealsQuery = useQuery({
-    queryKey: ['admin-meals', date],
-    queryFn: () => getAdminMealsByDate(token!, date),
+    queryKey: ['admin-meals', date, projectId],
+    queryFn: () => getAdminMealsByDate(token!, date, projectId || undefined),
     enabled: !!token,
   })
 
@@ -781,12 +790,26 @@ export default function AdminComidasPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
+          {/* Breadcrumb */}
+          <Link
+            to="/app/admin/proyectos"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 mb-3 transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Proyectos
+          </Link>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <ChefHat className="h-5 w-5 text-blue-900" />
                 Preparación de comidas
               </h1>
+              {projectQuery.data && (
+                <p className="text-sm font-semibold text-blue-700 mt-0.5 flex items-center gap-1">
+                  <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
+                  {projectQuery.data.name}
+                </p>
+              )}
               <p className="text-sm text-gray-400 mt-0.5">{formatDateLabel(date)}</p>
             </div>
             <label className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 cursor-pointer hover:border-blue-300 transition-all">
@@ -844,7 +867,7 @@ export default function AdminComidasPage() {
               </div>
             )}
             {activeTab === 'menus' && (
-              <TabMenus date={date} meals={mealsQuery.data?.data ?? []} />
+              <TabMenus date={date} projectId={projectId} meals={mealsQuery.data?.data ?? []} />
             )}
           </>
         )}

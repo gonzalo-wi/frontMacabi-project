@@ -43,7 +43,37 @@ export type ErrorResponseDTO = {
   error: string
 }
 
+/** projects/infrastructure/http/dto.go */
+export type ProjectDTO = {
+  id: string
+  name: string
+  description: string
+  admin_user_id: string
+  created_at: string
+}
+
+export type ListProjectsDTO = {
+  data: ProjectDTO[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+export type CreateProjectBody = {
+  name: string
+  description: string
+  admin_user_id: string
+}
+
+export type UpdateProjectBody = Partial<CreateProjectBody>
+
 /** meal/infrastructure/http/dto.go */
+export type GarnishOptionDTO = {
+  id: string
+  name: string
+}
+
 export type MealDTO = {
   id: string
   title: string
@@ -54,6 +84,7 @@ export type MealDTO = {
   sold_out: boolean
   available_count: number
   date: string
+  project_id: string
   created_at: string
 }
 
@@ -66,6 +97,8 @@ export type BookingDTO = {
   id: string
   meal_id: string
   meal?: MealDTO
+  garnish_option_id?: string
+  garnish_option?: GarnishOptionDTO
   created_at: string
 }
 
@@ -78,21 +111,24 @@ export type PaginatedBookingsDTO = {
 }
 
 /** GET /api/admin/bookings/daily-summary?date= */
-export type DailySummaryPersona = {
-  nombre: string
-}
- 
 export type DailySummaryMenu = {
-  menuId: string
-  nombre: string
-  cantidad: number
-  personas: DailySummaryPersona[]
+  meal_id: string
+  title: string
+  quantity: number
+  persons: string[]
 }
- 
+
+export type DailySummaryProject = {
+  project_id: string
+  project_name: string
+  total_menus: number
+  meal_summaries: DailySummaryMenu[]
+}
+
 export type DailySummaryDTO = {
-  fecha: string
-  totalMenus: number
-  porMenu: DailySummaryMenu[]
+  date: string
+  total_menus: number
+  projects: DailySummaryProject[]
 }
  
 /** GET|POST /api/meal-templates */
@@ -103,7 +139,13 @@ export type MealTemplateDTO = {
   description: string
   category: string
   type: string
+  garnish_options: GarnishOptionDTO[]
   created_at: string
+}
+
+/** POST /api/meal-templates/:id/garnish-options */
+export type AddGarnishOptionBody = {
+  name: string
 }
 
 export type ListMealTemplatesDTO = {
@@ -124,6 +166,7 @@ export type UpdateMealTemplateBody = Partial<CreateMealTemplateBody>
 /** POST /api/meals — body (usa template_id) */
 export type CreateMealBody = {
   template_id: string
+  project_id: string
   available_count: number
   date: string
 }

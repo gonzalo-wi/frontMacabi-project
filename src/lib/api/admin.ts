@@ -8,6 +8,8 @@ import type {
   ListMealTemplatesDTO,
   CreateMealTemplateBody,
   UpdateMealTemplateBody,
+  AddGarnishOptionBody,
+  GarnishOptionDTO,
   PaginatedUsersDTO,
   UpdateUserRoleBody,
   UpdateUserStatusBody,
@@ -18,13 +20,15 @@ import type {
 } from './types'
 
 /**
- * GET /api/admin/bookings/daily-summary?date=YYYY-MM-DD
+ * GET /api/admin/bookings/daily-summary?date=YYYY-MM-DD&project_id=<uuid>
  */
 export async function getAdminDailySummary(
   token: string,
   date: string,
+  projectId?: string,
 ): Promise<DailySummaryDTO> {
   const q = new URLSearchParams({ date })
+  if (projectId) q.set('project_id', projectId)
   return apiRequest<DailySummaryDTO>(`/api/admin/bookings/daily-summary?${q}`, {
     method: 'GET',
     token,
@@ -32,13 +36,15 @@ export async function getAdminDailySummary(
 }
 
 /**
- * GET /api/meals?date=YYYY-MM-DD
+ * GET /api/meals?date=YYYY-MM-DD&project_id=<uuid>
  */
 export async function getAdminMealsByDate(
   token: string,
   date: string,
+  projectId?: string,
 ): Promise<ListMealsDTO> {
   const q = new URLSearchParams({ date })
+  if (projectId) q.set('project_id', projectId)
   return apiRequest<ListMealsDTO>(`/api/meals?${q}`, {
     method: 'GET',
     token,
@@ -112,6 +118,34 @@ export async function deleteMealTemplate(
     method: 'DELETE',
     token,
   })
+}
+
+/**
+ * POST /api/meal-templates/:id/garnish-options
+ */
+export async function addGarnishOption(
+  token: string,
+  templateId: string,
+  body: AddGarnishOptionBody,
+): Promise<GarnishOptionDTO> {
+  return apiRequest<GarnishOptionDTO>(
+    `/api/meal-templates/${encodeURIComponent(templateId)}/garnish-options`,
+    { method: 'POST', token, body },
+  )
+}
+
+/**
+ * DELETE /api/meal-templates/:id/garnish-options/:garnishId
+ */
+export async function removeGarnishOption(
+  token: string,
+  templateId: string,
+  garnishId: string,
+): Promise<void> {
+  return apiRequest<void>(
+    `/api/meal-templates/${encodeURIComponent(templateId)}/garnish-options/${encodeURIComponent(garnishId)}`,
+    { method: 'DELETE', token },
+  )
 }
 
 /**

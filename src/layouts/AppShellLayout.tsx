@@ -10,6 +10,7 @@ import {
   KeyRound,
   X,
   Loader2,
+  FolderOpen,
 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -36,7 +37,7 @@ const navItems = [
   { label: 'Comidas', href: '/app/comidas', icon: UtensilsCrossed },
 ]
 const adminNavItems = [
-  { label: 'Comidas',   href: '/app/admin/comidas',   icon: UtensilsCrossed },
+  { label: 'Proyectos', href: '/app/admin/proyectos', icon: FolderOpen },
   { label: 'Usuarios', href: '/app/admin/usuarios',  icon: Users },
 ]
 
