@@ -16,7 +16,6 @@ import {
   micros as initialMicros,
   formatDate,
   getTimeRemaining,
-  type Micro,
 } from '@/lib/mock-data'
 import {
   AlertDialog,
@@ -30,20 +29,80 @@ import {
 } from '@/components/ui/alert-dialog'
 import { PageHeader } from '@/components/PageHeader'
 import { cn } from '@/lib/utils'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/hooks/useAuth'
+import { confirmAttendance, getAttendanceCount } from '@/lib/api/attendance'
+import { ApiError } from '@/lib/api/apiClient'
+
+// TODO: reemplazar por el ID real del micro cuando el módulo esté en el back
+const MICRO_PROJECT_ID = '5e75315d-788c-4f82-8e0b-1bf6f403bb2b'
 
 export default function MicrosPage() {
-  const [micros, setMicros] = useState<Micro[]>(initialMicros)
+  const micros = initialMicros
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedMicro, setSelectedMicro] = useState<Micro | null>(null)
+  const [selectedMicro, setSelectedMicro] = useState<typeof initialMicros[0] | null>(null)
   const [actionType, setActionType] = useState<'reserve' | 'cancel'>('reserve')
+  const { token } = useAuth()
+  const queryClient = useQueryClient()
+  const [bannerMicroId, setBannerMicroId] = useState<string | null>(null)
 
-  const handleReserve = (micro: Micro) => {
+
+const attendanceQuery = useQuery({
+  queryKey: ['attendance', MICRO_PROJECT_ID],
+  queryFn: () => getAttendanceCount(token!, MICRO_PROJECT_ID),
+  enabled: Boolean(token),
+})
+
+const confirmMutation = useMutation({
+  mutationFn: () => confirmAttendance(token!, MICRO_PROJECT_ID),
+  onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['attendance', MICRO_PROJECT_ID] })
+      setConfirmedMicroIds(prev => {
+        const next = new Set(prev)
+        next.add(selectedMicro?.id ?? '')
+        return next
+      })
+      localStorage.setItem(
+        `attendance-confirmed-${MICRO_PROJECT_ID}`,
+        JSON.stringify([...confirmedMicroIds, selectedMicro?.id])
+      )
+      setBannerMicroId(selectedMicro?.id ?? null)
+      setTimeout(() => setBannerMicroId(null), 3000)
+  },
+  onError: (error: unknown) => {
+    if (error instanceof ApiError && error.status === 409) {
+      setConfirmedMicroIds(prev => {
+        const next = new Set(prev)
+        next.add(selectedMicro?.id ?? '')
+        return next
+      })
+      localStorage.setItem(
+        `attendance-confirmed-${MICRO_PROJECT_ID}`,
+        JSON.stringify([...confirmedMicroIds, selectedMicro?.id])
+      )
+      setBannerMicroId(selectedMicro?.id ?? null)
+      setTimeout(() => setBannerMicroId(null), 3000)
+    }
+  },
+})
+
+const [confirmedMicroIds, setConfirmedMicroIds] = useState<Set<string>>(
+  () => {
+    const stored = localStorage.getItem(`attendance-confirmed-${MICRO_PROJECT_ID}`)
+    return stored ? new Set(JSON.parse(stored)) : new Set()
+  }
+)
+const alreadyConfirmed = (microId: string) => confirmedMicroIds.has(microId)
+
+const confirmedCount = attendanceQuery.data?.confirmed ?? 0
+
+  const handleReserve = (micro: typeof initialMicros[0]) => {
     setSelectedMicro(micro)
     setActionType('reserve')
     setDialogOpen(true)
   }
 
-  const handleCancel = (micro: Micro) => {
+  const handleCancel = (micro: typeof initialMicros[0]) => {
     setSelectedMicro(micro)
     setActionType('cancel')
     setDialogOpen(true)
@@ -51,18 +110,23 @@ export default function MicrosPage() {
 
   const confirmAction = () => {
     if (!selectedMicro) return
-    setMicros((prev) =>
-      prev.map((m) => {
-        if (m.id !== selectedMicro.id) return m
-        return actionType === 'reserve'
-          ? { ...m, userReserved: true, reservedSeats: m.reservedSeats + 1 }
-          : { ...m, userReserved: false, reservedSeats: m.reservedSeats - 1 }
-      }),
-    )
+    if (actionType === 'cancel') {
+      localStorage.removeItem(`attendance-confirmed-${MICRO_PROJECT_ID}`)
+      setConfirmedMicroIds(prev => {
+          const next = new Set(prev)
+          next.delete(selectedMicro.id)
+          return next
+        })
+        localStorage.setItem(
+          `attendance-confirmed-${MICRO_PROJECT_ID}`,
+          JSON.stringify([...confirmedMicroIds].filter(id => id !== selectedMicro.id))
+        )
+      setDialogOpen(false)
+      return
+    }
+    confirmMutation.mutate()
     setDialogOpen(false)
   }
-
-  const userHasReservation = micros.some((m) => m.userReserved)
 
   return (
     <div className="min-h-screen">
@@ -70,22 +134,15 @@ export default function MicrosPage() {
 
       <div className="p-4 lg:p-6 max-w-3xl mx-auto space-y-4">
 
-        {/* User status banner */}
-        {userHasReservation && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-success/8 border border-success/25">
-            <div className="p-2 rounded-full bg-success/15 shrink-0">
-              <CheckCircle2 className="w-4 h-4 text-success" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-success">¡Tenés lugar reservado!</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Tu lugar está confirmado para este sábado
+        {/* Micros list */}
+          {bannerMicroId && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-success/8 border border-success/25">
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <p className="text-sm font-semibold text-success">
+                ¡Confirmaste tu asistencia al Micro {bannerMicroId.split('-')[1]}!
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Micros list */}
+          )}
         <div className="space-y-3">
           {micros.map((micro) => {
             const availableSeats = micro.totalSeats - micro.reservedSeats
@@ -100,11 +157,11 @@ export default function MicrosPage() {
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         'p-2.5 rounded-xl shrink-0',
-                        micro.userReserved ? 'bg-success/15' : 'bg-primary/10',
+                        alreadyConfirmed(micro.id) ? 'bg-success/15' : 'bg-primary/10',
                       )}>
                         <Bus className={cn(
                           'w-5 h-5',
-                          micro.userReserved ? 'text-success' : 'text-primary',
+                          alreadyConfirmed(micro.id) ? 'text-success' : 'text-primary',
                         )} />
                       </div>
                       <div>
@@ -117,7 +174,7 @@ export default function MicrosPage() {
                         </p>
                       </div>
                     </div>
-                    {micro.userReserved ? (
+                    {alreadyConfirmed(micro.id) ? (
                       <Badge className="bg-success/15 text-success border-success/25 hover:bg-success/20">
                         Reservado
                       </Badge>
@@ -151,7 +208,7 @@ export default function MicrosPage() {
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Users className="w-3.5 h-3.5" />
-                        <span>{micro.reservedSeats} / {micro.totalSeats} ocupados</span>
+                        <span>{confirmedCount} / {micro.totalSeats} confirmados</span>
                       </div>
                       <span className={cn(
                         'font-semibold',
@@ -172,32 +229,27 @@ export default function MicrosPage() {
                   </div>
 
                   {/* Action */}
-                  {micro.userReserved ? (
-                    <Button
-                      variant="outline"
-                      className="w-full border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
-                      onClick={() => handleCancel(micro)}
-                    >
-                      Cancelar reserva
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      disabled={isFull || userHasReservation}
-                      onClick={() => handleReserve(micro)}
+                  <Button
+                      variant={(alreadyConfirmed(micro.id)) ? 'outline' : 'default'}
+                      className={cn(
+                        'w-full',
+                        (alreadyConfirmed(micro.id)) && 'border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground hover:border-destructive'
+                      )}
+                      disabled={confirmMutation.isPending}
+                      onClick={() => (alreadyConfirmed(micro.id)) ? handleCancel(micro) : handleReserve(micro)}
                     >
                       {isFull
                         ? 'Sin lugares disponibles'
-                        : userHasReservation
-                          ? 'Ya tenés reserva'
+                        : (alreadyConfirmed(micro.id))
+                          ? 'Cancelar mi reserva'
                           : 'Reservar mi lugar'}
                     </Button>
-                  )}
                 </CardContent>
               </Card>
             )
           })}
         </div>
+
 
         {/* Info card */}
         <div className="bg-muted/40 border border-border rounded-xl p-4">

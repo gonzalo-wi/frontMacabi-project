@@ -119,7 +119,7 @@ export const micros: Micro[] = [
     totalSeats: 45,
     reservedSeats: 41,
     reservationDeadline: '2026-04-23T23:59:59',
-    userReserved: true,
+    userReserved: false,
     destination: 'Campo Macabi - Ezeiza',
   },
 ]
@@ -366,11 +366,9 @@ function parseCalendarDateInput(dateString: string): Date | null {
 export function formatDate(dateString: string): string {
   const local = parseCalendarDateInput(dateString)
   const date = local ?? new Date(dateString)
-  return new Intl.DateTimeFormat('es-AR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(date)
+  const weekday = new Intl.DateTimeFormat('es-AR', { weekday: 'long' }).format(date)
+  const dayMonth = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'long' }).format(date)
+  return `${weekday} ${dayMonth}`
 }
 
 export function formatShortDate(dateString: string): string {

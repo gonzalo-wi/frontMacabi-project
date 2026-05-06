@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { AlertCircle, ChevronRight, FolderOpen, Calendar } from 'lucide-react'
+import { AlertCircle, ChevronRight, FolderOpen, Calendar, Users, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { listProjects } from '@/lib/api/projects'
+import { getAttendanceCount, confirmAttendance } from '@/lib/api/attendance'
 import { ApiError } from '@/lib/api/apiClient'
 import { PageHeader } from '@/components/PageHeader'
+import { Button } from '@/components/ui/button'
 
 const PROJECT_COLORS = [
   { bg: 'from-blue-500 to-indigo-600',    badge: 'bg-blue-100 text-blue-800'   },
@@ -39,6 +41,53 @@ function ProjectCardSkeleton() {
         <div className="h-3 bg-muted rounded-lg w-1/3" />
         <div className="h-10 bg-muted rounded-xl" />
       </div>
+    </div>
+  )
+}
+
+function AttendanceSection({ projectId, token }: { projectId: string; token: string }) {
+  const queryClient = useQueryClient()
+
+  const attendanceQuery = useQuery({
+    queryKey: ['attendance', projectId],
+    queryFn: () => getAttendanceCount(token, projectId),
+  })
+
+  const confirmMutation = useMutation({
+    mutationFn: () => confirmAttendance(token, projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance', projectId] })
+    },
+  })
+
+  const data = attendanceQuery.data
+  const userConfirmed = confirmMutation.isSuccess
+
+  return (
+    <div className="space-y-2">
+      {data && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Users className="w-3.5 h-3.5" />
+          <span>{data.confirmed} confirmado{data.confirmed !== 1 ? 's' : ''}</span>
+        </div>
+      )}
+
+      {userConfirmed ? (
+        <div className="flex items-center gap-2 text-xs text-success bg-success/8 border border-success/25 rounded-xl px-3 py-2">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-semibold">¡Asistencia confirmada!</span>
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full text-xs"
+          disabled={confirmMutation.isPending}
+          onClick={() => confirmMutation.mutate()}
+        >
+          {confirmMutation.isPending ? 'Confirmando...' : 'Confirmar asistencia'}
+        </Button>
+      )}
     </div>
   )
 }
@@ -105,7 +154,6 @@ export default function ProyectosUsuarioPage() {
                     key={project.id}
                     className="group rounded-2xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md hover:border-transparent transition-all duration-200 flex flex-col"
                   >
-                    {/* Barra superior con color */}
                     <div className={`h-1.5 w-full bg-gradient-to-r ${color.bg}`} />
 
                     <div className="p-5 flex flex-col flex-1 gap-4">
@@ -138,6 +186,11 @@ export default function ProyectosUsuarioPage() {
                           <Calendar className="w-3.5 h-3.5" />
                           Activo desde {formatDate(project.created_at)}
                         </div>
+                      )}
+
+                      {/* Attendance */}
+                      {token && (
+                        <AttendanceSection projectId={project.id} token={token} />
                       )}
 
                       {/* CTA */}

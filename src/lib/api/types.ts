@@ -49,6 +49,8 @@ export type ProjectDTO = {
   name: string
   description: string
   admin_user_id: string
+  capacity: number
+  active: boolean
   created_at: string
 }
 
@@ -214,4 +216,17 @@ export type UpdateUserBody = {
 export type ChangePasswordBody = {
   current_password: string
   new_password: string
+}
+
+/** GET /api/projects/:id/attendance */
+export type AttendanceCountDTO = {
+  project_id: string
+  confirmed: number
+}
+
+/** POST /api/projects/:id/attendance */
+export type AttendanceDTO = {
+  id: string
+  user_id: string
+  project_id: string
 }
