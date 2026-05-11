@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
-  UtensilsCrossed,
+  CalendarDays,
+  FolderKanban,
   LogOut,
   Menu,
   ShieldCheck,
@@ -31,13 +32,17 @@ import {
 } from '@/components/ui/dialog'
 import { changePassword } from '@/lib/api/auth'
 
-const navItems = [
-  { label: 'Panel', href: '/app', icon: LayoutDashboard },
-  { label: 'Comidas', href: '/app/comidas', icon: UtensilsCrossed },
-]
+/** Navegación del participante / coordinador fuera del área admin. */
+const participantNavItems: {
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  isActive: (pathname: string) => boolean
+}[] = [{ label: 'Panel', href: '/app', icon: LayoutDashboard, isActive: (p) => p === '/app' }]
 const adminNavItems = [
-  { label: 'Comidas',   href: '/app/admin/comidas',   icon: UtensilsCrossed },
-  { label: 'Usuarios', href: '/app/admin/usuarios',  icon: Users },
+  { label: 'Jornadas', href: '/app/admin/jornadas', icon: CalendarDays },
+  { label: 'Proyectos', href: '/app/admin/proyectos', icon: FolderKanban },
+  { label: 'Usuarios', href: '/app/admin/usuarios', icon: Users },
 ]
 
 export function AppShellLayout() {
@@ -56,7 +61,7 @@ export function AppShellLayout() {
     navigate('/', { replace: true })
   }
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
+  const isAdmin = user?.role === 'admin'
 
   const pwMutation = useMutation({
     mutationFn: () => changePassword(token!, { current_password: currentPw, new_password: newPw }),
@@ -105,10 +110,8 @@ export function AppShellLayout() {
 
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/app' && pathname.startsWith(item.href))
+          {participantNavItems.map((item) => {
+            const isActive = item.isActive(pathname)
             const Icon = item.icon
             return (
               <Link
@@ -134,7 +137,7 @@ export function AppShellLayout() {
               </Link>
             )
           })}
-          {(user?.role === 'admin' || user?.role === 'super_admin') && (
+          {isAdmin && (
             <>
               <div className="h-px bg-sidebar-border mx-1 my-2" />
               <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground mb-1">
@@ -231,10 +234,8 @@ export function AppShellLayout() {
 
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== '/app' && pathname.startsWith(item.href))
+            {participantNavItems.map((item) => {
+              const isActive = item.isActive(pathname)
               const Icon = item.icon
               return (
                 <DrawerClose key={item.href} asChild>

@@ -1,10 +1,11 @@
+import { type ReactNode } from 'react'
 import { type LucideIcon } from 'lucide-react'
 
 interface PageHeaderProps {
   icon: LucideIcon
-  title: string
+  title: ReactNode
   subtitle?: string
-  action?: React.ReactNode
+  action?: ReactNode
 }
 
 export function PageHeader({ icon: Icon, title, subtitle, action }: PageHeaderProps) {

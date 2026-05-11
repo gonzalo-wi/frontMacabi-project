@@ -29,91 +29,6 @@ export type ErrorResponseDTO = {
   error: string
 }
 
-/** meal/infrastructure/http/dto.go */
-export type MealDTO = {
-  id: string
-  title: string
-  image_url: string
-  description: string
-  category: string
-  type: string
-  sold_out: boolean
-  available_count: number
-  date: string
-  created_at: string
-}
-
-/** GET /api/meals?date= — meal/infrastructure/http/dto.go ListMealsResponse */
-export type ListMealsDTO = {
-  data: MealDTO[]
-}
-
-export type BookingDTO = {
-  id: string
-  meal_id: string
-  meal?: MealDTO
-  created_at: string
-}
-
-export type PaginatedBookingsDTO = {
-  data: BookingDTO[]
-  total: number
-  page: number
-  page_size: number
-  total_pages: number
-}
-
-/** GET /api/admin/bookings/daily-summary?date= */
-export type DailySummaryPersona = {
-  nombre: string
-}
- 
-export type DailySummaryMenu = {
-  menuId: string
-  nombre: string
-  cantidad: number
-  personas: DailySummaryPersona[]
-}
- 
-export type DailySummaryDTO = {
-  fecha: string
-  totalMenus: number
-  porMenu: DailySummaryMenu[]
-}
- 
-/** GET|POST /api/meal-templates */
-export type MealTemplateDTO = {
-  id: string
-  title: string
-  image_url: string
-  description: string
-  category: string
-  type: string
-  created_at: string
-}
-
-export type ListMealTemplatesDTO = {
-  data: MealTemplateDTO[]
-}
-
-export type CreateMealTemplateBody = {
-  title: string
-  image_url: string
-  description: string
-  category: string
-  type: string
-}
-
-/** PUT /api/meal-templates/:id — todos los campos son opcionales */
-export type UpdateMealTemplateBody = Partial<CreateMealTemplateBody>
-
-/** POST /api/meals — body (usa template_id) */
-export type CreateMealBody = {
-  template_id: string
-  available_count: number
-  date: string
-}
-
 /** GET /api/users */
 export type PaginatedUsersDTO = {
   data: UserDTO[]
@@ -123,9 +38,20 @@ export type PaginatedUsersDTO = {
   total_pages: number
 }
 
+/** POST /api/users/invitations */
+export type CreateUserInvitationBody = {
+  name: string
+  email: string
+  role?: string
+}
+
+export type InviteUserCreatedResponseDTO = {
+  message?: string
+}
+
 /** PATCH /api/users/:id/role */
 export type UpdateUserRoleBody = {
-  role: 'admin' | 'user' | 'super_admin'
+  role: 'admin' | 'user'
 }
 
 /** PATCH /api/users/:id/status */

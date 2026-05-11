@@ -11,5 +11,16 @@ if (typeof raw !== 'string' || !raw.trim()) {
   )
 }
 
-/** Base del API sin barra final */
-export const apiBaseUrl = raw.trim().replace(/\/+$/, '')
+/**
+ * Base del servidor HTTP que expone rutas `/api/...`, sin barra final y sin sufijo `/api`.
+ * Así una `VITE_API_URL` tipo `http://localhost:8081/api` no genera `/api/api/event-instances/...` (404 de Gin).
+ */
+function normalizeApiOrigin(url: string): string {
+  const trimmed = url.trim().replace(/\/+$/, '')
+  if (trimmed.toLowerCase().endsWith('/api')) {
+    return trimmed.slice(0, -'/api'.length)
+  }
+  return trimmed
+}
+
+export const apiBaseUrl = normalizeApiOrigin(raw)
