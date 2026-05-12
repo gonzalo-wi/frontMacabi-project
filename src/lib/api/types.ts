@@ -14,15 +14,30 @@ export type LoginBody = {
   password: string
 }
 
-export type RegisterBody = {
+export type AcceptInvitationBody = {
+  token: string
+  password: string
+}
+
+/** POST /api/users/invitations */
+export type CreateUserInvitationBody = {
   name: string
   email: string
-  password: string
+  role?: string
 }
 
 export type LoginResponseDTO = {
   token: string
   user: UserDTO
+}
+
+export type MessageResponseDTO = {
+  message: string
+}
+
+export type ConfirmPasswordResetBody = {
+  token: string
+  new_password: string
 }
 
 export type ErrorResponseDTO = {
@@ -38,15 +53,22 @@ export type PaginatedUsersDTO = {
   total_pages: number
 }
 
-/** POST /api/users/invitations */
-export type CreateUserInvitationBody = {
-  name: string
-  email: string
-  role?: string
-}
-
 export type InviteUserCreatedResponseDTO = {
   message?: string
+}
+
+/** GET /api/users/invitations */
+export type PendingInvitationDTO = {
+  id: string
+  email: string
+  name: string
+  role: string
+  expires_at: string
+  created_at: string
+}
+
+export type ListPendingInvitationsDTO = {
+  data: PendingInvitationDTO[]
 }
 
 /** PATCH /api/users/:id/role */

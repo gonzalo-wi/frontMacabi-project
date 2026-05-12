@@ -1,5 +1,13 @@
 import { apiRequest } from './apiClient'
-import type { LoginBody, LoginResponseDTO, RegisterBody, UserDTO, ChangePasswordBody } from './types'
+import type {
+  AcceptInvitationBody,
+  ChangePasswordBody,
+  ConfirmPasswordResetBody,
+  LoginBody,
+  LoginResponseDTO,
+  MessageResponseDTO,
+  UserDTO,
+} from './types'
 
 export async function login(body: LoginBody): Promise<LoginResponseDTO> {
   return apiRequest<LoginResponseDTO>('/auth/login', {
@@ -8,8 +16,8 @@ export async function login(body: LoginBody): Promise<LoginResponseDTO> {
   })
 }
 
-export async function register(body: RegisterBody): Promise<void> {
-  return apiRequest<void>('/auth/register', {
+export async function acceptInvitation(body: AcceptInvitationBody): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>('/auth/accept-invitation', {
     method: 'POST',
     body,
   })
@@ -21,4 +29,18 @@ export async function getMe(token: string): Promise<UserDTO> {
 
 export async function changePassword(token: string, body: ChangePasswordBody): Promise<void> {
   return apiRequest<void>('/api/me/password', { method: 'PATCH', token, body })
+}
+
+export async function requestPasswordReset(body: { email: string }): Promise<MessageResponseDTO> {
+  return apiRequest<MessageResponseDTO>('/auth/forgot-password', {
+    method: 'POST',
+    body,
+  })
+}
+
+export async function confirmPasswordReset(body: ConfirmPasswordResetBody): Promise<MessageResponseDTO> {
+  return apiRequest<MessageResponseDTO>('/auth/reset-password', {
+    method: 'POST',
+    body,
+  })
 }

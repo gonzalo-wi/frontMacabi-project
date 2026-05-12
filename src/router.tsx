@@ -10,7 +10,8 @@ import ProyectoGastosPage from '@/pages/admin/proyectos/ProyectoGastosPage'
 import ProyectoJornadasPage from '@/pages/admin/proyectos/ProyectoJornadasPage'
 import LoginPage from '@/pages/LoginPage'
 import RecuperarPasswordPage from '@/pages/RecuperarPasswordPage'
-import RegisterPage from '@/pages/RegisterPage'
+import RestablecerContrasenaPage from '@/pages/RestablecerContrasenaPage'
+import AceptarInvitacionPage from '@/pages/AceptarInvitacionPage'
 import PanelPage from '@/pages/PanelPage'
 import AdminUsuariosPage from '@/pages/AdminUsuariosPage'
 import AdminJornadasPage from '@/pages/AdminJornadasPage'
@@ -22,7 +23,9 @@ import EventRespondPage from '@/pages/EventRespondPage'
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
   { path: '/recuperar-password', element: <RecuperarPasswordPage /> },
-  { path: '/register', element: <RegisterPage /> },
+  { path: '/restablecer-contrasena', element: <RestablecerContrasenaPage /> },
+  { path: '/aceptar-invitacion', element: <AceptarInvitacionPage /> },
+  { path: '/register', element: <Navigate to="/" replace /> },
   {
     path: '/app',
     element: <RequireAuth />,

@@ -1,90 +1,57 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, KeyRound, Loader2 } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Loader2, Mail, CheckCircle2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-
 import { ApiError } from '@/lib/api/apiClient'
-import { requestPasswordReset } from '@/lib/api/auth'
+import { acceptInvitation } from '@/lib/api/auth'
 
-export default function RecuperarPasswordPage() {
-  const [email, setEmail] = useState('')
+export default function AceptarInvitacionPage() {
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') ?? ''
+  const navigate = useNavigate()
+
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
-  const forgotMutation = useMutation({
-    mutationFn: () => requestPasswordReset({ email: email.trim() }),
+  const mutation = useMutation({
+    mutationFn: () => acceptInvitation({ token: token.trim(), password }),
+    onSuccess: () => {
+      navigate('/', { replace: true })
+    },
     onError: (err: unknown) => {
-      const message = err instanceof ApiError ? err.message : 'No se pudo enviar la solicitud'
+      const message =
+        err instanceof ApiError ? err.message : 'No se pudo completar el registro'
       setError(message)
     },
   })
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (!email) {
-      setError('Por favor ingresá tu email')
+    if (!token.trim()) {
+      setError('El link de invitación no es válido. Pedile uno nuevo a un administrador.')
       return
     }
-
-    if (!email.includes('@')) {
-      setError('Por favor ingresá un email válido')
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
       return
     }
-
-    forgotMutation.mutate()
+    if (password !== confirm) {
+      setError('Las contraseñas no coinciden')
+      return
+    }
+    mutation.mutate()
   }
 
-  const isLoading = forgotMutation.isPending
-  const isSuccess = forgotMutation.isSuccess
-
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-sm text-center">
-          <div className="flex items-center justify-center gap-2 mb-10">
-            <div className="w-9 h-9 rounded-xl bg-sidebar flex items-center justify-center">
-              <img src="/logo_macabi.png" alt="" className="w-5 h-5 object-contain brightness-0 invert" />
-            </div>
-            <span className="font-bold text-base">Macabi</span>
-          </div>
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-success/10 border border-success/20 flex items-center justify-center">
-            <CheckCircle2 className="w-8 h-8 text-success" />
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight mb-2">Solicitud registrada</h2>
-          <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-            {forgotMutation.data?.message ??
-              'Si el email está registrado, te enviamos un enlace para restablecer la contraseña.'}
-          </p>
-          {email.trim() ? (
-            <p className="text-muted-foreground text-xs mb-6 -mt-4">
-              Pedido para <span className="font-medium text-foreground">{email.trim()}</span>
-            </p>
-          ) : null}
-          <Link to="/">
-            <Button className="w-full h-11 font-semibold">Volver al inicio</Button>
-          </Link>
-          <p className="mt-5 text-xs text-muted-foreground">
-            ¿No recibiste el email? Revisá tu carpeta de spam o{' '}
-            <button
-              type="button"
-              onClick={() => forgotMutation.reset()}
-              className="text-primary hover:underline font-medium"
-            >
-              intentá de nuevo
-            </button>
-          </p>
-        </div>
-      </div>
-    )
-  }
+  const isLoading = mutation.isPending
 
   return (
     <div className="min-h-screen flex">
-      {/* ── Left panel (desktop only) ── */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[50%] bg-sidebar flex-col justify-between p-10 relative overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -96,7 +63,6 @@ export default function RecuperarPasswordPage() {
         <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-sidebar-primary/8 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-sidebar-primary/6 blur-3xl pointer-events-none" />
 
-        {/* Top: brand */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
             <img
@@ -111,27 +77,20 @@ export default function RecuperarPasswordPage() {
           </div>
         </div>
 
-        {/* Center: message */}
         <div className="relative z-10 space-y-6">
           <div className="w-24 h-24 rounded-3xl bg-white/10 border border-white/12 flex items-center justify-center shadow-2xl">
-            <img
-              src="/logo_macabi.png"
-              alt=""
-              aria-hidden="true"
-              className="w-14 h-14 object-contain brightness-0 invert"
-            />
+            <KeyRound className="w-10 h-10 text-sidebar-foreground/90" aria-hidden />
           </div>
           <div>
             <h1 className="text-4xl font-extrabold text-sidebar-foreground leading-[1.15] tracking-tight">
-              Recuperá<br />tu acceso.
+              Creá tu<br />cuenta.
             </h1>
             <p className="mt-4 text-sm text-sidebar-muted-foreground leading-relaxed max-w-xs">
-              Ingresá tu email y te enviaremos instrucciones para restablecer tu contraseña.
+              Elegí una contraseña segura para activar tu acceso a la plataforma.
             </p>
           </div>
         </div>
 
-        {/* Bottom */}
         <div className="relative z-10">
           <p className="text-xs text-sidebar-muted-foreground/60">
             © {new Date().getFullYear()} Macabi Argentina · Plataforma Madrijim
@@ -139,10 +98,7 @@ export default function RecuperarPasswordPage() {
         </div>
       </div>
 
-      {/* ── Right form panel ── */}
       <div className="flex-1 flex flex-col bg-background">
-
-        {/* Mobile brand header */}
         <div className="lg:hidden flex items-center gap-3 px-6 pt-12 pb-6">
           <div className="w-12 h-12 rounded-2xl bg-sidebar flex items-center justify-center shadow-lg shrink-0">
             <img
@@ -157,10 +113,8 @@ export default function RecuperarPasswordPage() {
           </div>
         </div>
 
-        {/* Form */}
         <div className="flex-1 flex items-center justify-center px-6 lg:px-16 py-8">
           <div className="w-full max-w-sm">
-
             <Link
               to="/"
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-10"
@@ -170,25 +124,42 @@ export default function RecuperarPasswordPage() {
             </Link>
 
             <div className="w-11 h-11 mb-6 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-primary" />
+              <KeyRound className="w-5 h-5 text-primary" />
             </div>
 
-            <h2 className="text-2xl font-bold tracking-tight mb-1.5">Recuperar contraseña</h2>
+            <h2 className="text-2xl font-bold tracking-tight mb-1.5">Aceptar invitación</h2>
             <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-              Ingresá tu email y te enviaremos un link para restablecer tu contraseña
+              Completá el registro con tu contraseña. El link que recibiste por correo es de un solo uso.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Contraseña
+                </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu.email@macabi.org.ar"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="password"
+                  type="password"
+                  placeholder="Mínimo 8 caracteres"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="h-11"
-                  autoComplete="email"
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm" className="text-sm font-medium">
+                  Confirmar contraseña
+                </Label>
+                <Input
+                  id="confirm"
+                  type="password"
+                  placeholder="Repetí la contraseña"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  className="h-11"
+                  autoComplete="new-password"
                   disabled={isLoading}
                 />
               </div>
@@ -203,22 +174,16 @@ export default function RecuperarPasswordPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enviando...
+                    Creando cuenta...
                   </>
                 ) : (
-                  'Enviar link de recuperación'
+                  'Activar cuenta'
                 )}
               </Button>
             </form>
-
-            <p className="mt-8 text-xs text-muted-foreground text-center leading-relaxed">
-              Si no recordás tu email,{' '}
-              <span className="text-foreground font-medium">contactá a tu coordinador</span>
-            </p>
           </div>
         </div>
 
-        {/* Desktop footer */}
         <div className="hidden lg:block px-16 pb-8">
           <p className="text-xs text-muted-foreground/60">
             © {new Date().getFullYear()} Macabi Argentina
