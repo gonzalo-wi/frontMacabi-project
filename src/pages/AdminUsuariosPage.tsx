@@ -1,24 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Users, ShieldCheck, ShieldAlert, User,
+  Users, ShieldCheck, User,
   ChevronLeft, ChevronRight, Loader2, X,
   CheckCircle2, XCircle, Eye, EyeOff,
-  KeyRound, UserCheck, UserX,
-  UserPlus, Mail, RefreshCw, Ban,
+  KeyRound, UserPlus, FolderKanban,
+  Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -32,11 +28,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Drawer, DrawerContent } from '@/components/ui/drawer'
+import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useAuth } from '@/hooks/useAuth'
-import { getUsers, updateUserRole, updateUserStatus, updateUser, createUserInvitation, getPendingInvitations, resendUserInvitation, revokeUserInvitation } from '@/lib/api/admin'
+import { updateUserRole, updateUserStatus, updateUser, createUserInvitation } from '@/lib/api/admin'
 import { changePassword } from '@/lib/api/auth'
+import type { UserDTO, UpdateUserRoleBody } from '@/lib/api/types'
 import { ApiError } from '@/lib/api/apiClient'
-import type { UserDTO, UpdateUserRoleBody, PendingInvitationDTO } from '@/lib/api/types'
+import { cn } from '@/lib/utils'
+import { labelProjectRole } from '@/features/events/lib/eventLabels'
+import { fetchAllUsersForAdmin } from '@/features/projects/lib/projectAdminQueries'
+import {
+  fetchUserProjectsByUser,
+  type UserProjectLink,
+} from '@/features/projects/lib/userProjectsIndex'
 
 const PAGE_SIZE = 20
 
@@ -57,9 +67,8 @@ const ROLE_META: Record<string, {
   icon: React.ElementType
   classes: string
 }> = {
-  super_admin: { label: 'Super Admin', icon: ShieldAlert, classes: 'bg-red-50 text-red-700 border-red-200' },
-  admin:       { label: 'Admin',       icon: ShieldCheck,  classes: 'bg-blue-50 text-blue-700 border-blue-200' },
-  user:        { label: 'Usuario',     icon: User,          classes: 'bg-slate-100 text-slate-600 border-slate-200' },
+  admin: { label: 'Admin', icon: ShieldCheck, classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+  user:  { label: 'Usuario', icon: User, classes: 'bg-slate-100 text-slate-600 border-slate-200' },
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -75,10 +84,6 @@ function RoleBadge({ role }: { role: string }) {
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-}
-
-function isInviteExpired(inv: PendingInvitationDTO) {
-  return new Date(inv.expires_at).getTime() < Date.now()
 }
 
 function PasswordField({
@@ -120,21 +125,185 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+function formatUserProjectsSummary(
+  links: UserProjectLink[] | undefined,
+  maxNames = 2,
+): { line: string; title: string } {
+  if (!links?.length) return { line: '—', title: '' }
+  const title = links
+    .map((l) => `${l.projectName} (${labelProjectRole(l.role)})`)
+    .join('\n')
+  const names = links.map((l) => l.projectName)
+  if (names.length <= maxNames) {
+    return { line: names.join(' · '), title }
+  }
+  return {
+    line: `${names.slice(0, maxNames).join(' · ')} +${names.length - maxNames}`,
+    title,
+  }
+}
+
+type SortKey = 'name' | 'email' | 'created_at' | 'role' | 'status' | 'projects'
+
+function defaultSortDir(key: SortKey): 'asc' | 'desc' {
+  if (key === 'created_at' || key === 'status') return 'desc'
+  return 'asc'
+}
+
+function formatUserCreatedAt(iso: string | undefined): string {
+  if (!iso) return '—'
+  try {
+    return new Intl.DateTimeFormat('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date(iso))
+  } catch {
+    return '—'
+  }
+}
+
+function projectSortLabel(
+  userId: string,
+  map: Record<string, UserProjectLink[]> | undefined,
+): string {
+  const links = map?.[userId]
+  if (!links?.length) return ''
+  return [...links]
+    .map((l) => l.projectName)
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    .join(' ')
+}
+
+function compareUsers(
+  a: UserDTO,
+  b: UserDTO,
+  key: SortKey,
+  dir: 'asc' | 'desc',
+  projectMap: Record<string, UserProjectLink[]> | undefined,
+): number {
+  let cmp = 0
+  const activeA = a.active !== false ? 1 : 0
+  const activeB = b.active !== false ? 1 : 0
+  switch (key) {
+    case 'name':
+      cmp = a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+      break
+    case 'email':
+      cmp = a.email.localeCompare(b.email, 'es', { sensitivity: 'base' })
+      break
+    case 'created_at':
+      cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      break
+    case 'role':
+      cmp = a.role.localeCompare(b.role, 'es')
+      break
+    case 'status':
+      cmp = activeA - activeB
+      break
+    case 'projects':
+      cmp = projectSortLabel(a.id, projectMap).localeCompare(
+        projectSortLabel(b.id, projectMap),
+        'es',
+        { sensitivity: 'base' },
+      )
+      break
+  }
+  return dir === 'desc' ? -cmp : cmp
+}
+
+function SortCol({
+  label,
+  colKey,
+  sortKey,
+  sortDir,
+  onSort,
+  className,
+}: {
+  label: string
+  colKey: SortKey
+  sortKey: SortKey
+  sortDir: 'asc' | 'desc'
+  onSort: (k: SortKey) => void
+  className?: string
+}) {
+  const active = sortKey === colKey
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onSort(colKey)
+      }}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-md px-1 py-0.5 -mx-1 text-left uppercase tracking-wider',
+        'text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors',
+        className,
+      )}
+    >
+      {label}
+      {active ? (
+        sortDir === 'asc' ? (
+          <ArrowUp className="w-3 h-3 shrink-0" aria-hidden />
+        ) : (
+          <ArrowDown className="w-3 h-3 shrink-0" aria-hidden />
+        )
+      ) : (
+        <ArrowUpDown className="w-3 h-3 shrink-0 opacity-35" aria-hidden />
+      )}
+    </button>
+  )
+}
+
+const SORT_MOBILE_VALUES: `${SortKey}:${'asc' | 'desc'}`[] = [
+  'created_at:desc',
+  'created_at:asc',
+  'name:asc',
+  'name:desc',
+  'email:asc',
+  'email:desc',
+  'role:asc',
+  'role:desc',
+  'status:desc',
+  'status:asc',
+  'projects:asc',
+  'projects:desc',
+]
+
+function sortMobileLabel(v: `${SortKey}:${'asc' | 'desc'}`): string {
+  const [key, dir] = v.split(':') as [SortKey, 'asc' | 'desc']
+  const d = dir === 'asc' ? '↑' : '↓'
+  switch (key) {
+    case 'created_at':
+      return `Fecha alta ${d}`
+    case 'name':
+      return `Nombre ${d}`
+    case 'email':
+      return `Correo ${d}`
+    case 'role':
+      return `Rol ${d}`
+    case 'status':
+      return dir === 'desc' ? 'Estado (activos primero)' : 'Estado (inactivos primero)'
+    case 'projects':
+      return `Proyectos ${d}`
+    default:
+      return v
+  }
+}
+
 export default function AdminUsuariosPage() {
-  const { token, user: me } = useAuth()
+  const { token, user: me, isRestoring } = useAuth()
   const queryClient = useQueryClient()
   const isDesktop = useIsDesktop()
-  const isSuperAdmin = me?.role === 'super_admin'
+  const isAdmin = me?.role === 'admin'
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false)
   const [selected, setSelected] = useState<UserDTO | null>(null)
 
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteName, setInviteName] = useState('')
-  const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user')
-  const [inviteError, setInviteError] = useState('')
-  const [revokeTarget, setRevokeTarget] = useState<PendingInvitationDTO | null>(null)
-  const [revokeError, setRevokeError] = useState('')
+  // Edit fields
   const [editName, setEditName]   = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editError, setEditError] = useState('')
@@ -146,65 +315,34 @@ export default function AdminUsuariosPage() {
   const [pwError,    setPwError]    = useState('')
   const [pwSuccess,  setPwSuccess]  = useState(false)
 
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteName, setInviteName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user')
+  const [inviteBanner, setInviteBanner] = useState<{
+    text: string
+    variant: 'success' | 'error' | 'info'
+  } | null>(null)
+
   const usersQuery = useQuery({
-    queryKey: ['admin-users', page],
-    queryFn: () => getUsers(token!, page, PAGE_SIZE),
-    enabled: Boolean(token),
+    queryKey: ['admin-users-all', token],
+    queryFn: () => fetchAllUsersForAdmin(token!),
+    enabled: Boolean(token) && !isRestoring,
   })
 
-  const pendingQuery = useQuery({
-    queryKey: ['admin-pending-invitations'],
-    queryFn: () => getPendingInvitations(token!),
-    enabled: Boolean(token),
+  const userProjectsQuery = useQuery({
+    queryKey: ['user-projects-by-user', token],
+    queryFn: () => fetchUserProjectsByUser(token!),
+    enabled: Boolean(token) && !isRestoring,
   })
 
-  const inviteMutation = useMutation({
-    mutationFn: () =>
-      createUserInvitation(token!, {
-        email: inviteEmail.trim(),
-        name: inviteName.trim(),
-        ...(isSuperAdmin ? { role: inviteRole } : {}),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
-      setInviteEmail('')
-      setInviteName('')
-      setInviteRole('user')
-      setInviteError('')
-      setInviteOpen(false)
-    },
-    onError: (err: unknown) => {
-      const message =
-        err instanceof ApiError ? err.message : 'No se pudo enviar la invitación'
-      setInviteError(message)
-    },
-  })
-
-  const resendInviteMutation = useMutation({
-    mutationFn: (invitationId: string) => resendUserInvitation(token!, invitationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
-    },
-  })
-
-  const revokeInviteMutation = useMutation({
-    mutationFn: (invitationId: string) => revokeUserInvitation(token!, invitationId),
-    onMutate: () => setRevokeError(''),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-pending-invitations'] })
-      setRevokeTarget(null)
-    },
-    onError: (err: unknown) => {
-      setRevokeError(err instanceof ApiError ? err.message : 'No se pudo revocar la invitación')
-    },
-  })
+  const userProjectsByUser = userProjectsQuery.data
 
   const roleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UpdateUserRoleBody['role'] }) =>
       updateUserRole(token!, id, { role }),
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
       setSelected((prev) => prev ? { ...prev, role: vars.role } : prev)
     },
   })
@@ -213,7 +351,7 @@ export default function AdminUsuariosPage() {
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       updateUserStatus(token!, id, { active }),
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
       setSelected((prev) => prev ? { ...prev, active: vars.active } : prev)
     },
   })
@@ -222,7 +360,7 @@ export default function AdminUsuariosPage() {
     mutationFn: ({ id, name, email }: { id: string; name: string; email: string }) =>
       updateUser(token!, id, { name, email }),
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
       setSelected((prev) => prev ? { ...prev, name: vars.name, email: vars.email } : prev)
       setEditError('')
     },
@@ -243,22 +381,37 @@ export default function AdminUsuariosPage() {
     onError: () => setPwError('Contraseña actual incorrecta'),
   })
 
-  function handleInviteOpenChange(open: boolean) {
-    setInviteOpen(open)
-    if (!open) {
-      setInviteEmail('')
+  const inviteMutation = useMutation({
+    mutationFn: () =>
+      createUserInvitation(token!, {
+        name: inviteName.trim(),
+        email: inviteEmail.trim().toLowerCase(),
+        role: inviteRole,
+      }),
+    onSuccess: async (data) => {
+      setInviteOpen(false)
       setInviteName('')
+      setInviteEmail('')
       setInviteRole('user')
-      setInviteError('')
-      inviteMutation.reset()
-    }
-  }
+      setInviteBanner({
+        text: data.message ?? 'Invitación enviada: la persona recibirá un correo para crear su cuenta.',
+        variant: 'success',
+      })
+      await queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
+      await queryClient.invalidateQueries({ queryKey: ['users-all-admin'] })
+    },
+    onError: (e: unknown) => {
+      const msg =
+        e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo enviar la invitación.'
+      setInviteBanner({ text: msg, variant: 'error' })
+    },
+  })
 
   function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setInviteError('')
-    if (!inviteEmail.trim() || !inviteName.trim()) {
-      setInviteError('Completá email y nombre')
+    setInviteBanner(null)
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      setInviteBanner({ text: 'Nombre y email son obligatorios', variant: 'error' })
       return
     }
     inviteMutation.mutate()
@@ -274,7 +427,25 @@ export default function AdminUsuariosPage() {
     editMutation.reset()
   }
 
-  function closeDrawer() { setSelected(null) }
+  function closeDrawer() {
+    setSelected(null)
+    setConfirmDeactivateOpen(false)
+  }
+
+  function handleColumnSort(k: SortKey) {
+    if (k === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(k)
+      setSortDir(defaultSortDir(k))
+    }
+  }
+
+  function handleMobileSortValue(v: string) {
+    const [k, d] = v.split(':') as [SortKey, 'asc' | 'desc']
+    setSortKey(k)
+    setSortDir(d)
+  }
 
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -305,34 +476,85 @@ export default function AdminUsuariosPage() {
     pwMutation.mutate({ current_password: pwCurrent, new_password: pwNew })
   }
 
-  const data = usersQuery.data
-  const totalPages = data?.total_pages ?? 1
+  const allUsers = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
+
+  /* eslint-disable react-hooks/set-state-in-effect -- reinicio/clamp de paginación al filtrar o al variar cantidad */
+  useEffect(() => {
+    setPage(1)
+  }, [search, sortKey, sortDir])
+
+  const filteredSorted = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let list = [...allUsers]
+    if (q) {
+      list = list.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q),
+      )
+    }
+    list.sort((a, b) =>
+      compareUsers(a, b, sortKey, sortDir, userProjectsByUser),
+    )
+    return list
+  }, [allUsers, search, sortKey, sortDir, userProjectsByUser])
+
+  const filteredTotalPages = Math.max(
+    1,
+    Math.ceil(filteredSorted.length / PAGE_SIZE),
+  )
+
+  useEffect(() => {
+    const maxP = Math.max(
+      1,
+      Math.ceil(filteredSorted.length / PAGE_SIZE),
+    )
+    setPage((p) => Math.min(p, maxP))
+  }, [filteredSorted.length])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const safePage = Math.min(page, filteredTotalPages)
+
+  const pageRows = useMemo(
+    () =>
+      filteredSorted.slice(
+        (safePage - 1) * PAGE_SIZE,
+        safePage * PAGE_SIZE,
+      ),
+    [filteredSorted, safePage],
+  )
+
+  const sortMobileValue = `${sortKey}:${sortDir}` as typeof SORT_MOBILE_VALUES[number]
+
+  const totalUsers = allUsers.length
+
   const isOwnAccount = Boolean(selected && me && selected.id === me.id)
-  const pendingInvites = pendingQuery.data?.data ?? []
-  const pendingCount = pendingInvites.length
 
   return (
     <div className="min-h-screen">
       <PageHeader
         icon={Users}
         title="Usuarios"
-        subtitle="Listado y gestión de usuarios"
+        subtitle="Listado, invitaciones y gestión de cuentas"
         action={
           <Button
             size="sm"
-            className="h-9 gap-1.5"
-            onClick={() => handleInviteOpenChange(true)}
+            onClick={() => {
+              setInviteBanner(null)
+              setInviteOpen(true)
+            }}
           >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Invitar</span>
+            <UserPlus className="w-4 h-4 mr-1" />
+            Agregar usuario
           </Button>
         }
       />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        {inviteBanner && <FeedbackBanner message={inviteBanner.text} variant={inviteBanner.variant} />}
 
         {/* ── Loading / Error ── */}
-        {usersQuery.isLoading && (
+        {usersQuery.isPending && (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
@@ -344,213 +566,197 @@ export default function AdminUsuariosPage() {
           </div>
         )}
 
-        {pendingQuery.isError && (
-          <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-            No se pudieron cargar las invitaciones pendientes. Intentá actualizar la página.
-          </div>
-        )}
-
-        {/* ── User list ── */}
-        {data && (
+        {!usersQuery.isPending && !usersQuery.isError && (
           <>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nombre o correo…"
+                  className="h-10 pl-9"
+                  aria-label="Buscar usuarios"
+                />
+              </div>
+              <div className="shrink-0 w-full sm:w-auto md:hidden">
+                <Select
+                  value={SORT_MOBILE_VALUES.includes(sortMobileValue) ? sortMobileValue : 'created_at:desc'}
+                  onValueChange={handleMobileSortValue}
+                >
+                  <SelectTrigger className="h-10 w-full sm:min-w-[14rem]" aria-label="Ordenar usuarios">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_MOBILE_VALUES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {sortMobileLabel(v)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {search.trim()
+                ? `${filteredSorted.length} resultado${filteredSorted.length !== 1 ? 's' : ''} de ${totalUsers} usuario${totalUsers !== 1 ? 's' : ''}`
+                : `${totalUsers} usuario${totalUsers !== 1 ? 's' : ''} en total`}
+            </p>
+
             <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
 
               {/* Table header — desktop */}
-              <div className="hidden md:flex items-center gap-4 px-5 py-2.5 border-b border-border bg-muted/40">
+              <div className="hidden md:flex items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/40">
                 <div className="w-10 shrink-0" />
-                <p className="flex-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Usuario
-                  <span className="ml-2 text-muted-foreground/50 font-normal normal-case tracking-normal">
-                    — {data.total} en total
-                    {pendingCount > 0 ? ` · ${pendingCount} invitado(s) pendiente(s)` : ''}
-                  </span>
-                </p>
-                <p className="w-28 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Rol</p>
-                <p className="w-24 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Estado</p>
-                <div className="w-[168px] shrink-0 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:block pr-1">
-                  Acciones
+                <div className="flex-1 min-w-[6.5rem]">
+                  <SortCol label="Nombre" colKey="name" sortKey={sortKey} sortDir={sortDir} onSort={handleColumnSort} />
                 </div>
+                <div className="w-40 xl:w-44 shrink-0">
+                  <SortCol label="Correo" colKey="email" sortKey={sortKey} sortDir={sortDir} onSort={handleColumnSort} />
+                </div>
+                <div className="w-36 xl:w-44 shrink-0">
+                  <SortCol label="Proyectos" colKey="projects" sortKey={sortKey} sortDir={sortDir} onSort={handleColumnSort} />
+                </div>
+                <div className="w-[5.5rem] shrink-0 flex justify-end">
+                  <SortCol
+                    label="Alta"
+                    colKey="created_at"
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSort={handleColumnSort}
+                    className="text-right"
+                  />
+                </div>
+                <div className="w-24 shrink-0 flex justify-center">
+                  <SortCol label="Rol" colKey="role" sortKey={sortKey} sortDir={sortDir} onSort={handleColumnSort} />
+                </div>
+                <div className="w-24 shrink-0 flex justify-center">
+                  <SortCol label="Estado" colKey="status" sortKey={sortKey} sortDir={sortDir} onSort={handleColumnSort} />
+                </div>
+                <div className="w-5 shrink-0" />
               </div>
 
               {/* Mobile header */}
               <div className="flex md:hidden items-center justify-between px-4 py-2.5 border-b border-border bg-muted/40">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {data.total} usuario{data.total !== 1 ? 's' : ''}
-                    {pendingCount > 0 && (
-                      <span className="block text-[10px] font-normal normal-case tracking-normal text-amber-800/90 mt-0.5">
-                        {pendingCount} invitado(s) pendiente(s)
-                      </span>
-                    )}
-                  </p>
-                </div>
-                {totalPages > 1 && (
-                  <p className="text-xs text-muted-foreground">Pág. {data.page}/{data.total_pages}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {filteredSorted.length} resultado{filteredSorted.length !== 1 ? 's' : ''}
+                </p>
+                {filteredTotalPages > 1 && (
+                  <p className="text-xs text-muted-foreground">Pág. {safePage}/{filteredTotalPages}</p>
                 )}
               </div>
 
-              <ul className="divide-y divide-border">
-                {pendingQuery.isLoading && pendingCount === 0 && (
-                  <li className="flex items-center gap-3 px-4 md:px-5 py-3 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-                    Cargando invitaciones pendientes…
-                  </li>
-                )}
-                {pendingInvites.map((inv) => {
-                  const expired = isInviteExpired(inv)
-                  const resending =
-                    resendInviteMutation.isPending && resendInviteMutation.variables === inv.id
-                  const revoking =
-                    revokeInviteMutation.isPending && revokeInviteMutation.variables === inv.id
-                  const rowBusy = resending || revoking
-                  return (
-                    <li
-                      key={`invite-${inv.id}`}
-                      className="group flex items-center gap-3 md:gap-4 px-4 md:px-5 py-3.5 bg-amber-50/50 dark:bg-amber-950/20"
-                    >
-                      <div className="relative shrink-0">
-                        <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-amber-200/80 dark:border-amber-800/50">
-                          <AvatarFallback className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
-                            <Mail className="w-4 h-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card bg-amber-400" title="Invitación enviada" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <p className="text-sm font-medium leading-none truncate">{inv.name}</p>
-                          <span
-                            className={`md:hidden shrink-0 text-[10px] font-bold uppercase tracking-tight px-1.5 py-0.5 rounded border ${
-                              expired
-                                ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/50 dark:text-orange-200 dark:border-orange-800'
-                                : 'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-900/50 dark:text-amber-100 dark:border-amber-800'
-                            }`}
-                          >
-                            {expired ? 'Expirada' : 'Invitado'}
+              {pageRows.length === 0 ? (
+                <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  {allUsers.length === 0
+                    ? 'Todavía no hay usuarios registrados.'
+                    : 'No hay usuarios que coincidan con la búsqueda.'}
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {pageRows.map((u: UserDTO) => {
+                    const isActive = u.active !== false
+                    const projectLinks = userProjectsByUser?.[u.id]
+                    const projSummary = formatUserProjectsSummary(projectLinks)
+                    return (
+                      <li
+                        key={u.id}
+                        onClick={() => openDrawer(u)}
+                        className={`group flex flex-wrap md:flex-nowrap items-start md:items-center gap-3 md:gap-3 px-4 md:px-5 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors ${!isActive ? 'opacity-55' : ''}`}
+                      >
+                        <div className="relative shrink-0">
+                          <Avatar className="h-9 w-9 md:h-10 md:w-10">
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                        </div>
+
+                        <div className="hidden md:flex flex-1 min-w-[6.5rem] flex-col justify-center">
+                          <p className="text-sm font-medium leading-tight truncate">{u.name}</p>
+                        </div>
+                        <div className="hidden md:flex w-40 xl:w-44 shrink-0 items-center">
+                          <p className="text-xs text-muted-foreground truncate w-full" title={u.email}>
+                            {u.email}
+                          </p>
+                        </div>
+
+                        <div className="flex-1 min-w-0 md:hidden">
+                          <p className="text-sm font-medium leading-none truncate">{u.name}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</p>
+                          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <FolderKanban className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
+                            {userProjectsQuery.isPending ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin opacity-60" aria-label="Cargando proyectos" />
+                            ) : (
+                              <span className="truncate" title={projSummary.title}>{projSummary.line}</span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Calendar className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
+                            <span>Alta {formatUserCreatedAt(u.created_at)}</span>
+                          </div>
+                        </div>
+
+                        <div className="hidden md:flex w-36 xl:w-44 shrink-0 items-center min-h-[2rem]">
+                          {userProjectsQuery.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" aria-label="Cargando proyectos" />
+                          ) : (
+                            <span
+                              className="text-xs text-muted-foreground line-clamp-2"
+                              title={projSummary.title || undefined}
+                            >
+                              {projSummary.line}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="hidden md:flex w-[5.5rem] shrink-0 justify-end text-xs text-muted-foreground tabular-nums leading-tight pt-0.5">
+                          {formatUserCreatedAt(u.created_at)}
+                        </div>
+
+                        <div className="shrink-0 md:w-24 md:flex md:justify-center self-center md:self-auto">
+                          <RoleBadge role={u.role} />
+                        </div>
+
+                        <div className="hidden md:flex w-24 justify-center">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                            isActive
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                          }`}>
+                            {isActive
+                              ? <><CheckCircle2 className="w-3 h-3" />Activo</>
+                              : <><XCircle className="w-3 h-3" />Inactivo</>
+                            }
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{inv.email}</p>
-                      </div>
-                      <div className="hidden md:flex shrink-0 md:w-28 justify-center">
-                        <RoleBadge role={inv.role} />
-                      </div>
-                      <div className="hidden md:flex w-24 justify-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                            expired
-                              ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-200 dark:border-orange-800'
-                              : 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-800'
-                          }`}
-                        >
-                          {expired ? 'Link expirado' : 'Invitado'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-end shrink-0 md:w-[168px] gap-1 flex-wrap md:flex-nowrap">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-2 gap-1 border-amber-200/80 dark:border-amber-800 bg-background"
-                          disabled={rowBusy}
-                          title="Reenviar correo con nuevo enlace"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            resendInviteMutation.mutate(inv.id)
-                          }}
-                        >
-                          {resending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-3.5 h-3.5" />
-                          )}
-                          <span className="hidden sm:inline text-xs">Reenviar</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-2 gap-1 border-destructive/25 text-destructive hover:bg-destructive/10"
-                          disabled={rowBusy}
-                          title="Revocar invitación"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setRevokeError('')
-                            setRevokeTarget(inv)
-                          }}
-                        >
-                          <Ban className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline text-xs">Revocar</span>
-                        </Button>
-                      </div>
-                    </li>
-                  )
-                })}
-                {data.data.map((u: UserDTO) => {
-                  const isActive = u.active !== false
-                  return (
-                    <li
-                      key={u.id}
-                      onClick={() => openDrawer(u)}
-                      className={`group flex items-center gap-3 md:gap-4 px-4 md:px-5 py-3.5 cursor-pointer hover:bg-muted/40 transition-colors ${!isActive ? 'opacity-55' : ''}`}
-                    >
-                      {/* Avatar + status dot */}
-                      <div className="relative shrink-0">
-                        <Avatar className="h-9 w-9 md:h-10 md:w-10">
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-                            {getInitials(u.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      </div>
 
-                      {/* Name + email */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-none truncate">{u.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</p>
-                      </div>
-
-                      {/* Role */}
-                      <div className="shrink-0 md:w-28 md:flex md:justify-center">
-                        <RoleBadge role={u.role} />
-                      </div>
-
-                      {/* Status — desktop only */}
-                      <div className="hidden md:flex w-24 justify-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                          isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
-                        }`}>
-                          {isActive
-                            ? <><CheckCircle2 className="w-3 h-3" />Activo</>
-                            : <><XCircle className="w-3 h-3" />Inactivo</>
-                          }
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-end shrink-0 md:w-[168px]">
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground/60 transition-colors" />
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0 self-center md:self-auto group-hover:text-muted-foreground/60 transition-colors" />
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {filteredTotalPages > 1 && pageRows.length > 0 && (
               <div className="flex items-center justify-center gap-3">
                 <button
+                  type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  disabled={safePage === 1}
                   className="p-2 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="text-sm text-muted-foreground">{page} / {totalPages}</span>
+                <span className="text-sm text-muted-foreground">{safePage} / {filteredTotalPages}</span>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(filteredTotalPages, p + 1))}
+                  disabled={safePage === filteredTotalPages}
                   className="p-2 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
@@ -570,6 +776,7 @@ export default function AdminUsuariosPage() {
         <DrawerContent className="px-0 pb-0 flex flex-col">
           {selected && (() => {
             const isActive = selected.active !== false
+            const projectLinksDrawer = userProjectsByUser?.[selected.id]
             return (
               <div className="flex flex-col overflow-hidden h-full">
                 <div className="overflow-y-auto flex-1 px-5 pt-5 pb-10 space-y-6">
@@ -588,6 +795,9 @@ export default function AdminUsuariosPage() {
                       <div className="min-w-0">
                         <p className="font-semibold text-base leading-snug truncate max-w-[180px]">{selected.name}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[180px]">{selected.email}</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Alta {formatUserCreatedAt(selected.created_at)}
+                        </p>
                         <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                           <RoleBadge role={selected.role} />
                           {isOwnAccount && (
@@ -608,37 +818,117 @@ export default function AdminUsuariosPage() {
 
                   <div className="h-px bg-border" />
 
-                  {/* ── Estado ── */}
+                  {/* ── Proyectos ── */}
                   <section className="space-y-2.5">
-                    <SectionLabel>Estado de la cuenta</SectionLabel>
-                    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5 flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium">{isActive ? 'Cuenta activa' : 'Cuenta inactiva'}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {isActive ? 'Puede iniciar sesión' : 'No puede iniciar sesión'}
-                        </p>
+                    <div className="flex items-center gap-2">
+                      <FolderKanban className="w-3.5 h-3.5 text-muted-foreground" aria-hidden />
+                      <SectionLabel>Proyectos</SectionLabel>
+                    </div>
+                    {userProjectsQuery.isPending ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Cargando…
                       </div>
-                      <button
-                        onClick={() => statusMutation.mutate({ id: selected.id, active: !isActive })}
-                        disabled={statusMutation.isPending}
-                        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                          isActive
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                            : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                        }`}
-                      >
-                        {statusMutation.isPending
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : isActive
-                            ? <><UserCheck className="w-3.5 h-3.5" />Activo</>
-                            : <><UserX className="w-3.5 h-3.5" />Inactivo</>
-                        }
-                      </button>
+                    ) : projectLinksDrawer?.length ? (
+                      <ul className="rounded-xl border border-border bg-muted/20 divide-y divide-border">
+                        {projectLinksDrawer.map((lnk) => (
+                          <li key={lnk.projectId} className="px-3 py-2.5 flex items-center justify-between gap-3">
+                            <Link
+                              to={`/app/admin/proyectos/${lnk.projectId}/resumen`}
+                              className="text-sm font-medium text-primary hover:underline truncate min-w-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {lnk.projectName}
+                            </Link>
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {labelProjectRole(lnk.role)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground rounded-xl border border-dashed border-border px-4 py-3">
+                        No está asociado a ningún proyecto.
+                      </p>
+                    )}
+                  </section>
+
+                  <div className="h-px bg-border" />
+
+                  {/* ── Estado ── */}
+                  <section className="space-y-3">
+                    <SectionLabel>Estado de la cuenta</SectionLabel>
+                    <div className="rounded-xl border border-border bg-card px-4 py-4 space-y-4">
+                      <div className="flex gap-3">
+                        <div
+                          className={cn(
+                            'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                            isActive ? 'bg-emerald-100' : 'bg-slate-200/80',
+                          )}
+                        >
+                          {isActive ? (
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-slate-600" aria-hidden />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="text-sm font-semibold">
+                            {isActive ? 'Cuenta activa' : 'Cuenta desactivada'}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {isActive
+                              ? 'Podés desactivar la cuenta si la persona ya no debe acceder al sistema.'
+                              : 'Reactivando la cuenta, la persona podrá volver a iniciar sesión con su mismo correo y contraseña.'}
+                          </p>
+                        </div>
+                      </div>
+                      {!isOwnAccount ? (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                          {isActive ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full border-destructive/50 text-destructive hover:bg-destructive/5 sm:w-auto"
+                              disabled={statusMutation.isPending}
+                              onClick={() => setConfirmDeactivateOpen(true)}
+                            >
+                              {statusMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                              ) : (
+                                <XCircle className="mr-2 h-4 w-4" aria-hidden />
+                              )}
+                              Desactivar cuenta
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="w-full sm:w-auto"
+                              disabled={statusMutation.isPending}
+                              onClick={() =>
+                                statusMutation.mutate({ id: selected.id, active: true })}
+                            >
+                              {statusMutation.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                              ) : (
+                                <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
+                              )}
+                              Reactivar cuenta
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground rounded-lg bg-muted/50 px-3 py-2">
+                          No podés desactivar tu propia cuenta desde este panel para evitar quedar sin acceso como administrador.
+                        </p>
+                      )}
                     </div>
                   </section>
 
-                  {/* ── Rol (superadmin) ── */}
-                  {isSuperAdmin && (
+                  {/* ── Rol (admin) ── */}
+                  {isAdmin && (
                     <section className="space-y-2.5">
                       <SectionLabel>Rol</SectionLabel>
                       <Select
@@ -654,7 +944,6 @@ export default function AdminUsuariosPage() {
                         <SelectContent>
                           <SelectItem value="user">Usuario</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="super_admin">Super Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     </section>
@@ -770,28 +1059,27 @@ export default function AdminUsuariosPage() {
         </DrawerContent>
       </Drawer>
 
-      <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          setInviteOpen(open)
+          if (!open) {
+            setInviteName('')
+            setInviteEmail('')
+            setInviteRole('user')
+            inviteMutation.reset()
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Invitar usuario</DialogTitle>
-            <p className="text-sm text-muted-foreground font-normal pt-1">
-              Se enviará un correo con un enlace para que elija su contraseña.
+            <DialogTitle>Agregar usuario</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Se envía una invitación por correo. La persona definirá su contraseña al aceptar (el registro público
+              está deshabilitado).
             </p>
           </DialogHeader>
-          <form onSubmit={handleInviteSubmit} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="invite-email">Email</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="correo@ejemplo.org"
-                className="h-11"
-                autoComplete="off"
-                disabled={inviteMutation.isPending}
-              />
-            </div>
+          <form onSubmit={handleInviteSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="invite-name">Nombre</Label>
               <Input
@@ -800,91 +1088,91 @@ export default function AdminUsuariosPage() {
                 onChange={(e) => setInviteName(e.target.value)}
                 placeholder="Nombre completo"
                 className="h-11"
-                disabled={inviteMutation.isPending}
+                autoComplete="name"
               />
             </div>
-            {isSuperAdmin && (
-              <div className="space-y-1.5">
-                <Label>Rol al aceptar</Label>
-                <Select
-                  value={inviteRole}
-                  onValueChange={(v) => setInviteRole(v as 'user' | 'admin')}
-                  disabled={inviteMutation.isPending}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">Usuario</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {inviteError && (
-              <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2 border border-destructive/20">
-                {inviteError}
-              </p>
-            )}
-            <Button type="submit" className="w-full h-11" disabled={inviteMutation.isPending}>
-              {inviteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Enviar invitación
-                </>
-              )}
-            </Button>
+            <div className="space-y-1.5">
+              <Label htmlFor="invite-email">Correo</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="correo@ejemplo.org"
+                className="h-11"
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Rol inicial</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'user' | 'admin')}>
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Usuario</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setInviteOpen(false)}
+                disabled={inviteMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={inviteMutation.isPending}>
+                {inviteMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enviando…
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Enviar invitación
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={revokeTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRevokeTarget(null)
-            setRevokeError('')
-            revokeInviteMutation.reset()
-          }
-        }}
-      >
+      <AlertDialog open={confirmDeactivateOpen} onOpenChange={setConfirmDeactivateOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Revocar invitación?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  {revokeTarget
-                    ? `Se anulará el enlace enviado a ${revokeTarget.email}. La persona no podrá registrarse con ese correo salvo que envíes una invitación nueva.`
-                    : null}
-                </p>
-                {revokeError ? (
-                  <p className="text-destructive font-medium">{revokeError}</p>
-                ) : null}
-              </div>
+            <AlertDialogTitle>¿Desactivar esta cuenta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selected ? (
+                <>
+                  <span className="font-medium text-foreground">{selected.name}</span>
+                  {' — '}
+                  <span className="break-all">{selected.email}</span>
+                  {' '}no podrá iniciar sesión. Podés volver a activarla cuando quieras.
+                </>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={revokeInviteMutation.isPending}>Cancelar</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              disabled={revokeInviteMutation.isPending || !revokeTarget}
+            <AlertDialogCancel disabled={statusMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={statusMutation.isPending}
               onClick={() => {
-                if (revokeTarget) revokeInviteMutation.mutate(revokeTarget.id)
+                if (!selected) return
+                statusMutation.mutate({ id: selected.id, active: false })
+                setConfirmDeactivateOpen(false)
               }}
             >
-              {revokeInviteMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Ban className="mr-2 h-4 w-4" />
-              )}
-              Revocar
-            </Button>
+              {statusMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              ) : null}
+              Desactivar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

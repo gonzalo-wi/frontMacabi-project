@@ -1,163 +1,23 @@
 import { apiRequest } from './apiClient'
 import type {
-  DailySummaryDTO,
-  ListMealsDTO,
-  MealDTO,
-  CreateMealBody,
-  MealTemplateDTO,
-  ListMealTemplatesDTO,
-  CreateMealTemplateBody,
-  UpdateMealTemplateBody,
-  AddGarnishOptionBody,
-  GarnishOptionDTO,
   PaginatedUsersDTO,
   UpdateUserRoleBody,
   UpdateUserStatusBody,
   UpdateUserBody,
   UserDTO,
   CreateUserInvitationBody,
+  InviteUserCreatedResponseDTO,
   ListPendingInvitationsDTO,
 } from './types'
 
-/**
- * GET /api/admin/bookings/daily-summary?date=YYYY-MM-DD&project_id=<uuid>
- */
-export async function getAdminDailySummary(
+export async function createUserInvitation(
   token: string,
-  date: string,
-  projectId?: string,
-): Promise<DailySummaryDTO> {
-  const q = new URLSearchParams({ date })
-  if (projectId) q.set('project_id', projectId)
-  return apiRequest<DailySummaryDTO>(`/api/admin/bookings/daily-summary?${q}`, {
-    method: 'GET',
-    token,
-  })
-}
-
-/**
- * GET /api/meals?date=YYYY-MM-DD&project_id=<uuid>
- */
-export async function getAdminMealsByDate(
-  token: string,
-  date: string,
-  projectId?: string,
-): Promise<ListMealsDTO> {
-  const q = new URLSearchParams({ date })
-  if (projectId) q.set('project_id', projectId)
-  return apiRequest<ListMealsDTO>(`/api/meals?${q}`, {
-    method: 'GET',
-    token,
-  })
-}
-
-/**
- * POST /api/meals
- * Programa una vianda para una fecha usando un template.
- */
-export async function createMeal(
-  token: string,
-  body: CreateMealBody,
-): Promise<MealDTO> {
-  return apiRequest<MealDTO>('/api/meals', {
+  body: CreateUserInvitationBody,
+): Promise<InviteUserCreatedResponseDTO> {
+  return apiRequest<InviteUserCreatedResponseDTO>('/api/users/invitations', {
     method: 'POST',
     token,
     body,
-  })
-}
-
-/**
- * GET /api/meal-templates
- */
-export async function getMealTemplates(
-  token: string,
-): Promise<ListMealTemplatesDTO> {
-  return apiRequest<ListMealTemplatesDTO>('/api/meal-templates', {
-    method: 'GET',
-    token,
-  })
-}
-
-/**
- * POST /api/meal-templates
- */
-export async function createMealTemplate(
-  token: string,
-  body: CreateMealTemplateBody,
-): Promise<MealTemplateDTO> {
-  return apiRequest<MealTemplateDTO>('/api/meal-templates', {
-    method: 'POST',
-    token,
-    body,
-  })
-}
-
-/**
- * PUT /api/meal-templates/:id
- */
-export async function updateMealTemplate(
-  token: string,
-  id: string,
-  body: UpdateMealTemplateBody,
-): Promise<MealTemplateDTO> {
-  return apiRequest<MealTemplateDTO>(`/api/meal-templates/${id}`, {
-    method: 'PUT',
-    token,
-    body,
-  })
-}
-
-/**
- * DELETE /api/meal-templates/:id
- */
-export async function deleteMealTemplate(
-  token: string,
-  id: string,
-): Promise<void> {
-  return apiRequest<void>(`/api/meal-templates/${id}`, {
-    method: 'DELETE',
-    token,
-  })
-}
-
-/**
- * POST /api/meal-templates/:id/garnish-options
- */
-export async function addGarnishOption(
-  token: string,
-  templateId: string,
-  body: AddGarnishOptionBody,
-): Promise<GarnishOptionDTO> {
-  return apiRequest<GarnishOptionDTO>(
-    `/api/meal-templates/${encodeURIComponent(templateId)}/garnish-options`,
-    { method: 'POST', token, body },
-  )
-}
-
-/**
- * DELETE /api/meal-templates/:id/garnish-options/:garnishId
- */
-export async function removeGarnishOption(
-  token: string,
-  templateId: string,
-  garnishId: string,
-): Promise<void> {
-  return apiRequest<void>(
-    `/api/meal-templates/${encodeURIComponent(templateId)}/garnish-options/${encodeURIComponent(garnishId)}`,
-    { method: 'DELETE', token },
-  )
-}
-
-/**
- * DELETE /api/meals/:id
- */
-export async function deleteMeal(
-  token: string,
-  id: string,
-): Promise<void> {
-  return apiRequest<void>(`/api/meals/${id}`, {
-    method: 'DELETE',
-    token,
   })
 }
 
@@ -198,26 +58,8 @@ export async function updateUserStatus(
 /**
  * PUT /api/users/:id
  */
-export async function updateUser(
-  token: string,
-  id: string,
-  body: UpdateUserBody,
-): Promise<UserDTO> {
+export async function updateUser(token: string, id: string, body: UpdateUserBody): Promise<UserDTO> {
   return apiRequest<UserDTO>(`/api/users/${id}`, { method: 'PUT', token, body })
-}
-
-/**
- * POST /api/users/invitations
- */
-export async function createUserInvitation(
-  token: string,
-  body: CreateUserInvitationBody,
-): Promise<{ message: string }> {
-  return apiRequest<{ message: string }>('/api/users/invitations', {
-    method: 'POST',
-    token,
-    body,
-  })
 }
 
 /**
