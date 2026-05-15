@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   CheckCircle2,
-  ChevronDown,
   Loader2,
   Package,
   Plus,
@@ -33,12 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -49,10 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-} from '@/features/events/lib/datetimeLocal'
+import { fromDatetimeLocalValue } from '@/features/events/lib/datetimeLocal'
 import {
   approveRequest,
   createRequest,

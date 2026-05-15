@@ -337,7 +337,7 @@ export default function AdminJornadasPage() {
     const inst = d.instance
     const dlIso = newDeadlinePreservingOffset(
       inst.starts_at,
-      inst.response_deadline_at,
+      inst.response_deadline_at!,
       fromDatetimeLocalValue(v),
     )
     setDupDeadlineLocal(toDatetimeLocalValue(dlIso))

@@ -98,6 +98,13 @@ export default function EventRespondPage() {
     [visibleMods],
   )
 
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [single, setSingle] = useState<Record<string, string>>({})
+  const [multi, setMulti] = useState<Record<string, string[]>>({})
+  const [textVal, setTextVal] = useState<Record<string, string>>({})
+  const [formError, setFormError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
   const selectedAttendanceOptId =
     attendanceGate != null ? (single[attendanceGate.groupId] ?? '').trim() : ''
 
@@ -133,13 +140,6 @@ export default function EventRespondPage() {
     if (!detailQuery.data) return []
     return detailQuery.data.project_ids.filter((pid) => myProjectSet.has(pid))
   }, [detailQuery.data, myProjectSet])
-
-  const [projectId, setProjectId] = useState<string | null>(null)
-  const [single, setSingle] = useState<Record<string, string>>({})
-  const [multi, setMulti] = useState<Record<string, string[]>>({})
-  const [textVal, setTextVal] = useState<Record<string, string>>({})
-  const [formError, setFormError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => {
     if (!detailQuery.data || !myMembershipsQuery.data) return

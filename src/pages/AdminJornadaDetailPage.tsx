@@ -109,7 +109,7 @@ function groupAnswersByModule(
       value = tv
     }
 
-    const mod = (a.group_id && maps.groupToModule.get(a.group_id)) ?? { title: 'Otros', sort: 999 }
+    const mod = (a.group_id && maps.groupToModule.get(a.group_id)) || { title: 'Otros', sort: 999 }
     const key = mod.title
     if (!byModule.has(key)) {
       byModule.set(key, { title: mod.title, sort: mod.sort, lines: [] })
