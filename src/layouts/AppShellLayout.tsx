@@ -6,6 +6,7 @@ import {
   FolderKanban,
   LogOut,
   Menu,
+  Package,
   ShieldCheck,
   Users,
   KeyRound,
@@ -42,6 +43,7 @@ const participantNavItems: {
 const adminNavItems = [
   { label: 'Jornadas', href: '/app/admin/jornadas', icon: CalendarDays },
   { label: 'Proyectos', href: '/app/admin/proyectos', icon: FolderKanban },
+  { label: 'Stock', href: '/app/admin/stock', icon: Package },
   { label: 'Usuarios', href: '/app/admin/usuarios', icon: Users },
 ]
 

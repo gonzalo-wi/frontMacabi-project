@@ -18,6 +18,7 @@ import AdminJornadasPage from '@/pages/AdminJornadasPage'
 import AdminJornadaDetailPage from '@/pages/AdminJornadaDetailPage'
 import AdminJornadaBuilderPage from '@/pages/AdminJornadaBuilderPage'
 import AdminProyectosPage from '@/pages/AdminProyectosPage'
+import AdminStockPage from '@/pages/AdminStockPage'
 import EventRespondPage from '@/pages/EventRespondPage'
 
 export const router = createBrowserRouter([
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
                 ],
               },
               { path: 'usuarios', element: <AdminUsuariosPage /> },
+              { path: 'stock', element: <AdminStockPage /> },
             ],
           },
         ],
