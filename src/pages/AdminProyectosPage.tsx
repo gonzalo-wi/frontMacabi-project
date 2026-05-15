@@ -26,10 +26,19 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createProject, deleteProject, listProjects } from '@/features/projects/api/projectsApi'
 import type { ProjectDTO } from '@/features/projects/model/types'
+import { getUsers } from '@/lib/api/admin'
 import { ApiError } from '@/lib/api/apiClient'
+import type { UserDTO } from '@/lib/api/types'
 import { useAuth } from '@/hooks/useAuth'
 
 async function fetchAllProjects(token: string): Promise<ProjectDTO[]> {
@@ -50,6 +59,7 @@ export default function AdminProyectosPage() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [coordinatorId, setCoordinatorId] = useState('')
   const [search, setSearch] = useState('')
   const [feedback, setFeedback] = useState<{
     text: string
@@ -60,6 +70,22 @@ export default function AdminProyectosPage() {
     queryKey: ['admin-projects-all', token],
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => fetchAllProjects(token!),
+  })
+
+  const usersQ = useQuery({
+    queryKey: ['admin-users-all-for-coordinator', token],
+    enabled: Boolean(token) && !isRestoring,
+    queryFn: async (): Promise<UserDTO[]> => {
+      const out: UserDTO[] = []
+      let page = 1
+      while (page <= 20) {
+        const r = await getUsers(token!, page, 50)
+        out.push(...r.data)
+        if (page >= r.total_pages) break
+        page++
+      }
+      return out
+    },
   })
 
   const filtered = useMemo(() => {
@@ -76,13 +102,19 @@ export default function AdminProyectosPage() {
   const createM = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error('Nombre requerido')
-      await createProject(token!, { name: name.trim(), description: description.trim() || undefined })
+      if (!coordinatorId) throw new Error('Debes asignar un coordinador')
+      await createProject(token!, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        coordinator_id: coordinatorId,
+      })
     },
     onSuccess: async () => {
       setFeedback({ text: 'Proyecto creado.', variant: 'success' })
       setOpen(false)
       setName('')
       setDescription('')
+      setCoordinatorId('')
       await qc.invalidateQueries({ queryKey: ['admin-projects-all'] })
     },
     onError: (e) =>
@@ -111,9 +143,25 @@ export default function AdminProyectosPage() {
         icon={FolderKanban}
         title="Proyectos"
         subtitle="Administración"
-        action={
+      />
+
+      <div className="p-4 lg:p-6 pt-6 lg:pt-8 max-w-5xl mx-auto space-y-4">
+        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
+
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Buscar por nombre o descripción…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-11 pl-9"
+              aria-label="Buscar proyectos"
+            />
+          </div>
           <Button
             size="sm"
+            className="shrink-0"
             onClick={() => {
               setFeedback(null)
               setOpen(true)
@@ -122,21 +170,6 @@ export default function AdminProyectosPage() {
             <Plus className="w-4 h-4 mr-1" />
             Nuevo
           </Button>
-        }
-      />
-
-      <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-4">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            placeholder="Buscar por nombre o descripción…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-11 pl-9"
-            aria-label="Buscar proyectos"
-          />
         </div>
 
         {listQ.isError && (
@@ -299,6 +332,21 @@ export default function AdminProyectosPage() {
             <div className="space-y-1.5">
               <Label>Nombre</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Coordinador</Label>
+              <Select value={coordinatorId} onValueChange={setCoordinatorId}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Seleccionar coordinador…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(usersQ.data ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Descripción</Label>

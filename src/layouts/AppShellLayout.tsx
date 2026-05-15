@@ -32,6 +32,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { changePassword } from '@/lib/api/auth'
+import { NotificationsBell } from '@/components/NotificationsBell'
 
 /** Navegación del participante / coordinador fuera del área admin. */
 const participantNavItems: {
@@ -218,6 +219,16 @@ export function AppShellLayout() {
           <span className="text-sm font-semibold tracking-wide">Menú</span>
         </button>
       </div>
+
+      {/* ── Notification bell — fixed top-right ───────────── */}
+      {token && (
+        <div className="fixed top-4 right-4 z-40">
+          <NotificationsBell
+            token={token}
+            className="p-2 rounded-full bg-background border border-border shadow-md hover:bg-muted text-foreground"
+          />
+        </div>
+      )}
 
       {/* ── Mobile: drawer ────────────────────────────────── */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">

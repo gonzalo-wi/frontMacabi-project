@@ -2,6 +2,7 @@ export type ProjectDTO = {
   id: string
   name: string
   description: string
+  coordinator_id?: string
   created_at: string
 }
 

@@ -9,6 +9,7 @@ import type {
 export type CreateProjectBody = {
   name: string
   description?: string
+  coordinator_id: string
 }
 
 export type UpdateProjectBody = {

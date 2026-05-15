@@ -14,6 +14,7 @@ const SECTIONS = [
   { path: 'miembros', label: 'Miembros' },
   { path: 'gastos', label: 'Gastos' },
   { path: 'jornadas', label: 'Jornadas' },
+  { path: 'recursos', label: 'Recursos' },
 ] as const
 
 function tabFromPath(pathname: string): (typeof SECTIONS)[number]['path'] {

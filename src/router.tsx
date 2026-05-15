@@ -8,6 +8,7 @@ import ProyectoResumenPage from '@/pages/admin/proyectos/ProyectoResumenPage'
 import ProyectoMiembrosPage from '@/pages/admin/proyectos/ProyectoMiembrosPage'
 import ProyectoGastosPage from '@/pages/admin/proyectos/ProyectoGastosPage'
 import ProyectoJornadasPage from '@/pages/admin/proyectos/ProyectoJornadasPage'
+import ProyectoRecursosPage from '@/pages/admin/proyectos/ProyectoRecursosPage'
 import LoginPage from '@/pages/LoginPage'
 import RecuperarPasswordPage from '@/pages/RecuperarPasswordPage'
 import RestablecerContrasenaPage from '@/pages/RestablecerContrasenaPage'
@@ -19,6 +20,7 @@ import AdminJornadaDetailPage from '@/pages/AdminJornadaDetailPage'
 import AdminJornadaBuilderPage from '@/pages/AdminJornadaBuilderPage'
 import AdminProyectosPage from '@/pages/AdminProyectosPage'
 import AdminStockPage from '@/pages/AdminStockPage'
+import AdminStockRequestDetailPage from '@/pages/AdminStockRequestDetailPage'
 import EventRespondPage from '@/pages/EventRespondPage'
 
 export const router = createBrowserRouter([
@@ -55,10 +57,12 @@ export const router = createBrowserRouter([
                   { path: 'miembros', element: <ProyectoMiembrosPage /> },
                   { path: 'gastos', element: <ProyectoGastosPage /> },
                   { path: 'jornadas', element: <ProyectoJornadasPage /> },
+                  { path: 'recursos', element: <ProyectoRecursosPage /> },
                 ],
               },
               { path: 'usuarios', element: <AdminUsuariosPage /> },
               { path: 'stock', element: <AdminStockPage /> },
+              { path: 'stock/requests/:id', element: <AdminStockRequestDetailPage /> },
             ],
           },
         ],
