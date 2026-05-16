@@ -222,7 +222,7 @@ export function AppShellLayout() {
 
       {/* ── Notification bell — fixed top-right ───────────── */}
       {token && (
-        <div className="fixed top-4 right-4 z-40">
+        <div className="fixed top-8 right-4 z-50 lg:top-4">
           <NotificationsBell
             token={token}
             className="p-2 rounded-full bg-background border border-border shadow-md hover:bg-muted text-foreground"

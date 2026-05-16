@@ -12,8 +12,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
-      // Usa el manifest.json que ya existe en /public
       manifest: {
         name: 'Macabi Madrijim',
         short_name: 'Macabi',
@@ -38,20 +40,14 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        // Cachea assets estáticos del build; las llamadas a /api siempre van a la red
+      injectManifest: {
+        // Cachea assets estáticos del build; las llamadas a /api siempre van a la red (manejado en sw.ts)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: 'index.html',
-        runtimeCaching: [
-          {
-            urlPattern: /^https?:\/\/.*\/api\/.*/,
-            handler: 'NetworkOnly',
-          },
-        ],
       },
       devOptions: {
         // Activa el SW también en `npm run dev` para que puedas probarlo
         enabled: true,
+        type: 'module',
       },
     }),
   ],

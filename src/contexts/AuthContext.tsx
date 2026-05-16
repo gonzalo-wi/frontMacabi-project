@@ -10,6 +10,7 @@ import {
 
 import { getMe } from '@/lib/api/auth'
 import type { UserDTO } from '@/lib/api/types'
+import { subscribeToPush, unsubscribeFromPush } from '@/features/push/pushSubscription'
 
 const STORAGE_KEY = 'macabi_auth'
 
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         setUser(fresh)
         writeStoredSession({ token: stored.token, user: fresh })
+        void subscribeToPush(stored.token).catch(() => {})
       } catch {
         if (cancelled) return
         setToken(null)
@@ -92,13 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(nextToken)
     setUser(nextUser)
     writeStoredSession({ token: nextToken, user: nextUser })
+    void subscribeToPush(nextToken).catch(() => {})
   }, [])
 
   const logout = useCallback(() => {
+    if (token) void unsubscribeFromPush(token).catch(() => {})
     setToken(null)
     setUser(null)
     writeStoredSession(null)
-  }, [])
+  }, [token])
 
   const value = useMemo<AuthContextValue>(
     () => ({
