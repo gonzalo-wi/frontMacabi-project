@@ -65,3 +65,37 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   return json as T
 }
+
+/** Multipart POST — no setear Content-Type (el browser arma el boundary). */
+export async function apiMultipart<T>(path: string, formData: FormData, token: string): Promise<T> {
+  const url = joinApiUrl(path)
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  })
+
+  const text = await res.text()
+  let json: unknown = null
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown
+    } catch {
+      throw new ApiError(res.status, text || res.statusText)
+    }
+  }
+
+  if (!res.ok) {
+    const msg =
+      json && typeof json === 'object' && json !== null && 'error' in json
+        ? String((json as ErrorResponseDTO).error)
+        : res.statusText || 'Error de red'
+    throw new ApiError(res.status, msg)
+  }
+
+  return json as T
+}

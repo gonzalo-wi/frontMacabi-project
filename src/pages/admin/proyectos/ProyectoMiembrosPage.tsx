@@ -4,6 +4,7 @@ import { Loader2, Search, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -195,7 +195,8 @@ export default function ProyectoMiembrosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
+            <ActionButton
+              intent="primary"
               className="h-11"
               disabled={addMem.isPending || !pickUser}
               onClick={() => {
@@ -204,7 +205,7 @@ export default function ProyectoMiembrosPage() {
               }}
             >
               {addMem.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Agregar'}
-            </Button>
+            </ActionButton>
           </div>
 
           <div className="rounded-md border overflow-x-auto">
@@ -250,14 +251,9 @@ export default function ProyectoMiembrosPage() {
                       <td className="px-3 py-2">
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive h-8 w-8"
-                              aria-label="Quitar miembro"
-                            >
+                            <ActionIconButton intent="delete" label="Quitar miembro">
                               <Trash2 className="w-4 h-4" />
-                            </Button>
+                            </ActionIconButton>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>

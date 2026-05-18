@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -11,6 +11,9 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { PageHeader } from '@/components/PageHeader'
+import { StockRequestStatusBadge } from '@/components/StatusBadge'
+import { ActionButton } from '@/components/ActionButton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,8 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   approveRequest,
@@ -32,31 +33,13 @@ import {
   rejectRequest,
   returnRequest,
 } from '@/features/stock/api/requestsApi'
-import type { RequestStatus, ResourceType } from '@/features/stock/model/types'
+import type { ResourceType } from '@/features/stock/model/types'
+import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 import { useState } from 'react'
 
 // ── Constants ────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<RequestStatus, string> = {
-  PENDIENTE: 'Pendiente',
-  RESERVADO: 'Reservado',
-  ENTREGADO: 'Entregado',
-  DEVUELTO: 'Devuelto',
-  RECHAZADO: 'Rechazado',
-}
-
-const STATUS_VARIANT: Record<
-  RequestStatus,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
-  PENDIENTE: 'secondary',
-  RESERVADO: 'default',
-  ENTREGADO: 'secondary',
-  DEVUELTO: 'outline',
-  RECHAZADO: 'destructive',
-}
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
@@ -80,8 +63,9 @@ function formatDate(iso: string | null | undefined): string {
 
 export default function AdminStockRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { token, isRestoring } = useAuth()
+  const { token, user, isRestoring } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const qc = useQueryClient()
   const [feedback, setFeedback] = useState<{
     text: string
@@ -95,6 +79,8 @@ export default function AdminStockRequestDetailPage() {
   })
 
   const req = requestQ.data
+  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
+  const member = membershipsQ.data?.find((m) => m.id === req?.project_id)
 
   // ── Transition mutations ────────────────────────────────────
 
@@ -122,7 +108,10 @@ export default function AdminStockRequestDetailPage() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const deliverM = makeTransition(deliverRequest, 'Pedido marcado como entregado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const returnM = makeTransition(returnRequest, 'Recurso marcado como devuelto.')
+  const returnM = makeTransition(returnRequest, 'Ítem marcado como devuelto.')
+
+  const participantView = !pathname.startsWith('/app/admin/')
+  const canManageRequest = user?.role === 'admin' || member?.role === 'coordinator'
 
   const anyPending =
     approveM.isPending || rejectM.isPending || deliverM.isPending || returnM.isPending
@@ -133,22 +122,26 @@ export default function AdminStockRequestDetailPage() {
 
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b px-4 lg:px-6 py-3 flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 -ml-1"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver
-        </Button>
-        <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-muted-foreground" />
-          <h1 className="text-base font-semibold">Detalle de solicitud</h1>
-        </div>
-      </div>
+      <PageHeader
+        icon={Package}
+        title="Pedido de stock"
+        subtitle="Detalle del pedido, proyecto asociado y acciones disponibles."
+        action={
+          <ActionButton
+            intent="back"
+            onClick={() => {
+              if (participantView) {
+                navigate('/app/stock')
+                return
+              }
+              navigate(-1)
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver
+          </ActionButton>
+        }
+      />
 
       <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-4">
         {feedback && (
@@ -165,7 +158,7 @@ export default function AdminStockRequestDetailPage() {
           <p className="text-sm text-destructive text-center py-8">
             {requestQ.error instanceof ApiError
               ? requestQ.error.message
-              : 'No se pudo cargar la solicitud.'}
+              : 'No se pudo cargar el pedido.'}
           </p>
         )}
 
@@ -178,12 +171,10 @@ export default function AdminStockRequestDetailPage() {
                   <Package className="w-4 h-4 text-muted-foreground shrink-0" />
                   {req.resource_name}
                 </CardTitle>
-                <Badge variant={STATUS_VARIANT[req.status]}>
-                  {STATUS_LABELS[req.status]}
-                </Badge>
+                <StockRequestStatusBadge status={req.status} />
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <Row label="Tipo de recurso" value={RESOURCE_TYPE_LABELS[req.resource_type]} />
+                <Row label="Tipo de ítem" value={RESOURCE_TYPE_LABELS[req.resource_type]} />
                 <Row label="Cantidad" value={String(req.quantity)} />
                 <Row label="Proyecto" value={req.project_name} />
                 <Row label="Solicitado por" value={req.requester_name} />
@@ -195,7 +186,7 @@ export default function AdminStockRequestDetailPage() {
             </Card>
 
             {/* Actions */}
-            {req.status !== 'DEVUELTO' && req.status !== 'RECHAZADO' && (
+            {canManageRequest && req.status !== 'DEVUELTO' && req.status !== 'RECHAZADO' && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -205,9 +196,8 @@ export default function AdminStockRequestDetailPage() {
                 <CardContent className="flex flex-wrap gap-2">
                   {req.status === 'PENDIENTE' && (
                     <>
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5"
+                      <ActionButton
+                        intent="approve"
                         disabled={anyPending}
                         onClick={() => { setFeedback(null); approveM.mutate() }}
                       >
@@ -215,25 +205,20 @@ export default function AdminStockRequestDetailPage() {
                           ? <Loader2 className="w-4 h-4 animate-spin" />
                           : <CheckCircle2 className="w-4 h-4" />}
                         Aprobar
-                      </Button>
+                      </ActionButton>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-destructive border-destructive/30 gap-1.5"
-                            disabled={anyPending}
-                          >
+                          <ActionButton intent="reject" disabled={anyPending}>
                             {rejectM.isPending
                               ? <Loader2 className="w-4 h-4 animate-spin" />
                               : <X className="w-4 h-4" />}
                             Rechazar
-                          </Button>
+                          </ActionButton>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>¿Rechazar solicitud?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Rechazar pedido?</AlertDialogTitle>
                             <AlertDialogDescription>
                               Se marcará como rechazada y el stock no será reservado.
                             </AlertDialogDescription>
@@ -253,9 +238,8 @@ export default function AdminStockRequestDetailPage() {
                   )}
 
                   {req.status === 'RESERVADO' && (
-                    <Button
-                      size="sm"
-                      className="gap-1.5"
+                    <ActionButton
+                      intent="deliver"
                       disabled={anyPending}
                       onClick={() => { setFeedback(null); deliverM.mutate() }}
                     >
@@ -263,14 +247,12 @@ export default function AdminStockRequestDetailPage() {
                         ? <Loader2 className="w-4 h-4 animate-spin" />
                         : <Truck className="w-4 h-4" />}
                       Entregar
-                    </Button>
+                    </ActionButton>
                   )}
 
                   {req.status === 'ENTREGADO' && req.resource_type === 'returnable' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1.5"
+                    <ActionButton
+                      intent="return"
                       disabled={anyPending}
                       onClick={() => { setFeedback(null); returnM.mutate() }}
                     >
@@ -278,25 +260,24 @@ export default function AdminStockRequestDetailPage() {
                         ? <Loader2 className="w-4 h-4 animate-spin" />
                         : <RotateCcw className="w-4 h-4" />}
                       Devolver
-                    </Button>
+                    </ActionButton>
                   )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Link to project */}
-            <div className="text-center">
-              <Button
-                variant="link"
-                size="sm"
-                className="text-muted-foreground text-xs"
+            {!participantView && (
+            <div className="flex justify-center">
+              <ActionButton
+                intent="secondary"
                 onClick={() =>
                   navigate(`/app/admin/proyectos/${req.project_id}/recursos`)
                 }
               >
-                Ver todas las solicitudes del proyecto
-              </Button>
+                Ver pedidos del proyecto
+              </ActionButton>
             </div>
+            )}
           </>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import PullToRefresh from 'react-simple-pull-to-refresh'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -7,13 +8,14 @@ import {
   LogOut,
   Menu,
   Package,
+  Receipt,
   ShieldCheck,
   Users,
   KeyRound,
   X,
   Loader2,
 } from 'lucide-react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -40,10 +42,25 @@ const participantNavItems: {
   href: string
   icon: typeof LayoutDashboard
   isActive: (pathname: string) => boolean
-}[] = [{ label: 'Panel', href: '/app', icon: LayoutDashboard, isActive: (p) => p === '/app' }]
+}[] = [
+  { label: 'Panel', href: '/app', icon: LayoutDashboard, isActive: (p) => p === '/app' },
+  {
+    label: 'Stock',
+    href: '/app/stock',
+    icon: Package,
+    isActive: (p) => p.startsWith('/app/stock'),
+  },
+  {
+    label: 'Gastos',
+    href: '/app/gastos',
+    icon: Receipt,
+    isActive: (p) => p.startsWith('/app/gastos'),
+  },
+]
 const adminNavItems = [
   { label: 'Jornadas', href: '/app/admin/jornadas', icon: CalendarDays },
   { label: 'Proyectos', href: '/app/admin/proyectos', icon: FolderKanban },
+  { label: 'Gastos', href: '/app/admin/gastos', icon: Receipt },
   { label: 'Stock', href: '/app/admin/stock', icon: Package },
   { label: 'Usuarios', href: '/app/admin/usuarios', icon: Users },
 ]
@@ -51,6 +68,7 @@ const adminNavItems = [
 export function AppShellLayout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { user, logout, token } = useAuth()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [pwOpen, setPwOpen] = useState(false)
@@ -65,6 +83,16 @@ export function AppShellLayout() {
   }
 
   const isAdmin = user?.role === 'admin'
+  const canPullToRefresh =
+    Boolean(token) &&
+    !drawerOpen &&
+    !pwOpen &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(max-width: 1023px)').matches
+
+  async function handlePullToRefresh() {
+    await queryClient.invalidateQueries({ refetchType: 'active' })
+  }
 
   const pwMutation = useMutation({
     mutationFn: () => changePassword(token!, { current_password: currentPw, new_password: newPw }),
@@ -205,7 +233,19 @@ export function AppShellLayout() {
       {/* ── Main content area ─────────────────────────────── */}
       <main className="lg:pl-64 min-h-screen">
         <div className="pb-24 lg:pb-0">
-          <Outlet />
+          <PullToRefresh
+            isPullable={canPullToRefresh}
+            onRefresh={handlePullToRefresh}
+            pullingContent="Soltá para actualizar"
+            refreshingContent="Actualizando..."
+            pullDownThreshold={70}
+            maxPullDownDistance={95}
+            resistance={2.5}
+          >
+            <div>
+              <Outlet />
+            </div>
+          </PullToRefresh>
         </div>
       </main>
 
@@ -339,7 +379,7 @@ export function AppShellLayout() {
       </Drawer>
 
       {/* ── Change password — Dialog (desktop) ─────────── */}
-      <Dialog open={pwOpen} onOpenChange={(o) => !o && setPwOpen(false)}>
+      <Dialog open={pwOpen} onOpenChange={(o: boolean) => !o && setPwOpen(false)}>
         <DialogContent className="hidden lg:grid sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cambiar contraseña</DialogTitle>

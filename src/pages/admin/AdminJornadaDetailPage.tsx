@@ -1,9 +1,10 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BarChart2, Calendar, CalendarRange, Clock, ExternalLink, FolderOpen, Layers, Loader2, Pencil, Trash2, Users } from 'lucide-react'
+import { BarChart2, Calendar, CalendarRange, Clock, ExternalLink, FolderOpen, Layers, Loader2, MoreVertical, Pencil, Trash2, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
+import { ActionButton } from '@/components/ActionButton'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import {
   AlertDialog,
@@ -16,9 +17,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { getEventDetail, deleteEventInstance, listEventParticipantResponses } from '@/features/events/api/eventsApi'
 import type {
   EventDetailDTO,
@@ -546,32 +552,38 @@ export default function AdminJornadaDetailPage() {
         subtitle="Ficha de jornada"
         action={
           <div className="flex flex-wrap gap-2 justify-end">
-            <Button variant="outline" size="sm" asChild>
+            <ActionButton intent="back" asChild>
               <Link to="/app/admin/jornadas">Volver</Link>
-            </Button>
+            </ActionButton>
             {inst && (
-              <Button size="sm" asChild>
+              <ActionButton intent="edit" asChild>
                 <Link to={`/app/admin/jornadas/${id}/editar`}>
                   <Pencil className="w-4 h-4 mr-1" />
                   Editar
                 </Link>
-              </Button>
+              </ActionButton>
             )}
             {inst && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-destructive border-destructive/40 hover:bg-destructive/10"
-                disabled={deleteMut.isPending}
-                onClick={() => {
-                  setFeedback(null)
-                  setDeleteOpen(true)
-                }}
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Eliminar
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <ActionButton intent="secondary" disabled={deleteMut.isPending}>
+                    <MoreVertical className="w-4 h-4" />
+                    Más
+                  </ActionButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      setFeedback(null)
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Eliminar jornada
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         }
@@ -605,12 +617,12 @@ export default function AdminJornadaDetailPage() {
                   </Badge>
                 </div>
                 {canRespond && (
-                  <Button size="sm" variant="outline" asChild>
+                  <ActionButton intent="view" asChild>
                     <Link to={`/app/jornadas/${id}/responder`}>
                       <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                       Ver como participante
                     </Link>
-                  </Button>
+                  </ActionButton>
                 )}
               </div>
 

@@ -32,19 +32,19 @@ export function PageHeader({ icon: Icon, title, subtitle, action }: PageHeaderPr
       </header>
 
       {/* Desktop topbar */}
-      <div className="hidden lg:block px-6 py-3 border-b border-border bg-card/80 sticky top-0 z-10 backdrop-blur-md pr-16">
-        <div className="flex items-center gap-3">
+      <div className="hidden lg:flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-card/80 sticky top-0 z-10 backdrop-blur-md pr-16">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10 shrink-0">
             <Icon className="w-4 h-4 text-primary" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-sm font-semibold leading-none">{title}</h1>
             {subtitle && (
               <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
             )}
           </div>
         </div>
-        {action && <div className="mt-2 ml-10">{action}</div>}
+        {action && <div className="flex shrink-0 justify-end">{action}</div>}
       </div>
     </>
   )

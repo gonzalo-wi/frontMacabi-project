@@ -5,11 +5,12 @@ import {
   cleanupOutdatedCaches,
   createHandlerBoundToURL,
   precacheAndRoute,
+  type PrecacheEntry,
 } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { NetworkOnly } from 'workbox-strategies'
 
-declare let self: ServiceWorkerGlobalScope
+declare let self: ServiceWorkerGlobalScope & { readonly __WB_MANIFEST: PrecacheEntry[] }
 
 self.skipWaiting()
 clientsClaim()
@@ -48,6 +49,6 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = (event.notification.data as { url?: string } | null)?.url
   if (url) {
-    event.waitUntil(clients.openWindow(url))
+    event.waitUntil(self.clients.openWindow(url))
   }
 })

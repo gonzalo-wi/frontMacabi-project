@@ -12,6 +12,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { ActionButton } from '@/components/ActionButton'
+import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +25,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -59,29 +60,11 @@ import type {
   ResourceRequestDTO,
   ResourceType,
 } from '@/features/stock/model/types'
+import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<RequestStatus, string> = {
-  PENDIENTE: 'Pendiente',
-  RESERVADO: 'Reservado',
-  ENTREGADO: 'Entregado',
-  DEVUELTO: 'Devuelto',
-  RECHAZADO: 'Rechazado',
-}
-
-const STATUS_VARIANT: Record<
-  RequestStatus,
-  'default' | 'secondary' | 'outline' | 'destructive'
-> = {
-  PENDIENTE: 'secondary',
-  RESERVADO: 'default',
-  ENTREGADO: 'secondary',
-  DEVUELTO: 'outline',
-  RECHAZADO: 'destructive',
-}
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
@@ -143,7 +126,7 @@ const EMPTY_FORM: RequestFormState = {
 
 export default function ProyectoRecursosPage() {
   const { id: projectId } = useParams<{ id: string }>()
-  const { token, isRestoring } = useAuth()
+  const { token, user, isRestoring } = useAuth()
   const qc = useQueryClient()
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -164,6 +147,10 @@ export default function ProyectoRecursosPage() {
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => fetchAllResources(token!),
   })
+
+  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
+  const member = membershipsQ.data?.find((m) => m.id === projectId)
+  const canManageRequests = user?.role === 'admin' || member?.role === 'coordinator'
 
   // Map resource_id → ResourceDTO for quick lookup
   const resourcesMap = useMemo(() => {
@@ -194,7 +181,7 @@ export default function ProyectoRecursosPage() {
   const createM = useMutation({
     mutationFn: async () => {
       if (!projectId) throw new Error('Sin proyecto')
-      if (!form.resource_id) throw new Error('Seleccioná un recurso')
+      if (!form.resource_id) throw new Error('Seleccioná un ítem de inventario')
       const qty = Number(form.quantity)
       if (!qty || qty < 1) throw new Error('La cantidad debe ser mayor a 0')
       if (!form.withdrawal_date) throw new Error('La fecha de retiro es requerida')
@@ -212,7 +199,7 @@ export default function ProyectoRecursosPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Solicitud creada correctamente.', variant: 'success' })
+      setFeedback({ text: 'Pedido creado correctamente.', variant: 'success' })
       setCreateOpen(false)
       setForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['project-stock-requests', projectId] })
@@ -248,7 +235,7 @@ export default function ProyectoRecursosPage() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const deliverM = makeTransitionMutation(deliverRequest, 'Pedido marcado como entregado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const returnM = makeTransitionMutation(returnRequest, 'Recurso marcado como devuelto.')
+  const returnM = makeTransitionMutation(returnRequest, 'Ítem marcado como devuelto.')
 
   if (!projectId) return null
 
@@ -259,15 +246,17 @@ export default function ProyectoRecursosPage() {
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Solicitudes de recursos</h2>
+          <h2 className="text-base font-semibold">Pedidos de stock</h2>
           {!requestsQ.isLoading && requestsQ.data && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {requestsQ.data.length} solicitud{requestsQ.data.length === 1 ? '' : 'es'} en total
+              {canManageRequests
+                ? `${requestsQ.data.length} pedido${requestsQ.data.length === 1 ? '' : 's'} en total`
+                : 'Tus pedidos dentro de este proyecto'}
             </p>
           )}
         </div>
-        <Button
-          size="sm"
+        <ActionButton
+          intent="primary"
           onClick={() => {
             setFeedback(null)
             setForm(EMPTY_FORM)
@@ -276,15 +265,15 @@ export default function ProyectoRecursosPage() {
           disabled={resourcesQ.isLoading}
         >
           <Plus className="w-4 h-4 mr-1" />
-          Nueva solicitud
-        </Button>
+          Nuevo pedido
+        </ActionButton>
       </div>
 
       {requestsQ.isError && (
         <p className="text-sm text-destructive">
           {requestsQ.error instanceof ApiError
             ? requestsQ.error.message
-            : 'Error al cargar las solicitudes'}
+            : 'Error al cargar los pedidos'}
         </p>
       )}
 
@@ -302,15 +291,17 @@ export default function ProyectoRecursosPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="font-medium px-4 py-3">Recurso</th>
+                <th className="font-medium px-4 py-3">Ítem</th>
                 <th className="font-medium px-4 py-3 text-center">Cant.</th>
                 <th className="font-medium px-4 py-3">Retiro</th>
                 <th className="font-medium px-4 py-3 hidden lg:table-cell">Devolución</th>
                 <th className="font-medium px-4 py-3">Solicitante</th>
                 <th className="font-medium px-4 py-3">Estado</th>
-                <th className="font-medium px-4 py-3 text-right w-[1%] whitespace-nowrap">
-                  Acciones
-                </th>
+                {canManageRequests && (
+                  <th className="font-medium px-4 py-3 text-right w-[1%] whitespace-nowrap">
+                    Acciones
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -334,25 +325,25 @@ export default function ProyectoRecursosPage() {
                   </td>
                   <td className="px-4 py-3 text-xs">{req.requester_name}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={STATUS_VARIANT[req.status]}>
-                      {STATUS_LABELS[req.status]}
-                    </Badge>
+                    <StockRequestStatusBadge status={req.status} />
                   </td>
-                  <td className="px-4 py-3">
-                    <RequestActions
-                      req={req}
-                      onApprove={() => approveM.mutate(req.id)}
-                      onReject={() => rejectM.mutate(req.id)}
-                      onDeliver={() => deliverM.mutate(req.id)}
-                      onReturn={() => returnM.mutate(req.id)}
-                      isPending={
-                        approveM.isPending ||
-                        rejectM.isPending ||
-                        deliverM.isPending ||
-                        returnM.isPending
-                      }
-                    />
-                  </td>
+                  {canManageRequests && (
+                    <td className="px-4 py-3">
+                      <RequestActions
+                        req={req}
+                        onApprove={() => approveM.mutate(req.id)}
+                        onReject={() => rejectM.mutate(req.id)}
+                        onDeliver={() => deliverM.mutate(req.id)}
+                        onReturn={() => returnM.mutate(req.id)}
+                        isPending={
+                          approveM.isPending ||
+                          rejectM.isPending ||
+                          deliverM.isPending ||
+                          returnM.isPending
+                        }
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -373,9 +364,7 @@ export default function ProyectoRecursosPage() {
                       {RESOURCE_TYPE_LABELS[req.resource_type]} · {req.quantity} unid.
                     </p>
                   </div>
-                  <Badge variant={STATUS_VARIANT[req.status]}>
-                    {STATUS_LABELS[req.status]}
-                  </Badge>
+                  <StockRequestStatusBadge status={req.status} />
                 </div>
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <p>Retiro: {formatDate(req.withdrawal_date)}</p>
@@ -383,19 +372,21 @@ export default function ProyectoRecursosPage() {
                   <p>Solicitado por: {req.requester_name}</p>
                   {req.notes && <p className="italic">"{req.notes}"</p>}
                 </div>
-                <RequestActions
-                  req={req}
-                  onApprove={() => approveM.mutate(req.id)}
-                  onReject={() => rejectM.mutate(req.id)}
-                  onDeliver={() => deliverM.mutate(req.id)}
-                  onReturn={() => returnM.mutate(req.id)}
-                  isPending={
-                    approveM.isPending ||
-                    rejectM.isPending ||
-                    deliverM.isPending ||
-                    returnM.isPending
-                  }
-                />
+                {canManageRequests && (
+                  <RequestActions
+                    req={req}
+                    onApprove={() => approveM.mutate(req.id)}
+                    onReject={() => rejectM.mutate(req.id)}
+                    onDeliver={() => deliverM.mutate(req.id)}
+                    onReturn={() => returnM.mutate(req.id)}
+                    isPending={
+                      approveM.isPending ||
+                      rejectM.isPending ||
+                      deliverM.isPending ||
+                      returnM.isPending
+                    }
+                  />
+                )}
               </CardContent>
             </Card>
           ))}
@@ -406,16 +397,16 @@ export default function ProyectoRecursosPage() {
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
           <Package className="w-10 h-10 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
-            Todavía no hay solicitudes de recursos para este proyecto.
+            Todavía no hay pedidos de stock para este proyecto.
           </p>
         </div>
       )}
 
-      {/* ── Dialog: Nueva solicitud ─────────────────────────── */}
+      {/* ── Dialog: Nuevo pedido ─────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nueva solicitud de recurso</DialogTitle>
+            <DialogTitle>Nuevo pedido de stock</DialogTitle>
           </DialogHeader>
           <CreateRequestForm
             form={form}
@@ -456,26 +447,20 @@ function RequestActions({
   if (req.status === 'PENDIENTE') {
     return (
       <div className="flex justify-end items-center gap-1">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950"
+        <ActionButton
+          intent="approve"
           disabled={isPending}
           onClick={onApprove}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           Aprobar
-        </Button>
+        </ActionButton>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-              disabled={isPending}
-            >
+            <ActionButton intent="reject" disabled={isPending}>
               <X className="w-4 h-4" />
-            </Button>
+              Rechazar
+            </ActionButton>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -503,16 +488,14 @@ function RequestActions({
   if (req.status === 'RESERVADO') {
     return (
       <div className="flex justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1"
+        <ActionButton
+          intent="deliver"
           disabled={isPending}
           onClick={onDeliver}
         >
           <Truck className="w-3.5 h-3.5" />
           Entregar
-        </Button>
+        </ActionButton>
       </div>
     )
   }
@@ -520,16 +503,14 @@ function RequestActions({
   if (req.status === 'ENTREGADO' && req.resource_type === 'returnable') {
     return (
       <div className="flex justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 gap-1"
+        <ActionButton
+          intent="return"
           disabled={isPending}
           onClick={onReturn}
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Devolver
-        </Button>
+        </ActionButton>
       </div>
     )
   }
@@ -565,10 +546,10 @@ function CreateRequestForm({
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <Label htmlFor="req-resource">Recurso</Label>
+        <Label htmlFor="req-resource">Ítem de inventario</Label>
         <Select value={form.resource_id} onValueChange={(v) => set('resource_id', v)}>
           <SelectTrigger id="req-resource" className="h-11">
-            <SelectValue placeholder="Seleccioná un recurso…" />
+            <SelectValue placeholder="Seleccioná un ítem…" />
           </SelectTrigger>
           <SelectContent>
             {resources.map((r) => (
@@ -639,7 +620,7 @@ function CreateRequestForm({
       </div>
 
       <Button disabled={isPending} onClick={onSubmit} className="w-full">
-        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Solicitar'}
+        {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear pedido'}
       </Button>
     </div>
   )

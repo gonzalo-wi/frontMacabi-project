@@ -1,20 +1,45 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { getRequest } from '@/features/stock/api/requestsApi'
+import {
+  listNotifications as listStockNotifications,
+  markNotificationRead as markStockNotificationRead,
+  getUnreadCount as getStockUnreadCount,
+} from '@/features/stock/api/notificationsApi'
+import {
+  listExpenseNotifications,
+  markExpenseNotificationRead,
+  getExpenseUnreadCount,
+} from '@/features/expenses/api/notificationsApi'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  listNotifications,
-  markNotificationRead,
-  getUnreadCount,
-} from '@/features/stock/api/notificationsApi'
-import type { StockNotificationDTO } from '@/features/stock/model/types'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
+
+type AppNotification =
+  | {
+      kind: 'stock'
+      id: string
+      message: string
+      read_at: string | null
+      created_at: string
+      request_id: string
+    }
+  | {
+      kind: 'expense'
+      id: string
+      message: string
+      read_at: string | null
+      created_at: string
+      expense_id: string
+      project_id: string
+    }
 
 /** Relative time helper (es-AR) */
 function relativeTime(iso: string): string {
@@ -37,29 +62,42 @@ type Props = {
 export function NotificationsBell({ token, className }: Props) {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
 
-  // ── Unread count — polled every 60 s ─────────────────────
-  const countQ = useQuery({
+  const stockCountQ = useQuery({
     queryKey: ['stock-notifications-unread', token],
-    queryFn: () => getUnreadCount(token),
+    queryFn: () => getStockUnreadCount(token),
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
 
-  const unread = countQ.data?.unread_count ?? 0
+  const expenseCountQ = useQuery({
+    queryKey: ['expense-notifications-unread', token],
+    queryFn: () => getExpenseUnreadCount(token),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
 
-  // ── Full list — fetched when panel opens ─────────────────
-  const listQ = useQuery({
+  const unread =
+    (stockCountQ.data?.unread_count ?? 0) + (expenseCountQ.data?.unread_count ?? 0)
+
+  const stockListQ = useQuery({
     queryKey: ['stock-notifications-list', token],
-    queryFn: () => listNotifications(token),
+    queryFn: () => listStockNotifications(token),
     enabled: open,
     staleTime: 30_000,
   })
 
-  // ── Mark as read ─────────────────────────────────────────
-  const markM = useMutation({
-    mutationFn: (id: string) => markNotificationRead(token, id),
+  const expenseListQ = useQuery({
+    queryKey: ['expense-notifications-list', token],
+    queryFn: () => listExpenseNotifications(token),
+    enabled: open,
+    staleTime: 30_000,
+  })
+
+  const markStockM = useMutation({
+    mutationFn: (id: string) => markStockNotificationRead(token, id),
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['stock-notifications-unread'] }),
@@ -68,17 +106,71 @@ export function NotificationsBell({ token, className }: Props) {
     },
   })
 
+  const markExpenseM = useMutation({
+    mutationFn: (id: string) => markExpenseNotificationRead(token, id),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['expense-notifications-unread'] }),
+        qc.invalidateQueries({ queryKey: ['expense-notifications-list'] }),
+      ])
+    },
+  })
+
+  const notifications = useMemo((): AppNotification[] => {
+    const stock: AppNotification[] = (stockListQ.data ?? []).map((n) => ({
+      kind: 'stock' as const,
+      id: n.id,
+      message: n.message,
+      read_at: n.read_at,
+      created_at: n.created_at,
+      request_id: n.request_id,
+    }))
+    const expense: AppNotification[] = (expenseListQ.data ?? []).map((n) => ({
+      kind: 'expense' as const,
+      id: n.id,
+      message: n.message,
+      read_at: n.read_at,
+      created_at: n.created_at,
+      expense_id: n.expense_id,
+      project_id: n.project_id,
+    }))
+    return [...stock, ...expense].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [expenseListQ.data, stockListQ.data])
+
+  const isLoading = stockListQ.isLoading || expenseListQ.isLoading
+
   function handleOpen(v: boolean) {
     setOpen(v)
   }
 
-  function handleNotificationClick(n: StockNotificationDTO) {
-    if (!n.read_at) markM.mutate(n.id)
+  function handleNotificationClick(n: AppNotification) {
+    if (!n.read_at) {
+      if (n.kind === 'stock') markStockM.mutate(n.id)
+      else markExpenseM.mutate(n.id)
+    }
     setOpen(false)
-    navigate(`/app/admin/stock/requests/${n.request_id}`)
+
+    if (n.kind === 'stock') {
+      void (async () => {
+        try {
+          const detail = await getRequest(token, n.request_id)
+          navigate(`/app/stock/requests/${detail.id}`)
+        } catch {
+          navigate('/app/stock')
+        }
+      })()
+      return
+    }
+
+    if (user?.role === 'admin') {
+      navigate(`/app/admin/proyectos/${n.project_id}/gastos`)
+    } else {
+      navigate(`/app/gastos?project=${n.project_id}`)
+    }
   }
 
-  const notifications = listQ.data ?? []
   const LIMIT = 10
   const visible = notifications.slice(0, LIMIT)
   const hasMore = notifications.length > LIMIT
@@ -108,7 +200,6 @@ export function NotificationsBell({ token, className }: Props) {
         className="w-80 p-0 overflow-hidden"
         sideOffset={8}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/40">
           <p className="text-sm font-semibold">Notificaciones</p>
           {unread > 0 && (
@@ -118,15 +209,14 @@ export function NotificationsBell({ token, className }: Props) {
           )}
         </div>
 
-        {/* Body */}
         <div className="max-h-80 overflow-y-auto divide-y divide-border">
-          {listQ.isLoading && (
+          {isLoading && (
             <div className="flex justify-center py-6">
               <span className="text-xs text-muted-foreground animate-pulse">Cargando…</span>
             </div>
           )}
 
-          {!listQ.isLoading && notifications.length === 0 && (
+          {!isLoading && notifications.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
               <Bell className="w-7 h-7 opacity-30" />
               <p className="text-xs">No tenés notificaciones</p>
@@ -135,7 +225,7 @@ export function NotificationsBell({ token, className }: Props) {
 
           {visible.map((n) => (
             <button
-              key={n.id}
+              key={`${n.kind}-${n.id}`}
               onClick={() => handleNotificationClick(n)}
               className={cn(
                 'w-full text-left px-4 py-3 transition-colors hover:bg-muted/50 focus:outline-none focus-visible:bg-muted/50',
@@ -143,7 +233,6 @@ export function NotificationsBell({ token, className }: Props) {
               )}
             >
               <div className="flex items-start gap-2.5">
-                {/* Unread indicator */}
                 <span
                   className={cn(
                     'mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full',
