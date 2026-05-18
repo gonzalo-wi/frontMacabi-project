@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { FileText, MoreVertical, SquarePen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { Button } from '@/components/ui/button'
+import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
@@ -88,11 +88,11 @@ export default function ProyectoJornadasPage() {
             <p className="text-sm text-muted-foreground">
               {formatStartsAR(nextGlobalLinked.instance.starts_at)}
             </p>
-            <Button size="sm" variant="secondary" asChild>
+            <ActionButton intent="view" asChild>
               <Link to={`/app/admin/jornadas/${nextGlobalLinked.instance.id}`}>
                 Ver ficha de la jornada
               </Link>
-            </Button>
+            </ActionButton>
           </CardContent>
         </Card>
       )}
@@ -140,21 +140,25 @@ export default function ProyectoJornadasPage() {
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
             >
               <div>
-                <p className="font-medium">{d.instance.title}</p>
+                <Link
+                  to={`/app/admin/jornadas/${d.instance.id}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {d.instance.title}
+                </Link>
                 <p className="text-xs text-muted-foreground">{formatStartsAR(d.instance.starts_at)}</p>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <EventStatusBadge status={d.instance.status} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
+                    <ActionIconButton
                       type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={`Acciones: ${d.instance.title}`}
+                      intent="secondary"
+                      label={`Acciones: ${d.instance.title}`}
                     >
                       <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </ActionIconButton>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>

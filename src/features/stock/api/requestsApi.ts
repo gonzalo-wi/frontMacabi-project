@@ -27,6 +27,32 @@ export function listProjectRequests(
   return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests?${q}`, { token })
 }
 
+export function listRequests(
+  token: string,
+  page = 1,
+  pageSize = 50,
+  projectId?: string,
+): Promise<PaginatedRequestsDTO> {
+  const q = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  if (projectId) q.set('project_id', projectId)
+  return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests?${q}`, { token })
+}
+
+export function listMyRequests(
+  token: string,
+  page = 1,
+  pageSize = 50,
+): Promise<PaginatedRequestsDTO> {
+  const q = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  })
+  return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests/my?${q}`, { token })
+}
+
 export function getRequest(token: string, id: string): Promise<ResourceRequestDTO> {
   return apiRequest<ResourceRequestDTO>(`/api/stock/requests/${id}`, { token })
 }

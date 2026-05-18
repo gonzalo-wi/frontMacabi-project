@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { PageHeader } from '@/components/PageHeader'
-import { Button } from '@/components/ui/button'
+import { ActionButton } from '@/components/ActionButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -284,21 +284,21 @@ export default function AdminJornadaBuilderPage() {
         subtitle={headerSubtitle}
         action={
           <div className="flex flex-wrap items-center gap-2 justify-end">
-            <Button variant="outline" size="sm" asChild>
+            <ActionButton intent="view" asChild>
               <Link to={`/app/admin/jornadas/${id}`}>Ficha</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
+            </ActionButton>
+            <ActionButton intent="back" asChild>
               <Link to="/app/admin/jornadas">Listado</Link>
-            </Button>
+            </ActionButton>
             {inst && (
-              <Button
-                size="sm"
+              <ActionButton
+                intent="primary"
                 disabled={globalSaving || !anythingDirty}
                 onClick={handleSaveAll}
               >
                 {globalSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 Guardar cambios
-              </Button>
+              </ActionButton>
             )}
           </div>
         }
@@ -453,9 +453,9 @@ export default function AdminJornadaBuilderPage() {
                     <strong> Guardar cambios</strong> para confirmar las ediciones.
                   </p>
                 </div>
-                <Button size="sm" onClick={() => addModule.mutate()} disabled={addModule.isPending}>
+                <ActionButton intent="primary" onClick={() => addModule.mutate()} disabled={addModule.isPending}>
                   {addModule.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : '+ Módulo'}
-                </Button>
+                </ActionButton>
               </div>
 
               {sortedModules.length > 1 && (
@@ -467,15 +467,14 @@ export default function AdminJornadaBuilderPage() {
                     <ul className="flex flex-wrap gap-2">
                       {sortedModules.map((md, i) => (
                         <li key={md.module.id}>
-                          <Button
+                          <ActionButton
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            intent="secondary"
                             className="h-8 rounded-full px-3 text-xs"
                             onClick={() => scrollToModule(md.module.id)}
                           >
                             {i + 1}. {md.module.title}
-                          </Button>
+                          </ActionButton>
                         </li>
                       ))}
                     </ul>

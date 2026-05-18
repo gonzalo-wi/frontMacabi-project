@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CalendarRange,
@@ -17,6 +17,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { PageHeader } from '@/components/PageHeader'
+import { ActionButton, ActionIconButton } from '@/components/ActionButton'
+import { DataToolbar } from '@/components/admin/DataToolbar'
+import { MobileList } from '@/components/admin/MobileList'
+import { PaginationControls } from '@/components/admin/PaginationControls'
+import { SortableTable, type SortDirection } from '@/components/admin/SortableTable'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +33,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -74,6 +78,22 @@ import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 
 type FeedbackState = { text: string; variant: 'success' | 'error' | 'info' } | null
+type JornadaSortKey = 'title' | 'starts_at' | 'status'
+type JornadaStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled'
+
+const PAGE_SIZE = 20
+
+async function fetchAllEventInstances(token: string): Promise<EventInstanceDTO[]> {
+  const out: EventInstanceDTO[] = []
+  let page = 1
+  while (page <= 50) {
+    const result = await listEventInstances(token, page, 50)
+    out.push(...result.data)
+    if (page >= result.total_pages) break
+    page++
+  }
+  return out
+}
 
 function JornadaActionsMenu({
   row,
@@ -102,19 +122,17 @@ function JornadaActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <ActionIconButton
           type="button"
-          variant="outline"
-          size="icon"
-          className="shrink-0"
-          aria-label={`Acciones: ${row.title}`}
+          intent="secondary"
+          label={`Acciones: ${row.title}`}
         >
           {isThisRowPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <MoreVertical className="h-4 w-4" />
           )}
-        </Button>
+        </ActionIconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[13rem]">
         <DropdownMenuItem asChild>
@@ -178,6 +196,10 @@ export default function AdminJornadasPage() {
   const { token, isRestoring } = useAuth()
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<JornadaStatusFilter>('all')
+  const [sortKey, setSortKey] = useState<JornadaSortKey>('starts_at')
+  const [sortDir, setSortDir] = useState<SortDirection>('desc')
   const [createOpen, setCreateOpen] = useState(false)
   const [title, setTitle] = useState('Nueva jornada')
   const [startsLocal, setStartsLocal] = useState('')
@@ -196,9 +218,9 @@ export default function AdminJornadasPage() {
   const dupInitializedRef = useRef<string | null>(null)
 
   const listQ = useQuery({
-    queryKey: ['admin-events', page, token],
+    queryKey: ['admin-events', token],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => listEventInstances(token!, page, 20),
+    queryFn: () => fetchAllEventInstances(token!),
   })
 
   const dupDetailQ = useQuery({
@@ -343,17 +365,55 @@ export default function AdminJornadasPage() {
     setDupDeadlineLocal(toDatetimeLocalValue(dlIso))
   }
 
+  function handleSort(key: JornadaSortKey) {
+    if (key === sortKey) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortKey(key)
+    setSortDir(key === 'starts_at' ? 'desc' : 'asc')
+  }
+
+  const filteredSorted = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    const rows = (listQ.data ?? []).filter((row) => {
+      if (statusFilter !== 'all' && row.status !== statusFilter) return false
+      if (!term) return true
+      return row.title.toLowerCase().includes(term)
+    })
+
+    return [...rows].sort((a, b) => {
+      let result = 0
+      if (sortKey === 'title') result = a.title.localeCompare(b.title)
+      if (sortKey === 'status') {
+        result = labelInstanceStatus(a.status).localeCompare(labelInstanceStatus(b.status))
+      }
+      if (sortKey === 'starts_at') {
+        result = new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      }
+      return sortDir === 'asc' ? result : -result
+    })
+  }, [listQ.data, search, sortDir, sortKey, statusFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageRows = filteredSorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, statusFilter, sortKey, sortDir])
+
   return (
     <div className="min-h-screen pb-24">
       <PageHeader
         icon={CalendarRange}
         title="Jornadas"
-        subtitle="Administración"
+        subtitle="Planificá actividades, abrí respuestas y revisá asistencia."
         action={
-          <Button size="sm" onClick={() => { setFeedback(null); setCreateOpen(true) }}>
+          <ActionButton intent="primary" onClick={() => { setFeedback(null); setCreateOpen(true) }}>
             <Plus className="w-4 h-4 mr-1" />
-            Nueva
-          </Button>
+            Nueva jornada
+          </ActionButton>
         }
       />
 
@@ -366,36 +426,62 @@ export default function AdminJornadasPage() {
           </p>
         )}
 
-        <div className="space-y-2">
-          {listQ.isLoading && (
-            <>
-              <div className="h-20 bg-muted/50 rounded-lg animate-pulse" />
-              <div className="h-20 bg-muted/50 rounded-lg animate-pulse opacity-70" />
-              <div className="h-20 bg-muted/50 rounded-lg animate-pulse opacity-40" />
-            </>
-          )}
-          {!listQ.isLoading && listQ.data?.data.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              Todavía no hay jornadas. Usá el botón "Nueva" para crear la primera.
-            </p>
-          )}
-          {listQ.data?.data.map((row) => (
-            <Card key={row.id}>
-              <CardContent className="py-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1 min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      to={`/app/admin/jornadas/${row.id}`}
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {row.title}
-                    </Link>
-                    <EventStatusBadge status={row.status} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatStartsAR(row.starts_at)}
-                  </p>
-                </div>
+        <DataToolbar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Buscar jornada"
+          countLabel={
+            listQ.data
+              ? `Mostrando ${filteredSorted.length} de ${listQ.data.length} jornada${listQ.data.length === 1 ? '' : 's'}`
+              : undefined
+          }
+          filters={
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as JornadaStatusFilter)}>
+              <SelectTrigger className="h-10 w-full sm:w-[13rem]">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="open">Abierta</SelectItem>
+                <SelectItem value="closed">Respuestas cerradas</SelectItem>
+                <SelectItem value="cancelled">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
+
+        <SortableTable
+          rows={pageRows}
+          columns={[
+            {
+              id: 'title',
+              header: 'Jornada',
+              sortKey: 'title',
+              render: (row) => (
+                <Link to={`/app/admin/jornadas/${row.id}`} className="font-semibold text-primary hover:underline">
+                  {row.title}
+                </Link>
+              ),
+            },
+            {
+              id: 'starts_at',
+              header: 'Inicio',
+              sortKey: 'starts_at',
+              render: (row) => <span className="text-xs text-muted-foreground">{formatStartsAR(row.starts_at)}</span>,
+            },
+            {
+              id: 'status',
+              header: 'Estado',
+              sortKey: 'status',
+              render: (row) => <EventStatusBadge status={row.status} />,
+            },
+            {
+              id: 'actions',
+              header: 'Acciones',
+              headerClassName: 'text-right w-[1%] whitespace-nowrap',
+              className: 'text-right',
+              render: (row) => (
                 <JornadaActionsMenu
                   row={row}
                   pendingId={pendingId}
@@ -405,34 +491,55 @@ export default function AdminJornadasPage() {
                   onCancelRequest={() => setCancelTarget(row)}
                   onDeleteRequest={() => setDeleteTarget(row)}
                 />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ),
+            },
+          ]}
+          getRowKey={(row) => row.id}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
+          isLoading={listQ.isLoading}
+          emptyMessage={
+            search || statusFilter !== 'all'
+              ? 'No hay jornadas para los filtros seleccionados.'
+              : 'Todavía no hay jornadas. Usá "Nueva jornada" para crear la primera.'
+          }
+        />
 
-        {listQ.data && listQ.data.total_pages > 1 && (
-          <div className="flex justify-center gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Anterior
-            </Button>
-            <span className="text-sm self-center text-muted-foreground">
-              {page} / {listQ.data.total_pages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= listQ.data.total_pages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        )}
+        <MobileList
+          rows={pageRows}
+          getRowKey={(row) => row.id}
+          isLoading={listQ.isLoading}
+          emptyMessage={
+            search || statusFilter !== 'all'
+              ? 'No hay jornadas para los filtros seleccionados.'
+              : 'Todavía no hay jornadas. Usá "Nueva jornada" para crear la primera.'
+          }
+          renderRow={(row) => (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link to={`/app/admin/jornadas/${row.id}`} className="font-semibold text-primary hover:underline">
+                    {row.title}
+                  </Link>
+                  <EventStatusBadge status={row.status} />
+                </div>
+                <p className="text-xs text-muted-foreground">{formatStartsAR(row.starts_at)}</p>
+              </div>
+              <JornadaActionsMenu
+                row={row}
+                pendingId={pendingId}
+                onDuplicate={() => openDuplicate(row)}
+                onOpen={() => patchStatus.mutate({ id: row.id, status: 'open' })}
+                onClose={() => patchStatus.mutate({ id: row.id, status: 'closed' })}
+                onCancelRequest={() => setCancelTarget(row)}
+                onDeleteRequest={() => setDeleteTarget(row)}
+              />
+            </div>
+          )}
+        />
+
+        <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       {/* Confirm cancel dialog */}
@@ -495,7 +602,7 @@ export default function AdminJornadasPage() {
 
       <Dialog
         open={dupDialogOpen}
-        onOpenChange={(o) => {
+        onOpenChange={(o: boolean) => {
           if (!o) {
             setDupDialogOpen(false)
             setDupSeedId(null)

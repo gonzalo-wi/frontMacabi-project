@@ -2,9 +2,13 @@
 
 SPA en **React 19**, **TypeScript**, **Vite** y **Tailwind CSS v4**, migrada desde el mockup Next.js en la carpeta `mockup/` del monorepo. El backend Go no vive aquí.
 
-**Desarrollo:** `npm install` y `npm run dev`.
+Este proyecto usa **pnpm** como gestor de dependencias (commit de **`pnpm-lock.yaml`**; no usar `npm install`/`package-lock.json` aquí).
 
-**API (`VITE_API_URL`):** en desarrollo (`npm run dev`), Vite carga [`.env.development`](.env.development) (alineado al `PORT` del backend local, por defecto en repo `http://localhost:8081`) y podés **sobrescribir sin tocar el repo** con `.env.development.local` o `.env.local` (los `*.local` están en [`.gitignore`](.gitignore)). Para `npm run build` (modo production), Vite no usa `.env.development`: definí la variable en CI, en `.env.production` o en `.env`. Detalle en [`.env.example`](.env.example). La validación está en [`src/config/env.ts`](src/config/env.ts); el HTTP en [`src/lib/api/apiClient.ts`](src/lib/api/apiClient.ts) y auth en [`src/lib/api/auth.ts`](src/lib/api/auth.ts).
+**Desarrollo:** necesitás [pnpm](https://pnpm.io/installation); luego **`pnpm install`** y **`pnpm dev`** (equivalente a `pnpm run dev`).
+
+Política de seguridad opcional pero activa en el repo: en [`pnpm-workspace.yaml`](pnpm-workspace.yaml) está configurado **`minimumReleaseAge`** (7 días en minutos) para no resolver versiones recién publicadas en el registry. Si necesitás excepciones, ver [`minimumReleaseAgeExclude` en la documentación de pnpm](https://pnpm.io/settings#minimumreleaseageexclude).
+
+**API (`VITE_API_URL`):** en desarrollo (`pnpm dev`), Vite carga [`.env.development`](.env.development) (alineado al `PORT` del backend local, por defecto en repo `http://localhost:8081`) y podés **sobrescribir sin tocar el repo** con `.env.development.local` o `.env.local` (los `*.local` están en [`.gitignore`](.gitignore)). Para **`pnpm run build`** (modo production), Vite no usa `.env.development`: definí la variable en CI, en `.env.production` o en `.env`. En CI suele usarse **`pnpm install --frozen-lockfile`**. Detalle en [`.env.example`](.env.example). La validación está en [`src/config/env.ts`](src/config/env.ts); el HTTP en [`src/lib/api/apiClient.ts`](src/lib/api/apiClient.ts) y auth en [`src/lib/api/auth.ts`](src/lib/api/auth.ts).
 
 **Producción (SPA):** rutas como `/app/micros` deben resolver al mismo `index.html` (fallback en nginx, Netlify `_redirects`, S3+CloudFront error document, etc.); de lo contrario un refresh en una ruta profunda devuelve 404.
 

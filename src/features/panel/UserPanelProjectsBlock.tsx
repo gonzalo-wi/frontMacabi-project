@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Loader2, Users } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +52,20 @@ export function UserPanelProjectsBlock({ memberships, isLoading, className }: Pr
             {p.description && (
               <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 mt-2">{p.description}</p>
             )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                to={`/app/gastos?project=${p.id}`}
+                className="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium hover:bg-muted"
+              >
+                Ver gastos
+              </Link>
+              <Link
+                to={`/app/stock?project=${p.id}`}
+                className="inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium hover:bg-muted"
+              >
+                Ver pedidos
+              </Link>
+            </div>
           </div>
         ))}
       </CardContent>

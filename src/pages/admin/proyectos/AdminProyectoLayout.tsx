@@ -3,8 +3,8 @@ import { FolderKanban } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
+import { ActionButton } from '@/components/ActionButton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
 import { getProject } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
@@ -14,7 +14,7 @@ const SECTIONS = [
   { path: 'miembros', label: 'Miembros' },
   { path: 'gastos', label: 'Gastos' },
   { path: 'jornadas', label: 'Jornadas' },
-  { path: 'recursos', label: 'Recursos' },
+  { path: 'recursos', label: 'Pedidos de stock' },
 ] as const
 
 function tabFromPath(pathname: string): (typeof SECTIONS)[number]['path'] {
@@ -52,11 +52,11 @@ export default function AdminProyectoLayout() {
             projectQ.data?.name ?? 'Proyecto'
           )
         }
-        subtitle="Administración del proyecto"
+        subtitle="Vista de gestión: equipo, gastos, jornadas y pedidos de stock."
         action={
-          <Button variant="outline" size="sm" asChild>
+          <ActionButton intent="back" asChild>
             <Link to="/app/admin/proyectos">Todos los proyectos</Link>
-          </Button>
+          </ActionButton>
         }
       />
 

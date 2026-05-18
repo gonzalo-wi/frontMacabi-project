@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Users, ShieldCheck, User,
-  ChevronLeft, ChevronRight, Loader2, X,
+  ChevronRight, Loader2, X,
   CheckCircle2, XCircle, Eye, EyeOff,
   KeyRound, UserPlus, FolderKanban,
-  Search, ArrowUpDown, ArrowUp, ArrowDown, Calendar,
+  ArrowUpDown, ArrowUp, ArrowDown, Calendar,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
+import { ActionButton } from '@/components/ActionButton'
+import { DataToolbar } from '@/components/admin/DataToolbar'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -535,10 +538,10 @@ export default function AdminUsuariosPage() {
       <PageHeader
         icon={Users}
         title="Usuarios"
-        subtitle="Listado, invitaciones y gestión de cuentas"
+        subtitle="Invitaciones, permisos, estado de cuenta y proyectos asignados."
         action={
-          <Button
-            size="sm"
+          <ActionButton
+            intent="primary"
             onClick={() => {
               setInviteBanner(null)
               setInviteOpen(true)
@@ -546,7 +549,7 @@ export default function AdminUsuariosPage() {
           >
             <UserPlus className="w-4 h-4 mr-1" />
             Agregar usuario
-          </Button>
+          </ActionButton>
         }
       />
 
@@ -568,18 +571,17 @@ export default function AdminUsuariosPage() {
 
         {!usersQuery.isPending && !usersQuery.isError && (
           <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" aria-hidden />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por nombre o correo…"
-                  className="h-10 pl-9"
-                  aria-label="Buscar usuarios"
-                />
-              </div>
-              <div className="shrink-0 w-full sm:w-auto md:hidden">
+            <DataToolbar
+              search={search}
+              onSearch={setSearch}
+              searchPlaceholder="Buscar por nombre o correo"
+              countLabel={
+                search.trim()
+                  ? `${filteredSorted.length} resultado${filteredSorted.length !== 1 ? 's' : ''} de ${totalUsers} usuario${totalUsers !== 1 ? 's' : ''}`
+                  : `${totalUsers} usuario${totalUsers !== 1 ? 's' : ''} en total`
+              }
+              filters={
+                <div className="shrink-0 w-full sm:w-auto md:hidden">
                 <Select
                   value={SORT_MOBILE_VALUES.includes(sortMobileValue) ? sortMobileValue : 'created_at:desc'}
                   onValueChange={handleMobileSortValue}
@@ -596,15 +598,10 @@ export default function AdminUsuariosPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+              }
+            />
 
-            <p className="text-xs text-muted-foreground">
-              {search.trim()
-                ? `${filteredSorted.length} resultado${filteredSorted.length !== 1 ? 's' : ''} de ${totalUsers} usuario${totalUsers !== 1 ? 's' : ''}`
-                : `${totalUsers} usuario${totalUsers !== 1 ? 's' : ''} en total`}
-            </p>
-
-            <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
 
               {/* Table header — desktop */}
               <div className="hidden md:flex items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/40">
@@ -638,10 +635,7 @@ export default function AdminUsuariosPage() {
               </div>
 
               {/* Mobile header */}
-              <div className="flex md:hidden items-center justify-between px-4 py-2.5 border-b border-border bg-muted/40">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {filteredSorted.length} resultado{filteredSorted.length !== 1 ? 's' : ''}
-                </p>
+              <div className="flex md:hidden items-center justify-end px-4 py-2.5 border-b border-border bg-muted/40">
                 {filteredTotalPages > 1 && (
                   <p className="text-xs text-muted-foreground">Pág. {safePage}/{filteredTotalPages}</p>
                 )}
@@ -743,25 +737,7 @@ export default function AdminUsuariosPage() {
             </div>
 
             {filteredTotalPages > 1 && pageRows.length > 0 && (
-              <div className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={safePage === 1}
-                  className="p-2 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm text-muted-foreground">{safePage} / {filteredTotalPages}</span>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(filteredTotalPages, p + 1))}
-                  disabled={safePage === filteredTotalPages}
-                  className="p-2 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+              <PaginationControls page={safePage} totalPages={filteredTotalPages} onPageChange={setPage} compact />
             )}
           </>
         )}
@@ -886,11 +862,10 @@ export default function AdminUsuariosPage() {
                       {!isOwnAccount ? (
                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                           {isActive ? (
-                            <Button
+                            <ActionButton
                               type="button"
-                              variant="outline"
-                              size="sm"
-                              className="w-full border-destructive/50 text-destructive hover:bg-destructive/5 sm:w-auto"
+                              intent="delete"
+                              className="w-full sm:w-auto"
                               disabled={statusMutation.isPending}
                               onClick={() => setConfirmDeactivateOpen(true)}
                             >
@@ -900,11 +875,11 @@ export default function AdminUsuariosPage() {
                                 <XCircle className="mr-2 h-4 w-4" aria-hidden />
                               )}
                               Desactivar cuenta
-                            </Button>
+                            </ActionButton>
                           ) : (
-                            <Button
+                            <ActionButton
                               type="button"
-                              size="sm"
+                              intent="primary"
                               className="w-full sm:w-auto"
                               disabled={statusMutation.isPending}
                               onClick={() =>
@@ -916,7 +891,7 @@ export default function AdminUsuariosPage() {
                                 <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden />
                               )}
                               Reactivar cuenta
-                            </Button>
+                            </ActionButton>
                           )}
                         </div>
                       ) : (
@@ -1061,7 +1036,7 @@ export default function AdminUsuariosPage() {
 
       <Dialog
         open={inviteOpen}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setInviteOpen(open)
           if (!open) {
             setInviteName('')
