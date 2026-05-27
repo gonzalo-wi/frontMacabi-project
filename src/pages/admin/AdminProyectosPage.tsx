@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FolderKanban, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/admin/DataToolbar'
 import { MobileList } from '@/components/admin/MobileList'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import { SortableTable, type SortDirection } from '@/components/admin/SortableTable'
 import {
   AlertDialog,
@@ -52,17 +53,9 @@ import { useAuth } from '@/hooks/useAuth'
 
 type ProjectSortKey = 'name' | 'description'
 
-async function fetchAllProjects(token: string): Promise<ProjectDTO[]> {
-  const out: ProjectDTO[] = []
-  let page = 1
-  while (page <= 25) {
-    const r = await listProjects(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
+const PAGE_SIZE = 20
+
+
 
 function ProjectActions({
   project,
@@ -121,6 +114,7 @@ export default function AdminProyectosPage() {
   const { token, isRestoring } = useAuth()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(1)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [coordinatorId, setCoordinatorId] = useState('')
@@ -132,10 +126,20 @@ export default function AdminProyectosPage() {
     variant: 'success' | 'error' | 'info'
   } | null>(null)
 
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, sortKey, sortDir])
+
   const listQ = useQuery({
-    queryKey: ['admin-projects-all', token],
+    queryKey: ['admin-projects-all', token, page],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => fetchAllProjects(token!),
+    queryFn: () => listProjects(token!, page, PAGE_SIZE),
   })
 
   const usersQ = useQuery({
@@ -156,7 +160,7 @@ export default function AdminProyectosPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    const rows = listQ.data ?? []
+    const rows = listQ.data?.data ?? []
     const filteredRows = q ? rows.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
@@ -247,7 +251,7 @@ export default function AdminProyectosPage() {
           searchPlaceholder="Buscar por nombre o descripción"
           countLabel={
             listQ.data
-              ? `Mostrando ${filtered.length} de ${listQ.data.length} proyecto${listQ.data.length === 1 ? '' : 's'}`
+              ? `Mostrando ${filtered.length} de ${listQ.data.total} proyecto${listQ.data.total === 1 ? '' : 's'}`
               : undefined
           }
         />
@@ -319,6 +323,12 @@ export default function AdminProyectosPage() {
               <ProjectActions project={project} onDelete={(projectId) => delM.mutate(projectId)} />
             </div>
           )}
+        />
+
+        <PaginationControls
+          page={page}
+          totalPages={listQ.data?.total_pages ?? 1}
+          onPageChange={setPage}
         />
       </div>
 

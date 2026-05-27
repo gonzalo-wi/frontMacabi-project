@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   CheckCircle2,
@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { ActionButton } from '@/components/ActionButton'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,21 +85,6 @@ function formatDate(iso: string | null | undefined): string {
   })
 }
 
-async function fetchAllProjectRequests(
-  token: string,
-  projectId: string,
-): Promise<ResourceRequestDTO[]> {
-  const out: ResourceRequestDTO[] = []
-  let page = 1
-  while (page <= 50) {
-    const r = await listProjectRequests(token, projectId, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
-
 async function fetchAllResources(token: string): Promise<ResourceDTO[]> {
   const { data } = await listResources(token, 1, 200)
   return data
@@ -130,16 +116,24 @@ export default function ProyectoRecursosPage() {
   const qc = useQueryClient()
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
   const [form, setForm] = useState<RequestFormState>(EMPTY_FORM)
   const [feedback, setFeedback] = useState<{
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
 
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const requestsQ = useQuery({
-    queryKey: ['project-stock-requests', projectId, token],
+    queryKey: ['project-stock-requests', projectId, token, page],
     enabled: Boolean(token && projectId) && !isRestoring,
-    queryFn: () => fetchAllProjectRequests(token!, projectId!),
+    queryFn: () => listProjectRequests(token!, projectId!, page, PAGE_SIZE),
   })
 
   const resourcesQ = useQuery({
@@ -170,7 +164,7 @@ export default function ProyectoRecursosPage() {
       DEVUELTO: 3,
       RECHAZADO: 4,
     }
-    return [...(requestsQ.data ?? [])].sort((a, b) => {
+    return [...(requestsQ.data?.data ?? [])].sort((a, b) => {
       const sd = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       if (sd !== 0) return sd
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -204,8 +198,6 @@ export default function ProyectoRecursosPage() {
       setForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['project-stock-requests', projectId] })
     },
-    onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error al crear', variant: 'error' }),
   })
 
   // ── Transition mutations ───────────────────────────────────
@@ -250,7 +242,7 @@ export default function ProyectoRecursosPage() {
           {!requestsQ.isLoading && requestsQ.data && (
             <p className="text-xs text-muted-foreground mt-0.5">
               {canManageRequests
-                ? `${requestsQ.data.length} pedido${requestsQ.data.length === 1 ? '' : 's'} en total`
+                ? `${requestsQ.data.total} pedido${requestsQ.data.total === 1 ? '' : 's'} en total`
                 : 'Tus pedidos dentro de este proyecto'}
             </p>
           )}
@@ -402,6 +394,12 @@ export default function ProyectoRecursosPage() {
         </div>
       )}
 
+      <PaginationControls
+        page={page}
+        totalPages={requestsQ.data?.total_pages ?? 1}
+        onPageChange={setPage}
+      />
+
       {/* ── Dialog: Nuevo pedido ─────────────────────────────── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
@@ -418,6 +416,7 @@ export default function ProyectoRecursosPage() {
               createM.mutate()
             }}
             isPending={createM.isPending}
+            error={createM.error ? (createM.error instanceof Error ? createM.error.message : 'Error al crear') : undefined}
           />
         </DialogContent>
       </Dialog>
@@ -527,6 +526,7 @@ type CreateRequestFormProps = {
   selectedResource: ResourceDTO | null
   onSubmit: () => void
   isPending: boolean
+  error?: string
 }
 
 function CreateRequestForm({
@@ -536,6 +536,7 @@ function CreateRequestForm({
   selectedResource,
   onSubmit,
   isPending,
+  error,
 }: CreateRequestFormProps) {
   function set<K extends keyof RequestFormState>(key: K, value: RequestFormState[K]) {
     onChange({ ...form, [key]: value })
@@ -588,25 +589,23 @@ function CreateRequestForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="req-return">
-          Fecha de devolución
-          {needsReturn ? (
+      {needsReturn && (
+        <div className="space-y-1.5">
+          <Label htmlFor="req-return">
+            Fecha de devolución
             <span className="ml-1 text-destructive text-xs">*</span>
-          ) : (
-            <span className="ml-1 text-muted-foreground text-xs">(opcional)</span>
-          )}
-        </Label>
-        <Input
-          id="req-return"
-          type="datetime-local"
-          value={form.return_date}
-          onChange={(e) => set('return_date', e.target.value)}
-          className="h-11"
-          disabled={!form.withdrawal_date}
-          min={form.withdrawal_date}
-        />
-      </div>
+          </Label>
+          <Input
+            id="req-return"
+            type="datetime-local"
+            value={form.return_date}
+            onChange={(e) => set('return_date', e.target.value)}
+            className="h-11"
+            disabled={!form.withdrawal_date}
+            min={form.withdrawal_date}
+          />
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <Label htmlFor="req-notes">Notas</Label>
@@ -619,6 +618,11 @@ function CreateRequestForm({
         />
       </div>
 
+      {error && (
+        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+          {error}
+        </p>
+      )}
       <Button disabled={isPending} onClick={onSubmit} className="w-full">
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear pedido'}
       </Button>

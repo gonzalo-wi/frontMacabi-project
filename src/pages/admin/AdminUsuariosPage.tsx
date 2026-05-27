@@ -51,7 +51,7 @@ import {
   type UserProjectLink,
 } from '@/features/projects/lib/userProjectsIndex'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(

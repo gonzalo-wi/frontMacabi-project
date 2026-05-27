@@ -82,6 +82,13 @@ export default function AdminJornadaBuilderPage() {
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const [builderSection, setBuilderSection] = useState('general')
   const [globalSaving, setGlobalSaving] = useState(false)
 

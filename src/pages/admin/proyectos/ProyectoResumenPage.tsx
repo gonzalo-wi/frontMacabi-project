@@ -10,7 +10,7 @@ import { ProjectMetaForm } from '@/features/projects/components/ProjectMetaForm'
 import { getProject } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function ProyectoResumenPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -19,6 +19,12 @@ export default function ProyectoResumenPage() {
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
 
   const projectQ = useQuery({
     queryKey: ['project', projectId, token],

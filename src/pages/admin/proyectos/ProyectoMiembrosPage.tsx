@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Loader2, Search, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -47,6 +47,13 @@ export default function ProyectoMiembrosPage() {
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const [userSearch, setUserSearch] = useState('')
 
   const membersQ = useQuery({

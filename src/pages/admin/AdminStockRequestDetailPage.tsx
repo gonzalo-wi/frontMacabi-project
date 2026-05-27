@@ -37,7 +37,7 @@ import type { ResourceType } from '@/features/stock/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -71,6 +71,12 @@ export default function AdminStockRequestDetailPage() {
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
 
   const requestQ = useQuery({
     queryKey: ['stock-request-detail', id, token],

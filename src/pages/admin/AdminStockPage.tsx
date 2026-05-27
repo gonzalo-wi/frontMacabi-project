@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, MoreVertical, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -7,6 +7,7 @@ import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +62,8 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
 
 type StockSection = 'inventario' | 'pedidos'
 
+const PAGE_SIZE = 20
+
 type FormState = {
   name: string
   type: ResourceType
@@ -69,29 +72,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = { name: '', type: 'returnable', total_stock: '' }
 
-async function fetchAllResources(token: string): Promise<ResourceDTO[]> {
-  const out: ResourceDTO[] = []
-  let page = 1
-  while (page <= 50) {
-    const r = await listResources(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
 
-async function fetchAllRequests(token: string): Promise<ResourceRequestDTO[]> {
-  const out: ResourceRequestDTO[] = []
-  let page = 1
-  while (page <= 80) {
-    const r = await listRequests(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return 'Sin fecha'
@@ -111,30 +92,41 @@ export default function AdminStockPage() {
   const [resourceSearch, setResourceSearch] = useState('')
   const [requestSearch, setRequestSearch] = useState('')
   const [requestStatus, setRequestStatus] = useState<RequestStatus | 'all'>('all')
+  const [resourcePage, setResourcePage] = useState(1)
+  const [requestPage, setRequestPage] = useState(1)
   const [feedback, setFeedback] = useState<{
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
+  useEffect(() => { setResourcePage(1) }, [resourceSearch])
+  useEffect(() => { setRequestPage(1) }, [requestSearch, requestStatus])
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM)
   const [editTarget, setEditTarget] = useState<ResourceDTO | null>(null)
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM)
 
   const resourcesQ = useQuery({
-    queryKey: ['admin-stock-resources', token],
+    queryKey: ['admin-stock-resources', token, resourcePage],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => fetchAllResources(token!),
+    queryFn: () => listResources(token!, resourcePage, PAGE_SIZE),
   })
 
   const requestsQ = useQuery({
-    queryKey: ['admin-stock-requests-global', token],
+    queryKey: ['admin-stock-requests-global', token, requestPage],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => fetchAllRequests(token!),
+    queryFn: () => listRequests(token!, requestPage, PAGE_SIZE),
   })
 
   const filteredResources = useMemo(() => {
     const q = resourceSearch.trim().toLowerCase()
-    const rows = resourcesQ.data ?? []
+    const rows = resourcesQ.data?.data ?? []
     if (!q) return rows
     return rows.filter((r) => r.name.toLowerCase().includes(q))
   }, [resourcesQ.data, resourceSearch])
@@ -147,7 +139,7 @@ export default function AdminStockPage() {
       DEVUELTO: 3,
       RECHAZADO: 4,
     }
-    return [...(requestsQ.data ?? [])].sort((a, b) => {
+    return [...(requestsQ.data?.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -167,14 +159,14 @@ export default function AdminStockPage() {
     })
   }, [requestSearch, requestStatus, sortedRequests])
 
-  const pendingCount = (requestsQ.data ?? []).filter((req) => req.status === 'PENDIENTE').length
-  const outOfStock = (resourcesQ.data ?? []).filter((r) => r.available_stock === 0).length
+  const pendingCount = (requestsQ.data?.data ?? []).filter((req) => req.status === 'PENDIENTE').length
+  const outOfStock = (resourcesQ.data?.data ?? []).filter((r) => r.available_stock === 0).length
 
   const createM = useMutation({
     mutationFn: async () => {
       const stock = Number(createForm.total_stock)
       if (!createForm.name.trim()) throw new Error('El nombre es requerido')
-      if (isNaN(stock) || stock < 0) throw new Error('El stock debe ser un número mayor o igual a 0')
+      if (isNaN(stock) || stock <= 0) throw new Error('El stock debe ser un número mayor a 0')
       await createResource(token!, {
         name: createForm.name.trim(),
         type: createForm.type,
@@ -187,8 +179,6 @@ export default function AdminStockPage() {
       setCreateForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
     },
-    onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error al crear', variant: 'error' }),
   })
 
   const editM = useMutation({
@@ -196,7 +186,7 @@ export default function AdminStockPage() {
       if (!editTarget) return
       const stock = Number(editForm.total_stock)
       if (!editForm.name.trim()) throw new Error('El nombre es requerido')
-      if (isNaN(stock) || stock < 0) throw new Error('El stock debe ser un número mayor o igual a 0')
+      if (isNaN(stock) || stock <= 0) throw new Error('El stock debe ser un número mayor a 0')
       await updateResource(token!, editTarget.id, {
         name: editForm.name.trim(),
         type: editForm.type,
@@ -208,8 +198,6 @@ export default function AdminStockPage() {
       setEditTarget(null)
       await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
     },
-    onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error al actualizar', variant: 'error' }),
   })
 
   const delM = useMutation({
@@ -265,7 +253,7 @@ export default function AdminStockPage() {
         {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <Metric title="Ítems" value={String(resourcesQ.data?.length ?? 0)} />
+          <Metric title="Ítems" value={String(resourcesQ.data?.total ?? 0)} />
           <Metric title="Sin disponibilidad" value={String(outOfStock)} tone={outOfStock > 0 ? 'warn' : 'default'} />
           <Metric title="Pedidos pendientes" value={String(pendingCount)} tone={pendingCount > 0 ? 'warn' : 'default'} />
         </div>
@@ -292,6 +280,9 @@ export default function AdminStockPage() {
             onSearch={setResourceSearch}
             onEdit={openEdit}
             onDelete={(id) => delM.mutate(id)}
+            page={resourcePage}
+            totalPages={resourcesQ.data?.total_pages ?? 1}
+            onPageChange={setResourcePage}
           />
         ) : (
           <RequestsSection
@@ -301,6 +292,9 @@ export default function AdminStockPage() {
             onSearch={setRequestSearch}
             status={requestStatus}
             onStatus={setRequestStatus}
+            page={requestPage}
+            totalPages={requestsQ.data?.total_pages ?? 1}
+            onPageChange={setRequestPage}
           />
         )}
       </div>
@@ -319,6 +313,7 @@ export default function AdminStockPage() {
             }}
             isPending={createM.isPending}
             submitLabel="Crear ítem"
+            error={createM.error ? (createM.error instanceof Error ? createM.error.message : 'Error al crear') : undefined}
           />
         </DialogContent>
       </Dialog>
@@ -337,6 +332,7 @@ export default function AdminStockPage() {
             }}
             isPending={editM.isPending}
             submitLabel="Guardar cambios"
+            error={editM.error ? (editM.error instanceof Error ? editM.error.message : 'Error al actualizar') : undefined}
           />
         </DialogContent>
       </Dialog>
@@ -351,13 +347,19 @@ function InventorySection({
   onSearch,
   onEdit,
   onDelete,
+  page,
+  totalPages,
+  onPageChange,
 }: {
-  resourcesQ: ReturnType<typeof useQuery<ResourceDTO[]>>
+  resourcesQ: { isLoading: boolean; isError: boolean; error: unknown }
   filteredResources: ResourceDTO[]
   search: string
   onSearch: (value: string) => void
   onEdit: (resource: ResourceDTO) => void
   onDelete: (id: string) => void
+  page: number
+  totalPages: number
+  onPageChange: (p: number) => void
 }) {
   return (
     <Card>
@@ -412,6 +414,8 @@ function InventorySection({
             <p className="text-sm text-muted-foreground">No hay ítems para la búsqueda seleccionada.</p>
           </div>
         )}
+
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
       </CardContent>
     </Card>
   )
@@ -478,13 +482,19 @@ function RequestsSection({
   onSearch,
   status,
   onStatus,
+  page,
+  totalPages,
+  onPageChange,
 }: {
-  requestsQ: ReturnType<typeof useQuery<ResourceRequestDTO[]>>
+  requestsQ: { isLoading: boolean; isError: boolean; error: unknown }
   filteredRequests: ResourceRequestDTO[]
   search: string
   onSearch: (value: string) => void
   status: RequestStatus | 'all'
   onStatus: (value: RequestStatus | 'all') => void
+  page: number
+  totalPages: number
+  onPageChange: (p: number) => void
 }) {
   return (
     <Card>
@@ -566,6 +576,8 @@ function RequestsSection({
             <p className="text-sm text-muted-foreground">No hay pedidos para los filtros seleccionados.</p>
           </div>
         )}
+
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
       </CardContent>
     </Card>
   )
@@ -577,12 +589,14 @@ function ResourceForm({
   onSubmit,
   isPending,
   submitLabel,
+  error,
 }: {
   form: FormState
   onChange: (f: FormState) => void
   onSubmit: () => void
   isPending: boolean
   submitLabel: string
+  error?: string
 }) {
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     onChange({ ...form, [key]: value })
@@ -617,13 +631,18 @@ function ResourceForm({
         <Input
           id="resource-stock"
           type="number"
-          min={0}
+          min={1}
           value={form.total_stock}
           onChange={(e) => set('total_stock', e.target.value)}
           className="h-11"
           placeholder="0"
         />
       </div>
+      {error && (
+        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+          {error}
+        </p>
+      )}
       <Button disabled={isPending} onClick={onSubmit} className="w-full">
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : submitLabel}
       </Button>

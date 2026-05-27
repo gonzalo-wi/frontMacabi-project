@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CreditCard, Loader2, Plus } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -34,32 +35,30 @@ type Props = {
   coordinatorMode: boolean
 }
 
-async function fetchAllExpenses(token: string, projectId: string): Promise<ExpenseDTO[]> {
-  const out: ExpenseDTO[] = []
-  let page = 1
-  while (page <= 80) {
-    const r = await listProjectExpenses(token, projectId, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
+
 
 export function ProjectExpensesPanel({ token, viewerUserId, projectId, coordinatorMode }: Props) {
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(1)
   const [feedback, setFeedback] = useState<{
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const [amount, setAmount] = useState('')
   const [concept, setConcept] = useState('')
   const [expDate, setExpDate] = useState(() => new Date().toISOString().slice(0, 10))
 
   const expensesQ = useQuery({
-    queryKey: ['project-expenses', projectId, token],
-    queryFn: () => fetchAllExpenses(token, projectId),
+    queryKey: ['project-expenses', projectId, token, page],
+    queryFn: () => listProjectExpenses(token, projectId, page, 20),
     enabled: Boolean(token && projectId),
   })
 
@@ -75,7 +74,7 @@ export function ProjectExpensesPanel({ token, viewerUserId, projectId, coordinat
       APROBADO: 1,
       RECHAZADO: 2,
     }
-    return [...(expensesQ.data ?? [])].sort((a, b) => {
+    return [...(expensesQ.data?.data ?? [])].sort((a, b) => {
       const d = order[a.status] - order[b.status]
       if (d !== 0) return d
       return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime()
@@ -209,6 +208,12 @@ export function ProjectExpensesPanel({ token, viewerUserId, projectId, coordinat
               No hay gastos registrados para este proyecto.
             </p>
           )}
+
+          <PaginationControls
+            page={page}
+            totalPages={expensesQ.data?.total_pages ?? 1}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
 

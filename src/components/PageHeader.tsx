@@ -12,35 +12,35 @@ export function PageHeader({ icon: Icon, title, subtitle, action }: PageHeaderPr
   return (
     <>
       {/* Mobile header */}
-      <header className="bg-sidebar text-sidebar-foreground px-4 pt-6 pb-4 safe-area-top lg:hidden">
+      <header className="bg-card/75 text-foreground px-4 pt-6 pb-4 safe-area-top lg:hidden border-b border-border/40 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-3 pr-12">
-          <div className="p-2 rounded-xl bg-white/10 border border-white/10 shrink-0">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/10 text-primary shrink-0">
             <Icon className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight">{title}</h1>
+            <h1 className="text-base font-extrabold tracking-tight text-foreground">{title}</h1>
             {subtitle && (
-              <p className="text-sm text-sidebar-muted-foreground mt-0.5">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-normal">{subtitle}</p>
             )}
           </div>
         </div>
         {action && (
-          <div className="mt-3 ml-1 [&_button]:border-white/30 [&_button]:text-white [&_button]:bg-transparent [&_button]:hover:bg-white/10 [&_a]:border-white/30 [&_a]:text-white [&_a]:bg-transparent [&_a]:hover:bg-white/10">
+          <div className="mt-3.5 flex justify-start">
             {action}
           </div>
         )}
       </header>
 
       {/* Desktop topbar */}
-      <div className="hidden lg:flex items-center justify-between gap-4 px-6 py-3 border-b border-border bg-card/80 sticky top-0 z-10 backdrop-blur-md pr-16">
+      <div className="hidden lg:flex items-center justify-between gap-4 px-6 py-3.5 border-b border-border/40 bg-card/75 sticky top-0 z-20 backdrop-blur-md pr-16">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-            <Icon className="w-4 h-4 text-primary" />
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/10 text-primary shrink-0">
+            <Icon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold leading-none">{title}</h1>
+            <h1 className="text-sm font-extrabold tracking-tight text-foreground leading-none">{title}</h1>
             {subtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-normal">{subtitle}</p>
             )}
           </div>
         </div>

@@ -110,52 +110,58 @@ export default function PanelPage() {
       />
 
       <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-6 lg:space-y-8">
-        <header className="flex items-start justify-between gap-4 lg:hidden">
-          <div className="min-w-0 space-y-1">
-            <p className="text-sm text-muted-foreground">{fechaStr}</p>
-            <h1 className="text-lg font-semibold tracking-tight text-foreground">Hola, {saludoNombre}</h1>
-            <p className="text-sm text-muted-foreground leading-snug">{resumen}</p>
+        {/* Mobile Welcome Card */}
+        <header className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-5 space-y-3 shadow-premium lg:hidden relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-start justify-between gap-4 relative z-10">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}! 👋</h1>
+              <p className="text-xs text-muted-foreground leading-snug mt-1">{resumen}</p>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="focus:outline-none shrink-0 cursor-pointer active:scale-95 transition-transform duration-200">
+                  <Avatar className="h-9 w-9 border border-primary/20 shadow-md">
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                      {user.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-premium">
+                <DropdownMenuLabel className="font-bold">Mi cuenta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium truncate">{user.name}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="focus:outline-none shrink-0">
-                <Avatar className="h-9 w-9 border border-border">
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-                    {user.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Mi cuenta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                {user.name}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Cerrar sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </header>
 
-        <div className="hidden lg:block space-y-3">
-          <p className="text-sm text-muted-foreground">{fechaStr}</p>
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Hola, {saludoNombre}</h1>
+        {/* Desktop Welcome Card */}
+        <div className="hidden lg:block rounded-2xl bg-gradient-to-r from-primary/8 via-primary/3 to-transparent border border-primary/10 p-6 space-y-3 shadow-premium relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="space-y-1 relative z-10">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}! 👋</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mt-1">{resumen}</p>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">{resumen}</p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Badge variant="secondary" className="font-normal">
+          <div className="flex flex-wrap gap-2 pt-1 relative z-10">
+            <Badge variant="secondary" className="font-semibold px-2.5 py-0.5 rounded-full text-xs">
               {membershipsQ.isPending ? '…' : `${membershipsCount} proyecto${membershipsCount === 1 ? '' : 's'}`}
             </Badge>
-            <Badge variant="secondary" className="font-normal">
+            <Badge variant="secondary" className="font-semibold px-2.5 py-0.5 rounded-full text-xs">
               {upcomingQ.isPending ? '…' : `${upcomingCount} próx. jornada${upcomingCount === 1 ? '' : 's'}`}
             </Badge>
           </div>

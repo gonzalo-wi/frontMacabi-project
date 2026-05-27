@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { BarChart2, Calendar, CalendarRange, Clock, ExternalLink, FolderOpen, Layers, Loader2, MoreVertical, Pencil, Trash2, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { BarChart2, Calendar, CalendarRange, ChevronDown, Clock, ExternalLink, FolderOpen, Layers, Loader2, MoreVertical, Pencil, Trash2, Users } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -25,11 +25,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getEventDetail, deleteEventInstance, listEventParticipantResponses } from '@/features/events/api/eventsApi'
+import { getEventDetail, deleteEventInstance, listEventParticipantResponses, getModuleResponseSummary } from '@/features/events/api/eventsApi'
 import type {
   EventDetailDTO,
   EventParticipantAnswerDTO,
   EventParticipantResponseDTO,
+  ModuleResponseSummaryDTO,
 } from '@/features/events/model/types'
 import { EventStatusBadge } from '@/features/events/components/EventStatusBadge'
 import type { AttendanceGate } from '@/features/events/lib/attendanceGate'
@@ -304,7 +305,14 @@ export default function AdminJornadaDetailPage() {
   const qc = useQueryClient()
   const { token, isRestoring } = useAuth()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [expandedOptions, setExpandedOptions] = useState<Set<string>>(new Set())
   const [feedback, setFeedback] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
 
   const detailQ = useQuery({
     queryKey: ['event-detail', id, token],
@@ -350,6 +358,30 @@ export default function AdminJornadaDetailPage() {
       queryFn: () => listProjectMembers(token!, pid),
     })),
   })
+
+  const moduleIds = useMemo(
+    () => (detailQ.data?.modules ?? []).map((md) => md.module.id),
+    [detailQ.data],
+  )
+
+  const summaryQueries = useQueries({
+    queries: moduleIds.map((moduleId) => ({
+      queryKey: ['module-response-summary', moduleId, token],
+      enabled: Boolean(token && moduleId) && !isRestoring && Boolean(detailQ.data),
+      queryFn: () => getModuleResponseSummary(token!, moduleId),
+    })),
+  })
+
+  const summariesByModuleId = useMemo(() => {
+    const m = new Map<string, ModuleResponseSummaryDTO>()
+    moduleIds.forEach((mid, i) => {
+      const data = summaryQueries[i]?.data
+      if (data) m.set(mid, data)
+    })
+    return m
+  }, [moduleIds, summaryQueries])
+
+  const summariesLoading = summaryQueries.length > 0 && summaryQueries.some((q) => q.isPending)
 
   const deleteMut = useMutation({
     mutationFn: () => {
@@ -688,67 +720,92 @@ export default function AdminJornadaDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-0">
-                  {[...detailQ.data.modules]
+                  {summariesLoading && (
+                    <div className="space-y-2">
+                      {[0, 1].map((i) => (
+                        <div
+                          key={i}
+                          className="h-16 rounded-lg bg-muted/40 animate-pulse"
+                          style={{ opacity: 1 - i * 0.3 }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!summariesLoading && [...detailQ.data.modules]
                     .sort((a, b) => a.module.sort_order - b.module.sort_order)
                     .map((md) => {
-                      const groups = [...md.option_groups].sort(
-                        (a, b) => a.group.sort_order - b.group.sort_order,
-                      )
+                      const summary = summariesByModuleId.get(md.module.id)
+                      if (!summary) return null
+                      const groups = summary.groups
                       if (groups.length === 0) return null
-
-                      const textsByGroup = new Map<string, string[]>()
-                      for (const row of participantQ.data?.data ?? []) {
-                        for (const ans of row.answers) {
-                          if (!ans.group_id) continue
-                          const g = groups.find((gd) => gd.group.id === ans.group_id)
-                          if (!g) continue
-                          if (g.group.type !== 'text' && g.group.type !== 'number') continue
-                          const tv = ans.text_value != null ? String(ans.text_value).trim() : ''
-                          if (!tv) continue
-                          if (!textsByGroup.has(ans.group_id)) textsByGroup.set(ans.group_id, [])
-                          textsByGroup.get(ans.group_id)!.push(tv)
-                        }
-                      }
 
                       return (
                         <div key={md.module.id} className="space-y-4">
                           <div className="flex items-center gap-2">
                             <div className="h-px flex-1 bg-border" />
                             <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-2">
-                              {md.module.title}
+                              {summary.module.title}
                             </span>
                             <div className="h-px flex-1 bg-border" />
                           </div>
                           <div className="space-y-4">
-                            {groups.map((gd) => {
-                              const g = gd.group
+                            {groups.map((g, gi) => {
                               const isChoice = g.type === 'single_choice' || g.type === 'multiple_choice'
 
                               if (isChoice) {
-                                const opts = [...gd.options].sort((a, b) => a.sort_order - b.sort_order)
-                                const maxCount = Math.max(...opts.map((o) => o.current_count), 1)
+                                const maxCount = Math.max(...g.options.map((o) => o.count), 1)
                                 return (
-                                  <div key={g.id} className="space-y-2">
+                                  <div key={g.id ?? gi} className="space-y-2">
                                     <p className="text-xs font-semibold text-foreground/70">{g.name}</p>
-                                    <div className="space-y-1.5">
-                                      {opts.map((o) => {
-                                        const pct = Math.round((o.current_count / totalResponses) * 100)
-                                        const barPct = Math.round((o.current_count / maxCount) * 100)
+                                    <div className="space-y-2">
+                                      {g.options.map((o, oi) => {
+                                        const pct = totalResponses > 0 ? Math.round((o.count / totalResponses) * 100) : 0
+                                        const barPct = Math.round((o.count / maxCount) * 100)
+                                        const optKey = `${md.module.id}-${gi}-${oi}`
+                                        const isExpanded = expandedOptions.has(optKey)
+                                        const hasUsers = o.users.length > 0
                                         return (
-                                          <div key={o.id} className="flex items-center gap-3">
-                                            <span className="w-36 shrink-0 truncate text-sm text-foreground/90">
-                                              {o.label}
-                                            </span>
-                                            <div className="flex-1 h-6 rounded-lg bg-muted/50 overflow-hidden">
-                                              <div
-                                                className="h-full rounded-lg bg-primary/60 transition-all duration-500"
-                                                style={{ width: `${barPct}%` }}
-                                              />
+                                          <div key={o.id ?? oi} className="space-y-1">
+                                            <div
+                                              className={`flex items-center gap-3 rounded-lg px-1 -mx-1 transition-colors ${hasUsers ? 'cursor-pointer hover:bg-muted/30' : ''}`}
+                                              onClick={hasUsers ? () => setExpandedOptions((prev) => {
+                                                const next = new Set(prev)
+                                                if (next.has(optKey)) next.delete(optKey)
+                                                else next.add(optKey)
+                                                return next
+                                              }) : undefined}
+                                            >
+                                              <span className="w-36 shrink-0 truncate text-sm text-foreground/90">
+                                                {o.label}
+                                              </span>
+                                              <div className="flex-1 h-6 rounded-lg bg-muted/50 overflow-hidden">
+                                                <div
+                                                  className="h-full rounded-lg bg-primary/60 transition-all duration-500"
+                                                  style={{ width: `${barPct}%` }}
+                                                />
+                                              </div>
+                                              <span className="w-10 shrink-0 text-right text-xs tabular-nums">
+                                                <span className="font-semibold text-foreground">{o.count}</span>
+                                              </span>
+                                              {hasUsers && (
+                                                <ChevronDown
+                                                  className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                                />
+                                              )}
                                             </div>
-                                            <span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                                              <span className="font-semibold text-foreground">{o.current_count}</span>
-                                              {' '}({pct}%)
-                                            </span>
+                                            {hasUsers && isExpanded && (
+                                              <div className="pl-[156px] flex flex-wrap gap-1 pb-1">
+                                                {o.users.map((u, ui) => (
+                                                  <span
+                                                    key={ui}
+                                                    className="text-[10px] text-muted-foreground bg-muted/60 rounded px-1.5 py-0.5"
+                                                    title={u.user_email}
+                                                  >
+                                                    {u.user_name}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
                                           </div>
                                         )
                                       })}
@@ -757,15 +814,18 @@ export default function AdminJornadaDetailPage() {
                                 )
                               }
 
-                              const texts = textsByGroup.get(g.id) ?? []
-                              if (texts.length === 0) return null
+                              if (g.text_answers.length === 0) return null
                               return (
-                                <div key={g.id} className="space-y-2">
+                                <div key={g.id ?? gi} className="space-y-2">
                                   <p className="text-xs font-semibold text-foreground/70">{g.name}</p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {texts.map((t, i) => (
-                                      <span key={i} className="rounded-lg border bg-muted/40 px-2.5 py-1 text-xs">
-                                        {t}
+                                    {g.text_answers.map((ta, tai) => (
+                                      <span
+                                        key={tai}
+                                        className="rounded-lg border bg-muted/40 px-2.5 py-1 text-xs"
+                                        title={ta.user.user_name}
+                                      >
+                                        {ta.value}
                                       </span>
                                     ))}
                                   </div>

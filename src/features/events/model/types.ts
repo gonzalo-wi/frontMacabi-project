@@ -111,3 +111,41 @@ export type EventParticipantResponseDTO = {
 export type EventParticipantResponsesDTO = {
   data: EventParticipantResponseDTO[]
 }
+
+// ── GET /api/event-modules/:id/response-summary ──────────────────────────────
+
+export type ModuleResponseSummaryUserDTO = {
+  user_id: string
+  user_name: string
+  user_email: string
+  project_id?: string | null
+}
+
+export type ModuleResponseSummaryOptionDTO = {
+  id?: string
+  label: string
+  count: number
+  users: ModuleResponseSummaryUserDTO[]
+}
+
+export type ModuleResponseSummaryTextAnswerDTO = {
+  value: string
+  user: ModuleResponseSummaryUserDTO
+}
+
+export type ModuleResponseSummaryGroupDTO = {
+  id?: string
+  name: string
+  type: string
+  options: ModuleResponseSummaryOptionDTO[]
+  text_answers: ModuleResponseSummaryTextAnswerDTO[]
+}
+
+export type ModuleResponseSummaryDTO = {
+  module: {
+    id: string
+    title: string
+    type: string
+  }
+  groups: ModuleResponseSummaryGroupDTO[]
+}

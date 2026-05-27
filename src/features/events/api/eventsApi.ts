@@ -5,6 +5,7 @@ import type {
   EventInstanceDTO,
   EventOptionDTO,
   EventParticipantResponsesDTO,
+  ModuleResponseSummaryDTO,
   MyResponseBodyDTO,
   PaginatedEventInstancesDTO,
 } from '../model/types'
@@ -203,6 +204,16 @@ export function patchOption(token: string, id: string, body: PatchOptionBody): P
 
 export function deleteOption(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/api/event-options/${id}`, { method: 'DELETE', token })
+}
+
+export function getModuleResponseSummary(
+  token: string,
+  moduleId: string,
+): Promise<ModuleResponseSummaryDTO> {
+  return apiRequest<ModuleResponseSummaryDTO>(
+    `/api/event-modules/${moduleId}/response-summary`,
+    { token },
+  )
 }
 
 export function getMyEventResponse(token: string, eventId: string): Promise<MyResponseBodyDTO> {

@@ -83,17 +83,7 @@ type JornadaStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled'
 
 const PAGE_SIZE = 20
 
-async function fetchAllEventInstances(token: string): Promise<EventInstanceDTO[]> {
-  const out: EventInstanceDTO[] = []
-  let page = 1
-  while (page <= 50) {
-    const result = await listEventInstances(token, page, 50)
-    out.push(...result.data)
-    if (page >= result.total_pages) break
-    page++
-  }
-  return out
-}
+
 
 function JornadaActionsMenu({
   row,
@@ -206,6 +196,13 @@ export default function AdminJornadasPage() {
   const [deadlineLocal, setDeadlineLocal] = useState('')
   const [statusDraft, setStatusDraft] = useState('draft')
   const [feedback, setFeedback] = useState<FeedbackState>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const [cancelTarget, setCancelTarget] = useState<EventInstanceDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventInstanceDTO | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -218,9 +215,9 @@ export default function AdminJornadasPage() {
   const dupInitializedRef = useRef<string | null>(null)
 
   const listQ = useQuery({
-    queryKey: ['admin-events', token],
+    queryKey: ['admin-events', token, page],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => fetchAllEventInstances(token!),
+    queryFn: () => listEventInstances(token!, page, PAGE_SIZE),
   })
 
   const dupDetailQ = useQuery({
@@ -376,7 +373,7 @@ export default function AdminJornadasPage() {
 
   const filteredSorted = useMemo(() => {
     const term = search.trim().toLowerCase()
-    const rows = (listQ.data ?? []).filter((row) => {
+    const rows = (listQ.data?.data ?? []).filter((row) => {
       if (statusFilter !== 'all' && row.status !== statusFilter) return false
       if (!term) return true
       return row.title.toLowerCase().includes(term)
@@ -395,9 +392,7 @@ export default function AdminJornadasPage() {
     })
   }, [listQ.data, search, sortDir, sortKey, statusFilter])
 
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageRows = filteredSorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const totalPages = listQ.data?.total_pages ?? 1
 
   useEffect(() => {
     setPage(1)
@@ -432,7 +427,7 @@ export default function AdminJornadasPage() {
           searchPlaceholder="Buscar jornada"
           countLabel={
             listQ.data
-              ? `Mostrando ${filteredSorted.length} de ${listQ.data.length} jornada${listQ.data.length === 1 ? '' : 's'}`
+              ? `Mostrando ${filteredSorted.length} de ${listQ.data.total} jornada${listQ.data.total === 1 ? '' : 's'}`
               : undefined
           }
           filters={
@@ -452,7 +447,7 @@ export default function AdminJornadasPage() {
         />
 
         <SortableTable
-          rows={pageRows}
+          rows={filteredSorted}
           columns={[
             {
               id: 'title',
@@ -507,7 +502,7 @@ export default function AdminJornadasPage() {
         />
 
         <MobileList
-          rows={pageRows}
+          rows={filteredSorted}
           getRowKey={(row) => row.id}
           isLoading={listQ.isLoading}
           emptyMessage={
@@ -539,7 +534,7 @@ export default function AdminJornadasPage() {
           )}
         />
 
-        <PaginationControls page={safePage} totalPages={totalPages} onPageChange={setPage} />
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       {/* Confirm cancel dialog */}

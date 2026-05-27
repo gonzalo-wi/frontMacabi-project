@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CreditCard, Loader2, Plus, Search } from 'lucide-react'
+import { CreditCard, Loader2, Plus, Search, Calendar, Paperclip, DollarSign } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
@@ -33,6 +33,7 @@ import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
 
 function formatMoney(amount: string, currency: string) {
   const n = Number.parseFloat(amount)
@@ -42,17 +43,7 @@ function formatMoney(amount: string, currency: string) {
   )
 }
 
-async function fetchAllMyExpenses(token: string): Promise<ExpenseDTO[]> {
-  const out: ExpenseDTO[] = []
-  let page = 1
-  while (page <= 80) {
-    const r = await listMyExpenses(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
+
 
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
@@ -60,6 +51,7 @@ export default function ParticipantMyExpensesPage() {
   const [searchParams] = useSearchParams()
   const fileRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(1)
   const [projectFilter, setProjectFilter] = useState(searchParams.get('project') ?? 'all')
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | 'all'>('all')
   const [query, setQuery] = useState('')
@@ -72,14 +64,21 @@ export default function ParticipantMyExpensesPage() {
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
+
+  useEffect(() => {
+    if (!feedback) return
+    const timer = setTimeout(() => setFeedback(null), 4000)
+    return () => clearTimeout(timer)
+  }, [feedback])
+
   const [dialogFeedback, setDialogFeedback] = useState<{
     text: string
     variant: 'success' | 'error' | 'info'
   } | null>(null)
 
   const q = useQuery({
-    queryKey: ['my-expenses-global', token],
-    queryFn: () => fetchAllMyExpenses(token!),
+    queryKey: ['my-expenses-global', token, page],
+    queryFn: () => listMyExpenses(token!, page, 20),
     enabled: Boolean(token) && !isRestoring,
   })
 
@@ -90,13 +89,17 @@ export default function ParticipantMyExpensesPage() {
     setProjectFilter(searchParams.get('project') ?? 'all')
   }, [searchParams])
 
+  useEffect(() => {
+    setPage(1)
+  }, [query, statusFilter, projectFilter])
+
   const sorted = useMemo(() => {
     const order: Record<ExpenseStatus, number> = {
       PENDIENTE: 0,
       APROBADO: 1,
       RECHAZADO: 2,
     }
-    return [...(q.data ?? [])].sort((a, b) => {
+    return [...(q.data?.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus
       return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime()
@@ -203,26 +206,26 @@ export default function ParticipantMyExpensesPage() {
         </p>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Listado global</CardTitle>
-          <CardDescription>
+      <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
+        <CardHeader className="pb-3 border-b border-border/40">
+          <CardTitle className="text-base font-extrabold tracking-tight">Listado global</CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
             Filtrá por proyecto o estado. El proyecto se elige al cargar y queda visible en cada fila.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-[1fr_180px_180px]">
+        <CardContent className="space-y-5 pt-5">
+          <div className="grid gap-2.5 md:grid-cols-[1fr_180px_180px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por descripción o proyecto"
-                className="pl-9"
+                placeholder="Buscar por descripción o proyecto..."
+                className="pl-9 bg-background/50 focus-visible:ring-primary/30"
               />
             </div>
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full bg-background/50 focus:ring-primary/30">
                 <SelectValue placeholder="Proyecto" />
               </SelectTrigger>
               <SelectContent>
@@ -235,7 +238,7 @@ export default function ParticipantMyExpensesPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full bg-background/50 focus:ring-primary/30">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent>
@@ -247,85 +250,125 @@ export default function ParticipantMyExpensesPage() {
             </Select>
           </div>
 
-      {q.isPending && (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
+          {q.isPending && (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            </div>
+          )}
 
           {!q.isPending && filtered.length > 0 && (
-            <div className="rounded-xl border overflow-hidden">
-              <div className="divide-y">
-              {filtered.map((e: ExpenseDTO) => (
-                <div key={e.id} className="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-sm">{e.description}</p>
-                      <Badge variant="outline">
-                        {e.project_name?.trim() || 'Proyecto'}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(`${e.expense_date}T12:00:00`).toLocaleDateString('es-AR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: '2-digit',
-                      })}
-                    </p>
-                    <p className="text-sm tabular-nums font-medium">
-                      {formatMoney(e.amount, e.currency)}
-                    </p>
-                    {e.receipt_storage_path && token && (
-                      <ReceiptLink
-                        token={token}
-                        expenseId={e.id}
-                        storagePath={e.receipt_storage_path}
-                        onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
-                      />
+            <div className="space-y-3.5">
+              {filtered.map((e: ExpenseDTO) => {
+                const borderCls =
+                  e.status === 'APROBADO'
+                    ? 'border-l-emerald-500/80 dark:border-l-emerald-500'
+                    : e.status === 'RECHAZADO'
+                      ? 'border-l-red-500/80 dark:border-l-red-500'
+                      : 'border-l-amber-500/80 dark:border-l-amber-500'
+
+                return (
+                  <div
+                    key={e.id}
+                    className={cn(
+                      "flex flex-col gap-3.5 rounded-2xl border border-border/60 bg-card/30 backdrop-blur-xs p-4 sm:p-5 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md hover:border-primary/20 border-l-[5px]",
+                      borderCls
                     )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <ExpenseStatusBadge status={e.status} />
-                    {token && user && (
-                      <div className="flex items-center gap-1">
-                        <EditExpenseDialog
-                          token={token}
-                          exp={e}
-                          viewerUserId={user.id}
-                          coordinatorMode={false}
-                          onEdited={async () => {
-                            setFeedback({ text: 'Gasto editado.', variant: 'success' })
-                            await qc.invalidateQueries({ queryKey: ['my-expenses-global'] })
-                          }}
-                          onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
-                        />
-                        <DeleteExpenseButton
-                          token={token}
-                          exp={e}
-                          viewerUserId={user.id}
-                          coordinatorMode={false}
-                          onDeleted={async () => {
-                            setFeedback({ text: 'Gasto eliminado.', variant: 'success' })
-                            await qc.invalidateQueries({ queryKey: ['my-expenses-global'] })
-                          }}
-                          onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
-                        />
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="font-extrabold text-sm text-foreground tracking-tight leading-snug break-words">
+                            {e.description}
+                          </h4>
+                          <Badge variant="secondary" className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-secondary/60 border-border/40 text-secondary-foreground">
+                            {e.project_name?.trim() || 'Proyecto'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-muted-foreground/75" />
+                            {new Date(`${e.expense_date}T12:00:00`).toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit',
+                            })}
+                          </span>
+                          {e.receipt_storage_path && token && (
+                            <span className="flex items-center gap-1.5 text-primary">
+                              <Paperclip className="w-3.5 h-3.5 text-primary/75" />
+                              <ReceiptLink
+                                token={token}
+                                expenseId={e.id}
+                                storagePath={e.receipt_storage_path}
+                                onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                                className="font-semibold text-xs text-primary decoration-primary/30 hover:decoration-primary"
+                              />
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    )}
+                      <div className="shrink-0">
+                        <ExpenseStatusBadge status={e.status} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 pt-3 border-t border-border/40 mt-1">
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <DollarSign className="w-4 h-4" />
+                        </div>
+                        <span className="text-base font-extrabold tabular-nums text-foreground tracking-tight">
+                          {formatMoney(e.amount, e.currency)}
+                        </span>
+                      </div>
+
+                      {token && user && (
+                        <div className="flex items-center gap-1.5 bg-background/40 p-1 rounded-xl border border-border/30 backdrop-blur-xs">
+                          <EditExpenseDialog
+                            token={token}
+                            exp={e}
+                            viewerUserId={user.id}
+                            coordinatorMode={false}
+                            onEdited={async () => {
+                              setFeedback({ text: 'Gasto editado.', variant: 'success' })
+                              await qc.invalidateQueries({ queryKey: ['my-expenses-global'] })
+                            }}
+                            onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                          />
+                          <DeleteExpenseButton
+                            token={token}
+                            exp={e}
+                            viewerUserId={user.id}
+                            coordinatorMode={false}
+                            onDeleted={async () => {
+                              setFeedback({ text: 'Gasto eliminado.', variant: 'success' })
+                              await qc.invalidateQueries({ queryKey: ['my-expenses-global'] })
+                            }}
+                            onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-              </div>
+                );
+              })}
             </div>
           )}
 
           {!q.isPending && filtered.length === 0 && !q.isError && (
-            <div className="rounded-xl border border-dashed p-8">
-              <p className="text-sm text-muted-foreground text-center">
+            <div className="rounded-2xl border border-dashed border-border/80 p-10 text-center">
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
                 No hay gastos para los filtros seleccionados.
               </p>
             </div>
           )}
+
+          <PaginationControls
+            page={page}
+            totalPages={q.data?.total_pages ?? 1}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
 
@@ -336,21 +379,21 @@ export default function ParticipantMyExpensesPage() {
           if (!next) setDialogFeedback(null)
         }}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cargar gasto</DialogTitle>
+        <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-card/95 backdrop-blur-lg shadow-premium">
+          <DialogHeader className="pb-2 border-b border-border/40">
+            <DialogTitle className="text-base font-extrabold tracking-tight">Cargar gasto</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4 pt-3">
             {dialogFeedback && (
               <FeedbackBanner message={dialogFeedback.text} variant={dialogFeedback.variant} />
             )}
             <div className="space-y-1.5">
-              <Label>Proyecto</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Proyecto</Label>
               <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="w-full h-11">
+                <SelectTrigger className="w-full h-11 rounded-xl bg-background/50 border-border/60 focus:ring-primary/30">
                   <SelectValue placeholder="Elegí un proyecto" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-xl">
                   {projectOptions.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
@@ -359,31 +402,52 @@ export default function ParticipantMyExpensesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <Label>Monto</Label>
-                <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1200.50" />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Monto</Label>
+                <Input 
+                  value={amount} 
+                  onChange={(e) => setAmount(e.target.value)} 
+                  placeholder="1200.50" 
+                  className="h-11 rounded-xl bg-background/50 border-border/60 focus-visible:ring-primary/30"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label>Fecha</Label>
-                <Input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Fecha</Label>
+                <Input 
+                  type="date" 
+                  value={expenseDate} 
+                  onChange={(e) => setExpenseDate(e.target.value)} 
+                  className="h-11 rounded-xl bg-background/50 border-border/60 focus-visible:ring-primary/30"
+                />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Descripción</Label>
-              <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Descripción</Label>
+              <Textarea 
+                rows={3} 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                placeholder="¿En qué consistió este gasto?"
+                className="rounded-xl bg-background/50 border-border/60 focus-visible:ring-primary/30 resize-none"
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>Comprobante</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Comprobante</Label>
               <Input
                 ref={fileRef}
                 type="file"
                 accept={RECEIPT_ACCEPT}
                 onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                className="h-11 rounded-xl bg-background/50 border-border/60 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-xs flex items-center"
               />
-              <p className="text-xs text-muted-foreground">Opcional. JPG, PNG, WebP o PDF hasta 2 MB.</p>
+              <p className="text-[10px] text-muted-foreground leading-normal">Opcional. JPG, PNG, WebP o PDF hasta 2 MB.</p>
             </div>
-            <Button disabled={createM.isPending || projectOptions.length === 0} className="w-full" onClick={() => createM.mutate()}>
+            <Button 
+              disabled={createM.isPending || projectOptions.length === 0} 
+              className="w-full h-11 rounded-xl font-bold transition-transform active:scale-[0.98] shadow-sm cursor-pointer mt-1" 
+              onClick={() => createM.mutate()}
+            >
               {createM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar gasto'}
             </Button>
           </div>
