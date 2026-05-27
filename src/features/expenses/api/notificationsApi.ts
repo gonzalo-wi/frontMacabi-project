@@ -2,7 +2,10 @@ import { apiRequest } from '@/lib/api/apiClient'
 import type { ExpenseNotificationDTO, UnreadCountDTO } from '../model/types'
 
 export function listExpenseNotifications(token: string): Promise<ExpenseNotificationDTO[]> {
-  return apiRequest<ExpenseNotificationDTO[]>('/api/expenses/notifications', { token })
+  return apiRequest<{ data: ExpenseNotificationDTO[] } | ExpenseNotificationDTO[]>(
+    '/api/expenses/notifications',
+    { token },
+  ).then((r) => (Array.isArray(r) ? r : r.data))
 }
 
 export function getExpenseUnreadCount(token: string): Promise<UnreadCountDTO> {

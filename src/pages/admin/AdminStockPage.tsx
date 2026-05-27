@@ -1,6 +1,18 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, MoreVertical, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ArchiveX,
+  Clock,
+  Loader2,
+  MoreVertical,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
@@ -38,7 +50,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { listRequests } from '@/features/stock/api/requestsApi'
 import {
   createResource,
@@ -53,7 +64,10 @@ import type {
   ResourceType,
 } from '@/features/stock/model/types'
 import { ApiError } from '@/lib/api/apiClient'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+
+// ── Constants ─────────────────────────────────────────────────
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
@@ -72,7 +86,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = { name: '', type: 'returnable', total_stock: '' }
 
-
+// ── Helpers ────────────────────────────────────────────────────
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return 'Sin fecha'
@@ -82,6 +96,72 @@ function formatDate(iso: string | null | undefined) {
     year: '2-digit',
   })
 }
+
+function stockBorderClass(available: number, total: number): string {
+  if (available === 0) return 'border-l-destructive'
+  const pct = total > 0 ? available / total : 1
+  if (pct <= 0.25) return 'border-l-amber-400'
+  return 'border-l-emerald-400'
+}
+
+function requestBorderClass(status: RequestStatus): string {
+  switch (status) {
+    case 'PENDIENTE':  return 'border-l-amber-400'
+    case 'RESERVADO':  return 'border-l-primary'
+    case 'ENTREGADO':  return 'border-l-emerald-500'
+    case 'DEVUELTO':   return 'border-l-slate-400'
+    case 'RECHAZADO':  return 'border-l-destructive'
+    default:           return 'border-l-border'
+  }
+}
+
+// ── Skeleton ───────────────────────────────────────────────────
+
+function SkeletonRows({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[72px] rounded-xl bg-muted/40 animate-pulse"
+          style={{ opacity: 1 - i * 0.2 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── MetricCard ─────────────────────────────────────────────────
+
+function MetricCard({
+  icon: Icon,
+  iconClass,
+  title,
+  value,
+  valueClass,
+}: {
+  icon: LucideIcon
+  iconClass: string
+  title: string
+  value: string
+  valueClass?: string
+}) {
+  return (
+    <Card className="rounded-2xl shadow-sm">
+      <CardContent className="p-4 flex items-start gap-3">
+        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', iconClass)}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground leading-tight">{title}</p>
+          <p className={cn('mt-0.5 text-2xl font-bold tabular-nums', valueClass)}>{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Page ───────────────────────────────────────────────────────
 
 export default function AdminStockPage() {
   const { token, isRestoring } = useAuth()
@@ -107,6 +187,7 @@ export default function AdminStockPage() {
 
   useEffect(() => { setResourcePage(1) }, [resourceSearch])
   useEffect(() => { setRequestPage(1) }, [requestSearch, requestStatus])
+
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM)
   const [editTarget, setEditTarget] = useState<ResourceDTO | null>(null)
@@ -161,6 +242,7 @@ export default function AdminStockPage() {
 
   const pendingCount = (requestsQ.data?.data ?? []).filter((req) => req.status === 'PENDIENTE').length
   const outOfStock = (resourcesQ.data?.data ?? []).filter((r) => r.available_stock === 0).length
+  const totalItems = resourcesQ.data?.total ?? 0
 
   const createM = useMutation({
     mutationFn: async () => {
@@ -245,32 +327,67 @@ export default function AdminStockPage() {
               <Plus className="w-4 h-4 mr-1" />
               Nuevo ítem
             </ActionButton>
+          ) : pendingCount > 0 ? (
+            <div className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
+            </div>
           ) : null
         }
       />
 
-      <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-4">
+      <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-5">
         {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
+        {/* ── Metrics ── */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Metric title="Ítems" value={String(resourcesQ.data?.total ?? 0)} />
-          <Metric title="Sin disponibilidad" value={String(outOfStock)} tone={outOfStock > 0 ? 'warn' : 'default'} />
-          <Metric title="Pedidos pendientes" value={String(pendingCount)} tone={pendingCount > 0 ? 'warn' : 'default'} />
+          <MetricCard
+            icon={Package}
+            iconClass="bg-primary/10 text-primary"
+            title="Ítems en inventario"
+            value={String(totalItems)}
+          />
+          <MetricCard
+            icon={ArchiveX}
+            iconClass={outOfStock > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}
+            title="Sin disponibilidad"
+            value={String(outOfStock)}
+            valueClass={outOfStock > 0 ? 'text-destructive' : undefined}
+          />
+          <MetricCard
+            icon={Clock}
+            iconClass={pendingCount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-muted text-muted-foreground'}
+            title="Pedidos pendientes"
+            value={String(pendingCount)}
+            valueClass={pendingCount > 0 ? 'text-amber-600' : undefined}
+          />
         </div>
 
-        <Tabs value={activeSection} onValueChange={(v) => setSection(v as StockSection)}>
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/50 p-1">
-            <TabsTrigger value="inventario">Inventario</TabsTrigger>
-            <TabsTrigger value="pedidos">
-              Pedidos
-              {pendingCount > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {pendingCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* ── Tabs ── */}
+        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-1 px-1">
+          <div className="flex min-w-max border-b border-border">
+            {(['inventario', 'pedidos'] as StockSection[]).map((section) => (
+              <button
+                key={section}
+                type="button"
+                onClick={() => setSection(section)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors',
+                  activeSection === section
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {section === 'inventario' ? 'Inventario' : 'Pedidos'}
+                {section === 'pedidos' && pendingCount > 0 && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold px-1">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {activeSection === 'inventario' ? (
           <InventorySection
@@ -299,10 +416,16 @@ export default function AdminStockPage() {
         )}
       </div>
 
+      {/* ── Create dialog ── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nuevo ítem de inventario</DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <Package className="w-4 h-4 text-primary" />
+              </div>
+              Nuevo ítem de inventario
+            </DialogTitle>
           </DialogHeader>
           <ResourceForm
             form={createForm}
@@ -313,15 +436,24 @@ export default function AdminStockPage() {
             }}
             isPending={createM.isPending}
             submitLabel="Crear ítem"
-            error={createM.error ? (createM.error instanceof Error ? createM.error.message : 'Error al crear') : undefined}
+            error={createM.error instanceof Error ? createM.error.message : undefined}
           />
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(editTarget)} onOpenChange={(v: boolean) => { if (!v) setEditTarget(null) }}>
+      {/* ── Edit dialog ── */}
+      <Dialog
+        open={Boolean(editTarget)}
+        onOpenChange={(v: boolean) => { if (!v) setEditTarget(null) }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar ítem de inventario</DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <Pencil className="w-4 h-4 text-primary" />
+              </div>
+              Editar ítem de inventario
+            </DialogTitle>
           </DialogHeader>
           <ResourceForm
             form={editForm}
@@ -332,13 +464,15 @@ export default function AdminStockPage() {
             }}
             isPending={editM.isPending}
             submitLabel="Guardar cambios"
-            error={editM.error ? (editM.error instanceof Error ? editM.error.message : 'Error al actualizar') : undefined}
+            error={editM.error instanceof Error ? editM.error.message : undefined}
           />
         </DialogContent>
       </Dialog>
     </div>
   )
 }
+
+// ── InventorySection ───────────────────────────────────────────
 
 function InventorySection({
   resourcesQ,
@@ -362,56 +496,106 @@ function InventorySection({
   onPageChange: (p: number) => void
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Inventario</CardTitle>
-        <CardDescription>Ítems disponibles y disponibilidad actual.</CardDescription>
+    <Card className="rounded-2xl shadow-sm overflow-hidden">
+      <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-primary shrink-0" />
+          <CardTitle className="text-base font-bold">Inventario</CardTitle>
+        </div>
+        <CardDescription className="text-xs mt-0.5">
+          Ítems disponibles y stock actual.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+
+      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+        {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Buscar ítem"
+            placeholder="Buscar ítem…"
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            className="h-11 pl-9"
+            className="h-10 pl-9 bg-muted/30 border-border/60 focus:bg-background"
           />
         </div>
 
         {resourcesQ.isError && (
-          <p className="text-sm text-destructive">
-            {resourcesQ.error instanceof ApiError ? resourcesQ.error.message : 'Error al cargar inventario'}
-          </p>
-        )}
-
-        {resourcesQ.isLoading && <div className="h-24 bg-muted/50 rounded-lg animate-pulse" />}
-
-        {!resourcesQ.isLoading && filteredResources.length > 0 && (
-          <div className="rounded-xl border overflow-hidden">
-            <div className="divide-y">
-              {filteredResources.map((r) => (
-                <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-sm">{r.name}</p>
-                      <Badge variant={r.type === 'returnable' ? 'secondary' : 'outline'}>
-                        {RESOURCE_TYPE_LABELS[r.type]}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {r.available_stock} disponible / {r.total_stock} total
-                    </p>
-                  </div>
-                  <ResourceActions resource={r} onEdit={onEdit} onDelete={onDelete} />
-                </div>
-              ))}
-            </div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {resourcesQ.error instanceof ApiError
+              ? resourcesQ.error.message
+              : 'Error al cargar inventario'}
           </div>
         )}
 
-        {!resourcesQ.isLoading && filteredResources.length === 0 && (
-          <div className="rounded-xl border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">No hay ítems para la búsqueda seleccionada.</p>
+        {resourcesQ.isLoading && <SkeletonRows count={4} />}
+
+        {!resourcesQ.isLoading && filteredResources.length > 0 && (
+          <div className="space-y-2">
+            {filteredResources.map((r) => {
+              const pct = r.total_stock > 0 ? (r.available_stock / r.total_stock) * 100 : 0
+              return (
+                <div
+                  key={r.id}
+                  className={cn(
+                    'flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-border/70 bg-card pl-3.5 pr-3 py-3 border-l-[3px] hover:bg-muted/20 transition-colors',
+                    stockBorderClass(r.available_stock, r.total_stock),
+                  )}
+                >
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-sm text-foreground">{r.name}</p>
+                      <Badge
+                        variant={r.type === 'returnable' ? 'secondary' : 'outline'}
+                        className="text-[10px] font-medium"
+                      >
+                        {RESOURCE_TYPE_LABELS[r.type]}
+                      </Badge>
+                    </div>
+                    {/* Stock bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-24 sm:w-32 rounded-full bg-muted overflow-hidden shrink-0">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            pct === 0
+                              ? 'bg-destructive'
+                              : pct <= 25
+                              ? 'bg-amber-400'
+                              : 'bg-emerald-500',
+                          )}
+                          style={{ width: `${Math.max(pct, 0)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                        <span
+                          className={cn(
+                            'font-semibold',
+                            pct === 0
+                              ? 'text-destructive'
+                              : pct <= 25
+                              ? 'text-amber-600'
+                              : 'text-emerald-600',
+                          )}
+                        >
+                          {r.available_stock}
+                        </span>{' '}
+                        / {r.total_stock}
+                      </p>
+                    </div>
+                  </div>
+                  <ResourceActions resource={r} onEdit={onEdit} onDelete={onDelete} />
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {!resourcesQ.isLoading && filteredResources.length === 0 && !resourcesQ.isError && (
+          <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
+            <Package className="w-9 h-9 text-muted-foreground/25" />
+            <p className="text-sm text-muted-foreground">
+              No hay ítems para la búsqueda seleccionada.
+            </p>
           </div>
         )}
 
@@ -420,6 +604,8 @@ function InventorySection({
     </Card>
   )
 }
+
+// ── ResourceActions ────────────────────────────────────────────
 
 function ResourceActions({
   resource,
@@ -456,9 +642,10 @@ function ResourceActions({
       </DropdownMenu>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>¿Eliminar ítem de inventario?</AlertDialogTitle>
+          <AlertDialogTitle>¿Eliminar "{resource.name}"?</AlertDialogTitle>
           <AlertDialogDescription>
-            No se puede deshacer. Si el ítem tiene pedidos activos, el servidor puede rechazar la operación.
+            No se puede deshacer. Si el ítem tiene pedidos activos, el servidor puede rechazar la
+            operación.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -474,6 +661,8 @@ function ResourceActions({
     </AlertDialog>
   )
 }
+
+// ── RequestsSection ────────────────────────────────────────────
 
 function RequestsSection({
   requestsQ,
@@ -497,24 +686,31 @@ function RequestsSection({
   onPageChange: (p: number) => void
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Pedidos</CardTitle>
-        <CardDescription>Pedidos globales de stock. Abrí una fila para aprobar, entregar o devolver.</CardDescription>
+    <Card className="rounded-2xl shadow-sm overflow-hidden">
+      <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary shrink-0" />
+          <CardTitle className="text-base font-bold">Pedidos</CardTitle>
+        </div>
+        <CardDescription className="text-xs mt-0.5">
+          Pedidos globales de stock. Tocá una fila para aprobar, entregar o devolver.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+
+      <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+        {/* Filters */}
         <div className="grid gap-2 md:grid-cols-[1fr_190px]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Buscar ítem, proyecto o solicitante"
-              className="pl-9"
+              placeholder="Buscar ítem, proyecto o solicitante…"
+              className="h-10 pl-9 bg-muted/30 border-border/60 focus:bg-background"
             />
           </div>
           <Select value={status} onValueChange={(v) => onStatus(v as RequestStatus | 'all')}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="h-10 w-full">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
@@ -528,52 +724,55 @@ function RequestsSection({
           </Select>
         </div>
 
-        {requestsQ.isLoading && (
-          <div className="flex justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {requestsQ.isError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            {requestsQ.error instanceof ApiError
+              ? requestsQ.error.message
+              : 'No se pudieron cargar los pedidos'}
           </div>
         )}
 
-        {requestsQ.isError && (
-          <p className="text-sm text-destructive">
-            {requestsQ.error instanceof ApiError ? requestsQ.error.message : 'No se pudieron cargar los pedidos'}
-          </p>
-        )}
+        {requestsQ.isLoading && <SkeletonRows count={5} />}
 
         {!requestsQ.isLoading && filteredRequests.length > 0 && (
-          <div className="rounded-xl border overflow-hidden">
-            <div className="divide-y">
-              {filteredRequests.map((req) => (
-                <Link
-                  key={req.id}
-                  to={`/app/admin/stock/requests/${req.id}`}
-                  className="block px-4 py-3 transition-colors hover:bg-muted/40"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-sm">{req.resource_name}</p>
-                        <Badge variant="outline">{req.project_name}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {req.quantity} u. · {RESOURCE_TYPE_LABELS[req.resource_type]} · {req.requester_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Retiro: {formatDate(req.withdrawal_date)}
-                        {req.return_date ? ` · Devolución: ${formatDate(req.return_date)}` : ''}
-                      </p>
-                    </div>
-                    <StockRequestStatusBadge status={req.status} />
+          <div className="space-y-2">
+            {filteredRequests.map((req) => (
+              <Link
+                key={req.id}
+                to={`/app/admin/stock/requests/${req.id}`}
+                className={cn(
+                  'flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-xl border border-border/70 bg-card pl-3.5 pr-3 py-3 border-l-[3px] hover:bg-muted/20 transition-colors',
+                  requestBorderClass(req.status),
+                )}
+              >
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-sm text-foreground">{req.resource_name}</p>
+                    <Badge variant="outline" className="text-[10px] font-medium">
+                      {req.project_name}
+                    </Badge>
                   </div>
-                </Link>
-              ))}
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    {req.quantity} u. · {RESOURCE_TYPE_LABELS[req.resource_type]} ·{' '}
+                    {req.requester_name}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60">
+                    Retiro: {formatDate(req.withdrawal_date)}
+                    {req.return_date ? ` · Dev.: ${formatDate(req.return_date)}` : ''}
+                  </p>
+                </div>
+                <StockRequestStatusBadge status={req.status} />
+              </Link>
+            ))}
           </div>
         )}
 
         {!requestsQ.isLoading && filteredRequests.length === 0 && !requestsQ.isError && (
-          <div className="rounded-xl border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">No hay pedidos para los filtros seleccionados.</p>
+          <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
+            <Clock className="w-9 h-9 text-muted-foreground/25" />
+            <p className="text-sm text-muted-foreground">
+              No hay pedidos para los filtros seleccionados.
+            </p>
           </div>
         )}
 
@@ -582,6 +781,8 @@ function RequestsSection({
     </Card>
   )
 }
+
+// ── ResourceForm ───────────────────────────────────────────────
 
 function ResourceForm({
   form,
@@ -603,9 +804,14 @@ function ResourceForm({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 pt-1">
       <div className="space-y-1.5">
-        <Label htmlFor="resource-name">Nombre</Label>
+        <Label
+          htmlFor="resource-name"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Nombre
+        </Label>
         <Input
           id="resource-name"
           value={form.name}
@@ -614,8 +820,14 @@ function ResourceForm({
           placeholder="Ej: Proyector Epson"
         />
       </div>
+
       <div className="space-y-1.5">
-        <Label htmlFor="resource-type">Tipo</Label>
+        <Label
+          htmlFor="resource-type"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Tipo
+        </Label>
         <Select value={form.type} onValueChange={(v) => set('type', v as ResourceType)}>
           <SelectTrigger id="resource-type" className="h-11">
             <SelectValue />
@@ -626,37 +838,35 @@ function ResourceForm({
           </SelectContent>
         </Select>
       </div>
+
       <div className="space-y-1.5">
-        <Label htmlFor="resource-stock">Stock total</Label>
+        <Label
+          htmlFor="resource-stock"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Stock total
+        </Label>
         <Input
           id="resource-stock"
           type="number"
+          inputMode="numeric"
           min={1}
           value={form.total_stock}
           onChange={(e) => set('total_stock', e.target.value)}
           className="h-11"
-          placeholder="0"
+          placeholder="Ej: 5"
         />
       </div>
+
       {error && (
-        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+        <p className="text-sm text-destructive rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
           {error}
         </p>
       )}
-      <Button disabled={isPending} onClick={onSubmit} className="w-full">
+
+      <Button disabled={isPending} onClick={onSubmit} className="w-full h-11">
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : submitLabel}
       </Button>
     </div>
-  )
-}
-
-function Metric({ title, value, tone = 'default' }: { title: string; value: string; tone?: 'default' | 'warn' }) {
-  return (
-    <Card className={tone === 'warn' ? 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10' : ''}>
-      <CardContent className="p-4">
-        <p className="text-xs text-muted-foreground">{title}</p>
-        <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-      </CardContent>
-    </Card>
   )
 }

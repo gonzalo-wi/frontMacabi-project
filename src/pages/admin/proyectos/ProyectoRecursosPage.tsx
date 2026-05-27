@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
+  CalendarDays,
   CheckCircle2,
   Loader2,
   Package,
   Plus,
   RotateCcw,
   Truck,
+  User,
   X,
 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -26,15 +28,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -63,26 +65,43 @@ import type {
 } from '@/features/stock/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 
-// ── Constants ────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
   consumable: 'Consumible',
 }
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────
 
-function formatDate(iso: string | null | undefined): string {
+function formatDateShort(iso: string | null | undefined): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('es-AR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: '2-digit',
   })
+}
+
+function requestBorderClass(status: RequestStatus): string {
+  switch (status) {
+    case 'PENDIENTE': return 'border-l-amber-400'
+    case 'RESERVADO': return 'border-l-primary'
+    case 'ENTREGADO': return 'border-l-emerald-500'
+    case 'DEVUELTO':  return 'border-l-slate-400'
+    case 'RECHAZADO': return 'border-l-destructive'
+    default:          return 'border-l-border'
+  }
+}
+
+function hasActionable(req: ResourceRequestDTO): boolean {
+  if (req.status === 'PENDIENTE') return true
+  if (req.status === 'RESERVADO') return true
+  if (req.status === 'ENTREGADO' && req.resource_type === 'returnable') return true
+  return false
 }
 
 async function fetchAllResources(token: string): Promise<ResourceDTO[]> {
@@ -90,7 +109,7 @@ async function fetchAllResources(token: string): Promise<ResourceDTO[]> {
   return data
 }
 
-// ── Form state ───────────────────────────────────────────────
+// ── Form state ────────────────────────────────────────────────
 
 type RequestFormState = {
   resource_id: string
@@ -108,7 +127,23 @@ const EMPTY_FORM: RequestFormState = {
   notes: '',
 }
 
-// ── Component ────────────────────────────────────────────────
+// ── Skeleton ───────────────────────────────────────────────────
+
+function SkeletonRows({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[88px] rounded-xl bg-muted/40 animate-pulse"
+          style={{ opacity: 1 - i * 0.2 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── Component ─────────────────────────────────────────────────
 
 export default function ProyectoRecursosPage() {
   const { id: projectId } = useParams<{ id: string }>()
@@ -146,7 +181,6 @@ export default function ProyectoRecursosPage() {
   const member = membershipsQ.data?.find((m) => m.id === projectId)
   const canManageRequests = user?.role === 'admin' || member?.role === 'coordinator'
 
-  // Map resource_id → ResourceDTO for quick lookup
   const resourcesMap = useMemo(() => {
     const m = new Map<string, ResourceDTO>()
     for (const r of resourcesQ.data ?? []) m.set(r.id, r)
@@ -155,7 +189,6 @@ export default function ProyectoRecursosPage() {
 
   const selectedResource = resourcesMap.get(form.resource_id) ?? null
 
-  // Sort: pending first, then by created_at desc
   const sorted = useMemo(() => {
     const STATUS_ORDER: Record<RequestStatus, number> = {
       PENDIENTE: 0,
@@ -171,7 +204,17 @@ export default function ProyectoRecursosPage() {
     })
   }, [requestsQ.data])
 
+  // Status summary counts
+  const statusCounts = useMemo(() => {
+    const counts: Partial<Record<RequestStatus, number>> = {}
+    for (const req of requestsQ.data?.data ?? []) {
+      counts[req.status] = (counts[req.status] ?? 0) + 1
+    }
+    return counts
+  }, [requestsQ.data])
+
   // ── Create mutation ────────────────────────────────────────
+
   const createM = useMutation({
     mutationFn: async () => {
       if (!projectId) throw new Error('Sin proyecto')
@@ -187,8 +230,7 @@ export default function ProyectoRecursosPage() {
         resource_id: form.resource_id,
         quantity: qty,
         withdrawal_date: fromDatetimeLocalValue(form.withdrawal_date),
-        return_date:
-          form.return_date ? fromDatetimeLocalValue(form.return_date) : null,
+        return_date: form.return_date ? fromDatetimeLocalValue(form.return_date) : null,
         notes: form.notes.trim() || undefined,
       })
     },
@@ -201,6 +243,7 @@ export default function ProyectoRecursosPage() {
   })
 
   // ── Transition mutations ───────────────────────────────────
+
   function makeTransitionMutation(
     fn: (token: string, id: string) => Promise<void>,
     successText: string,
@@ -213,10 +256,7 @@ export default function ProyectoRecursosPage() {
         await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
       },
       onError: (e) =>
-        setFeedback({
-          text: e instanceof Error ? e.message : 'Error',
-          variant: 'error',
-        }),
+        setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
     })
   }
 
@@ -229,182 +269,183 @@ export default function ProyectoRecursosPage() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const returnM = makeTransitionMutation(returnRequest, 'Ítem marcado como devuelto.')
 
+  const anyPending =
+    approveM.isPending || rejectM.isPending || deliverM.isPending || returnM.isPending
+
   if (!projectId) return null
 
+  const totalRequests = requestsQ.data?.total ?? 0
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Pedidos de stock</h2>
-          {!requestsQ.isLoading && requestsQ.data && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {canManageRequests
-                ? `${requestsQ.data.total} pedido${requestsQ.data.total === 1 ? '' : 's'} en total`
-                : 'Tus pedidos dentro de este proyecto'}
-            </p>
-          )}
-        </div>
-        <ActionButton
-          intent="primary"
-          onClick={() => {
-            setFeedback(null)
-            setForm(EMPTY_FORM)
-            setCreateOpen(true)
-          }}
-          disabled={resourcesQ.isLoading}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Nuevo pedido
-        </ActionButton>
-      </div>
+      {/* ── Main card ── */}
+      <Card className="rounded-2xl shadow-sm overflow-hidden">
+        <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1.5 min-w-0">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Package className="w-4 h-4 text-primary shrink-0" />
+                Pedidos de stock
+              </CardTitle>
 
-      {requestsQ.isError && (
-        <p className="text-sm text-destructive">
-          {requestsQ.error instanceof ApiError
-            ? requestsQ.error.message
-            : 'Error al cargar los pedidos'}
-        </p>
-      )}
-
-      {requestsQ.isLoading && (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-20 bg-muted/50 rounded-lg animate-pulse" />
-          ))}
-        </div>
-      )}
-
-      {/* Desktop table */}
-      {!requestsQ.isLoading && sorted.length > 0 && (
-        <div className="hidden md:block rounded-xl border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="font-medium px-4 py-3">Ítem</th>
-                <th className="font-medium px-4 py-3 text-center">Cant.</th>
-                <th className="font-medium px-4 py-3">Retiro</th>
-                <th className="font-medium px-4 py-3 hidden lg:table-cell">Devolución</th>
-                <th className="font-medium px-4 py-3">Solicitante</th>
-                <th className="font-medium px-4 py-3">Estado</th>
-                {canManageRequests && (
-                  <th className="font-medium px-4 py-3 text-right w-[1%] whitespace-nowrap">
-                    Acciones
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((req) => (
-                <tr
-                  key={req.id}
-                  className="border-b border-border/80 last:border-0 hover:bg-muted/25 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{req.resource_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {RESOURCE_TYPE_LABELS[req.resource_type]}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 text-center tabular-nums">{req.quantity}</td>
-                  <td className="px-4 py-3 text-xs whitespace-nowrap">
-                    {formatDate(req.withdrawal_date)}
-                  </td>
-                  <td className="px-4 py-3 text-xs whitespace-nowrap hidden lg:table-cell">
-                    {formatDate(req.return_date)}
-                  </td>
-                  <td className="px-4 py-3 text-xs">{req.requester_name}</td>
-                  <td className="px-4 py-3">
-                    <StockRequestStatusBadge status={req.status} />
-                  </td>
-                  {canManageRequests && (
-                    <td className="px-4 py-3">
-                      <RequestActions
-                        req={req}
-                        onApprove={() => approveM.mutate(req.id)}
-                        onReject={() => rejectM.mutate(req.id)}
-                        onDeliver={() => deliverM.mutate(req.id)}
-                        onReturn={() => returnM.mutate(req.id)}
-                        isPending={
-                          approveM.isPending ||
-                          rejectM.isPending ||
-                          deliverM.isPending ||
-                          returnM.isPending
-                        }
-                      />
-                    </td>
+              {/* Status chips */}
+              {!requestsQ.isLoading && totalRequests > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">
+                    {totalRequests} pedido{totalRequests !== 1 ? 's' : ''}
+                  </span>
+                  {!!statusCounts.PENDIENTE && (
+                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                      {statusCounts.PENDIENTE} pendiente{statusCounts.PENDIENTE !== 1 ? 's' : ''}
+                    </span>
                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  {!!statusCounts.RESERVADO && (
+                    <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      {statusCounts.RESERVADO} reservado{statusCounts.RESERVADO !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {!!statusCounts.ENTREGADO && (
+                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      {statusCounts.ENTREGADO} entregado{statusCounts.ENTREGADO !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
-      {/* Mobile cards */}
-      {!requestsQ.isLoading && sorted.length > 0 && (
-        <div className="md:hidden space-y-3">
-          {sorted.map((req) => (
-            <Card key={req.id}>
-              <CardContent className="py-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">{req.resource_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {RESOURCE_TYPE_LABELS[req.resource_type]} · {req.quantity} unid.
-                    </p>
+            <ActionButton
+              intent="primary"
+              size="sm"
+              onClick={() => {
+                setFeedback(null)
+                setForm(EMPTY_FORM)
+                setCreateOpen(true)
+              }}
+              disabled={resourcesQ.isLoading}
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo pedido
+            </ActionButton>
+          </div>
+        </CardHeader>
+
+        <CardContent className="px-4 sm:px-6 pb-5 space-y-2">
+          {/* Error */}
+          {requestsQ.isError && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {requestsQ.error instanceof ApiError
+                ? requestsQ.error.message
+                : 'Error al cargar los pedidos'}
+            </div>
+          )}
+
+          {/* Skeleton */}
+          {requestsQ.isLoading && <SkeletonRows count={4} />}
+
+          {/* Request rows */}
+          {!requestsQ.isLoading && sorted.map((req) => (
+            <div
+              key={req.id}
+              className={cn(
+                'rounded-xl border border-border/70 bg-card border-l-[3px] overflow-hidden',
+                requestBorderClass(req.status),
+              )}
+            >
+              {/* Main info */}
+              <div className="flex flex-wrap items-start gap-x-4 gap-y-2 pl-3.5 pr-3 pt-3 pb-2.5">
+                {/* Item + meta */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <p className="font-semibold text-sm text-foreground leading-tight">
+                    {req.resource_name}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0">
+                      {RESOURCE_TYPE_LABELS[req.resource_type]}
+                    </Badge>
+                    <span className="flex items-center gap-1">
+                      <User className="w-3 h-3 shrink-0 opacity-60" />
+                      {req.requester_name}
+                    </span>
                   </div>
+                </div>
+
+                {/* Qty pill */}
+                <span className="shrink-0 mt-0.5 inline-flex items-center justify-center h-6 min-w-[2.25rem] rounded-full bg-muted text-xs font-bold tabular-nums px-2 text-muted-foreground">
+                  {req.quantity} u.
+                </span>
+
+                {/* Status */}
+                <div className="shrink-0 mt-0.5">
                   <StockRequestStatusBadge status={req.status} />
                 </div>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p>Retiro: {formatDate(req.withdrawal_date)}</p>
-                  {req.return_date && <p>Devolución: {formatDate(req.return_date)}</p>}
-                  <p>Solicitado por: {req.requester_name}</p>
-                  {req.notes && <p className="italic">"{req.notes}"</p>}
-                </div>
-                {canManageRequests && (
+              </div>
+
+              {/* Dates */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5 pl-3.5 pb-2.5 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="w-3 h-3 shrink-0 opacity-60" />
+                  Retiro:{' '}
+                  <span className="font-medium text-foreground/80">
+                    {formatDateShort(req.withdrawal_date)}
+                  </span>
+                </span>
+                {req.return_date && (
+                  <span className="flex items-center gap-1.5">
+                    <RotateCcw className="w-3 h-3 shrink-0 opacity-60" />
+                    Dev.:{' '}
+                    <span className="font-medium text-foreground/80">
+                      {formatDateShort(req.return_date)}
+                    </span>
+                  </span>
+                )}
+              </div>
+
+              {/* Actions row — only when there's something to do */}
+              {canManageRequests && hasActionable(req) && (
+                <div className="border-t border-border/60 bg-muted/20 px-3 py-2 flex justify-end gap-2">
                   <RequestActions
                     req={req}
                     onApprove={() => approveM.mutate(req.id)}
                     onReject={() => rejectM.mutate(req.id)}
                     onDeliver={() => deliverM.mutate(req.id)}
                     onReturn={() => returnM.mutate(req.id)}
-                    isPending={
-                      approveM.isPending ||
-                      rejectM.isPending ||
-                      deliverM.isPending ||
-                      returnM.isPending
-                    }
+                    isPending={anyPending}
                   />
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </div>
           ))}
-        </div>
-      )}
 
-      {!requestsQ.isLoading && sorted.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-          <Package className="w-10 h-10 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">
-            Todavía no hay pedidos de stock para este proyecto.
-          </p>
-        </div>
-      )}
+          {/* Empty */}
+          {!requestsQ.isLoading && sorted.length === 0 && !requestsQ.isError && (
+            <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
+              <Package className="w-9 h-9 text-muted-foreground/25" />
+              <p className="text-sm text-muted-foreground">
+                Todavía no hay pedidos de stock para este proyecto.
+              </p>
+            </div>
+          )}
 
-      <PaginationControls
-        page={page}
-        totalPages={requestsQ.data?.total_pages ?? 1}
-        onPageChange={setPage}
-      />
+          <PaginationControls
+            page={page}
+            totalPages={requestsQ.data?.total_pages ?? 1}
+            onPageChange={setPage}
+          />
+        </CardContent>
+      </Card>
 
-      {/* ── Dialog: Nuevo pedido ─────────────────────────────── */}
+      {/* ── Dialog: Nuevo pedido ── */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Nuevo pedido de stock</DialogTitle>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <Package className="w-4 h-4 text-primary" />
+              </div>
+              Nuevo pedido de stock
+            </DialogTitle>
           </DialogHeader>
           <CreateRequestForm
             form={form}
@@ -416,7 +457,7 @@ export default function ProyectoRecursosPage() {
               createM.mutate()
             }}
             isPending={createM.isPending}
-            error={createM.error ? (createM.error instanceof Error ? createM.error.message : 'Error al crear') : undefined}
+            error={createM.error instanceof Error ? createM.error.message : undefined}
           />
         </DialogContent>
       </Dialog>
@@ -424,7 +465,7 @@ export default function ProyectoRecursosPage() {
   )
 }
 
-// ── Action buttons per request ───────────────────────────────
+// ── RequestActions ────────────────────────────────────────────
 
 type RequestActionsProps = {
   req: ResourceRequestDTO
@@ -445,19 +486,15 @@ function RequestActions({
 }: RequestActionsProps) {
   if (req.status === 'PENDIENTE') {
     return (
-      <div className="flex justify-end items-center gap-1">
-        <ActionButton
-          intent="approve"
-          disabled={isPending}
-          onClick={onApprove}
-        >
+      <>
+        <ActionButton intent="approve" size="sm" disabled={isPending} onClick={onApprove}>
           <CheckCircle2 className="w-3.5 h-3.5" />
           Aprobar
         </ActionButton>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <ActionButton intent="reject" disabled={isPending}>
-              <X className="w-4 h-4" />
+            <ActionButton intent="reject" size="sm" disabled={isPending}>
+              <X className="w-3.5 h-3.5" />
               Rechazar
             </ActionButton>
           </AlertDialogTrigger>
@@ -465,8 +502,8 @@ function RequestActions({
             <AlertDialogHeader>
               <AlertDialogTitle>¿Rechazar pedido?</AlertDialogTitle>
               <AlertDialogDescription>
-                El pedido de <strong>{req.resource_name}</strong> ({req.quantity} unid.) solicitado por{' '}
-                {req.requester_name} será rechazado.
+                El pedido de <strong>{req.resource_name}</strong> ({req.quantity} u.) solicitado
+                por {req.requester_name} será rechazado.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -480,44 +517,32 @@ function RequestActions({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
+      </>
     )
   }
 
   if (req.status === 'RESERVADO') {
     return (
-      <div className="flex justify-end">
-        <ActionButton
-          intent="deliver"
-          disabled={isPending}
-          onClick={onDeliver}
-        >
-          <Truck className="w-3.5 h-3.5" />
-          Entregar
-        </ActionButton>
-      </div>
+      <ActionButton intent="deliver" size="sm" disabled={isPending} onClick={onDeliver}>
+        <Truck className="w-3.5 h-3.5" />
+        Entregar
+      </ActionButton>
     )
   }
 
   if (req.status === 'ENTREGADO' && req.resource_type === 'returnable') {
     return (
-      <div className="flex justify-end">
-        <ActionButton
-          intent="return"
-          disabled={isPending}
-          onClick={onReturn}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          Devolver
-        </ActionButton>
-      </div>
+      <ActionButton intent="return" size="sm" disabled={isPending} onClick={onReturn}>
+        <RotateCcw className="w-3.5 h-3.5" />
+        Devolver
+      </ActionButton>
     )
   }
 
   return null
 }
 
-// ── Create request form ──────────────────────────────────────
+// ── CreateRequestForm ─────────────────────────────────────────
 
 type CreateRequestFormProps = {
   form: RequestFormState
@@ -545,9 +570,14 @@ function CreateRequestForm({
   const needsReturn = selectedResource?.type === 'returnable'
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 pt-1">
       <div className="space-y-1.5">
-        <Label htmlFor="req-resource">Ítem de inventario</Label>
+        <Label
+          htmlFor="req-resource"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Ítem de inventario
+        </Label>
         <Select value={form.resource_id} onValueChange={(v) => set('resource_id', v)}>
           <SelectTrigger id="req-resource" className="h-11">
             <SelectValue placeholder="Seleccioná un ítem…" />
@@ -555,7 +585,7 @@ function CreateRequestForm({
           <SelectContent>
             {resources.map((r) => (
               <SelectItem key={r.id} value={r.id}>
-                {r.name}
+                <span className="font-medium">{r.name}</span>
                 <span className="ml-2 text-muted-foreground text-xs">
                   ({RESOURCE_TYPE_LABELS[r.type]} · {r.available_stock} disp.)
                 </span>
@@ -566,10 +596,16 @@ function CreateRequestForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="req-quantity">Cantidad</Label>
+        <Label
+          htmlFor="req-quantity"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Cantidad
+        </Label>
         <Input
           id="req-quantity"
           type="number"
+          inputMode="numeric"
           min={1}
           value={form.quantity}
           onChange={(e) => set('quantity', e.target.value)}
@@ -579,7 +615,12 @@ function CreateRequestForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="req-withdrawal">Fecha de retiro</Label>
+        <Label
+          htmlFor="req-withdrawal"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Fecha de retiro
+        </Label>
         <Input
           id="req-withdrawal"
           type="datetime-local"
@@ -591,9 +632,12 @@ function CreateRequestForm({
 
       {needsReturn && (
         <div className="space-y-1.5">
-          <Label htmlFor="req-return">
+          <Label
+            htmlFor="req-return"
+            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
             Fecha de devolución
-            <span className="ml-1 text-destructive text-xs">*</span>
+            <span className="ml-1 text-destructive">*</span>
           </Label>
           <Input
             id="req-return"
@@ -608,7 +652,13 @@ function CreateRequestForm({
       )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="req-notes">Notas</Label>
+        <Label
+          htmlFor="req-notes"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Notas{' '}
+          <span className="normal-case font-normal text-muted-foreground/60">(opcional)</span>
+        </Label>
         <Textarea
           id="req-notes"
           value={form.notes}
@@ -619,11 +669,12 @@ function CreateRequestForm({
       </div>
 
       {error && (
-        <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+        <p className="text-sm text-destructive rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
           {error}
         </p>
       )}
-      <Button disabled={isPending} onClick={onSubmit} className="w-full">
+
+      <Button disabled={isPending} onClick={onSubmit} className="w-full h-11">
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear pedido'}
       </Button>
     </div>

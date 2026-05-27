@@ -3,7 +3,10 @@ import type { StockNotificationDTO, UnreadCountDTO } from '../model/types'
 
 export function listNotifications(token: string, limit = 20): Promise<StockNotificationDTO[]> {
   const q = new URLSearchParams({ limit: String(limit) })
-  return apiRequest<StockNotificationDTO[]>(`/api/stock/notifications?${q}`, { token })
+  return apiRequest<{ data: StockNotificationDTO[] } | StockNotificationDTO[]>(
+    `/api/stock/notifications?${q}`,
+    { token },
+  ).then((r) => (Array.isArray(r) ? r : r.data))
 }
 
 export function getUnreadCount(token: string): Promise<UnreadCountDTO> {

@@ -14,7 +14,7 @@ const SECTIONS = [
   { path: 'miembros', label: 'Miembros' },
   { path: 'gastos', label: 'Gastos' },
   { path: 'jornadas', label: 'Jornadas' },
-  { path: 'recursos', label: 'Pedidos de stock' },
+  { path: 'recursos', label: 'Stock' },
 ] as const
 
 function tabFromPath(pathname: string): (typeof SECTIONS)[number]['path'] {
@@ -47,12 +47,12 @@ export default function AdminProyectoLayout() {
         icon={FolderKanban}
         title={
           titleLoading ? (
-            <span className="inline-block h-7 w-48 max-w-[min(48ch,72vw)] rounded-md bg-white/15 lg:bg-muted animate-pulse" />
+            <span className="inline-block h-5 w-48 max-w-[min(48ch,72vw)] rounded-md bg-white/15 lg:bg-muted animate-pulse" />
           ) : (
             projectQ.data?.name ?? 'Proyecto'
           )
         }
-        subtitle="Vista de gestión: equipo, gastos, jornadas y pedidos de stock."
+        subtitle="Equipo, gastos, jornadas y pedidos de stock."
         action={
           <ActionButton intent="back" asChild>
             <Link to="/app/admin/proyectos">Todos los proyectos</Link>
@@ -60,32 +60,45 @@ export default function AdminProyectoLayout() {
         }
       />
 
-      <div className="border-b bg-muted/30 px-4 lg:px-6">
-        <div className="max-w-4xl mx-auto py-3">
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => navigate(`/app/admin/proyectos/${id}/${v}`)}
-            className="gap-0"
-          >
-            <TabsList
-              className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/50 p-1"
-              aria-label="Secciones del proyecto"
+      {/* ── Tab bar — horizontal scroll en mobile, sin wrap ── */}
+      <div className="border-b bg-card/60 backdrop-blur-sm sticky top-[57px] lg:top-[53px] z-10">
+        <div className="max-w-4xl mx-auto">
+          {/* overflow-x-auto: permite scroll horizontal en mobile */}
+          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => navigate(`/app/admin/proyectos/${id}/${v}`)}
             >
-              {SECTIONS.map((s) => (
-                <TabsTrigger key={s.path} value={s.path} className="text-xs sm:text-sm">
-                  {s.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+              <TabsList className="flex h-auto bg-transparent p-0 gap-0 rounded-none min-w-max w-full px-4 lg:px-6">
+                {SECTIONS.map((s) => (
+                  <TabsTrigger
+                    key={s.path}
+                    value={s.path}
+                    className={[
+                      'relative h-11 px-4 sm:px-5 rounded-none border-b-2 border-transparent',
+                      'text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap',
+                      'bg-transparent shadow-none',
+                      'data-[state=active]:text-primary data-[state=active]:border-primary',
+                      'data-[state=active]:bg-transparent data-[state=active]:shadow-none',
+                      'hover:text-foreground transition-colors',
+                    ].join(' ')}
+                  >
+                    {s.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
       </div>
 
-      <div className="p-4 lg:p-6 max-w-4xl mx-auto">
+      <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
         {projectQ.isError && (
-          <p className="text-sm text-destructive mb-4">
-            {projectQ.error instanceof ApiError ? projectQ.error.message : 'Error al cargar el proyecto'}
-          </p>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive mb-4">
+            {projectQ.error instanceof ApiError
+              ? projectQ.error.message
+              : 'Error al cargar el proyecto'}
+          </div>
         )}
         <Outlet />
       </div>

@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/dialog'
 import { changePassword } from '@/lib/api/auth'
 import { NotificationsBell } from '@/components/NotificationsBell'
+import { GlobalLoadingBar } from '@/components/GlobalLoadingBar'
 
 /** Navegación del participante / coordinador fuera del área admin. */
 const participantNavItems: {
@@ -136,6 +137,7 @@ export function AppShellLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <GlobalLoadingBar />
       {/* ── Desktop sidebar ───────────────────────────────── */}
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 bg-sidebar z-50">
         {/* Brand */}
