@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarRange, FileText, MoreVertical, SquarePen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -71,6 +72,12 @@ export default function ProyectoJornadasPage() {
   }, [eventsQ.data])
 
   const hasAnyLinkedEvents = (eventsQ.data?.length ?? 0) > 0
+
+  const [jornadasPage, setJornadasPage] = useState(1)
+  useEffect(() => { setJornadasPage(1) }, [dateFrom, dateTo])
+  const JORNADAS_PAGE_SIZE = 10
+  const jornadasTotalPages = Math.max(1, Math.ceil(filteredEvents.length / JORNADAS_PAGE_SIZE))
+  const pagedEvents = filteredEvents.slice((jornadasPage - 1) * JORNADAS_PAGE_SIZE, jornadasPage * JORNADAS_PAGE_SIZE)
 
   if (!projectId) return null
 
@@ -186,7 +193,7 @@ export default function ProyectoJornadasPage() {
           )}
 
           {/* Lista de jornadas */}
-          {filteredEvents.map((d) => {
+          {pagedEvents.map((d) => {
             const isPast = new Date(d.instance.starts_at).getTime() < Date.now()
             return (
               <div
@@ -239,6 +246,8 @@ export default function ProyectoJornadasPage() {
               </div>
             )
           })}
+
+          <PaginationControls page={jornadasPage} totalPages={jornadasTotalPages} onPageChange={setJornadasPage} />
 
           {/* Vacío */}
           {!eventsQ.isLoading && filteredEvents.length === 0 && (

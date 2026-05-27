@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -129,6 +130,11 @@ export default function ProyectoMiembrosPage() {
   }, [membersQ.data, userById])
 
   const coordinatorCount = sortedMembers.filter((m) => m.role === 'coordinator').length
+
+  const [memberPage, setMemberPage] = useState(1)
+  const MEMBER_PAGE_SIZE = 10
+  const memberTotalPages = Math.max(1, Math.ceil(sortedMembers.length / MEMBER_PAGE_SIZE))
+  const pagedMembers = sortedMembers.slice((memberPage - 1) * MEMBER_PAGE_SIZE, memberPage * MEMBER_PAGE_SIZE)
 
   const addMem = useMutation({
     mutationFn: async () => {
@@ -350,7 +356,7 @@ export default function ProyectoMiembrosPage() {
           {/* Member list */}
           {!membersQ.isLoading && memberCount > 0 && (
             <div className="space-y-2">
-              {sortedMembers.map((m) => {
+              {pagedMembers.map((m) => {
                 const u = userById.get(m.user_id)
                 const displayName = u?.name?.trim() || m.user_id.slice(0, 8) + '…'
                 const initials = getInitials(displayName) || '?'
@@ -427,6 +433,7 @@ export default function ProyectoMiembrosPage() {
               })}
             </div>
           )}
+          <PaginationControls page={memberPage} totalPages={memberTotalPages} onPageChange={setMemberPage} />
         </CardContent>
       </Card>
     </div>

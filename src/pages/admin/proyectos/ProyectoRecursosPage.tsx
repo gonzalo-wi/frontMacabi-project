@@ -152,7 +152,7 @@ export default function ProyectoRecursosPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [page, setPage] = useState(1)
-  const PAGE_SIZE = 20
+  const PAGE_SIZE = 10
   const [form, setForm] = useState<RequestFormState>(EMPTY_FORM)
   const [feedback, setFeedback] = useState<{
     text: string

@@ -81,7 +81,7 @@ type FeedbackState = { text: string; variant: 'success' | 'error' | 'info' } | n
 type JornadaSortKey = 'title' | 'starts_at' | 'status'
 type JornadaStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 
 

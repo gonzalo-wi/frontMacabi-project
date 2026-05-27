@@ -116,7 +116,7 @@ export default function PanelPage() {
           <div className="flex items-start justify-between gap-4 relative z-10">
             <div className="min-w-0 space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}! 👋</h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}!</h1>
               <p className="text-xs text-muted-foreground leading-snug mt-1">{resumen}</p>
             </div>
             <DropdownMenu>
@@ -154,7 +154,7 @@ export default function PanelPage() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
           <div className="space-y-1 relative z-10">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}! 👋</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}!</h1>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mt-1">{resumen}</p>
           </div>
           <div className="flex flex-wrap gap-2 pt-1 relative z-10">

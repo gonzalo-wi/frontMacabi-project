@@ -76,7 +76,7 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
 
 type StockSection = 'inventario' | 'pedidos'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 type FormState = {
   name: string

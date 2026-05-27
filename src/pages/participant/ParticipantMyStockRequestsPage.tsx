@@ -26,7 +26,6 @@ import { listResources } from '@/features/stock/api/stockApi'
 import type {
   RequestStatus,
   ResourceDTO,
-  ResourceRequestDTO,
   ResourceType,
 } from '@/features/stock/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'

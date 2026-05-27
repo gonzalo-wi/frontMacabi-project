@@ -14,6 +14,7 @@ import {
   KeyRound,
   X,
   Loader2,
+  ChevronRight,
 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -135,30 +136,58 @@ export function AppShellLayout() {
     pwMutation.mutate()
   }
 
+  const userInitials = user?.name.split(' ').map((n) => n[0]).join('').slice(0, 2) ?? ''
+
   return (
     <div className="min-h-screen bg-background">
       <GlobalLoadingBar />
+
       {/* ── Desktop sidebar ───────────────────────────────── */}
-      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 bg-sidebar z-50">
+      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 z-50 overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, oklch(0.14 0.045 258) 0%, oklch(0.11 0.035 255) 60%, oklch(0.10 0.03 252) 100%)',
+          borderRight: '1px solid oklch(0.20 0.04 255)',
+          boxShadow: '4px 0 24px -4px rgba(0,0,10,0.35)',
+        }}
+      >
+        {/* Subtle noise / glow overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 80% 40% at 50% -10%, oklch(0.55 0.14 225 / 0.10) 0%, transparent 70%)',
+          }}
+        />
+
         {/* Brand */}
-        <div className="flex items-center gap-3 h-16 px-5 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary/15 border border-sidebar-primary/20 flex items-center justify-center shrink-0">
-            <img
-              src="/logo_macabi.png"
-              alt="Macabi"
-              className="w-5 h-5 object-contain brightness-0 invert"
+        <div className="relative flex items-center gap-3 h-16 px-5 shrink-0">
+          <div className="relative w-9 h-9 shrink-0">
+            <div className="absolute inset-0 rounded-xl blur-sm opacity-60"
+              style={{ background: 'linear-gradient(135deg, oklch(0.60 0.18 230), oklch(0.45 0.20 260))' }}
             />
+            <div className="relative w-9 h-9 rounded-xl border border-white/20 flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, oklch(0.50 0.18 230 / 0.9), oklch(0.38 0.20 260 / 0.9))' }}
+            >
+              <img
+                src="/logo_macabi.png"
+                alt="Macabi"
+                className="w-5 h-5 object-contain brightness-0 invert"
+              />
+            </div>
           </div>
           <div className="leading-none">
-            <p className="font-bold text-sm text-sidebar-foreground">Macabi</p>
-            <p className="text-[11px] text-sidebar-muted-foreground mt-0.5">Madrijim</p>
+            <p className="font-bold text-sm tracking-wide text-white">Macabi</p>
+            <p className="text-[11px] mt-0.5" style={{ color: 'oklch(0.65 0.06 230)' }}>Madrijim</p>
           </div>
         </div>
 
-        <div className="h-px bg-sidebar-border mx-4" />
+        <div className="relative mx-4"
+          style={{ height: '1px', background: 'linear-gradient(90deg, transparent, oklch(0.30 0.06 255), transparent)' }}
+        />
 
         {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <nav className="relative flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'oklch(0.62 0.04 240)' }}>
+            General
+          </p>
           {participantNavItems.map((item) => {
             const isActive = item.isActive(pathname)
             const Icon = item.icon
@@ -167,31 +196,58 @@ export function AppShellLayout() {
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                  'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                   isActive
-                    ? 'bg-sidebar-accent text-sidebar-foreground'
-                    : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+                    ? 'text-white'
+                    : 'text-white/55 hover:text-white/90',
                 )}
+                style={isActive ? {
+                  background: 'linear-gradient(90deg, oklch(0.55 0.14 225 / 0.22), oklch(0.55 0.14 225 / 0.08))',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+                } : {}}
               >
-                <Icon
-                  className={cn(
-                    'w-4 h-4 shrink-0',
-                    isActive ? 'text-sidebar-primary' : '',
-                  )}
-                />
+                {/* Left accent bar */}
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
+                    style={{ background: 'linear-gradient(180deg, oklch(0.75 0.15 215), oklch(0.58 0.18 240))' }}
+                  />
+                )}
+                {/* Icon wrapper */}
+                <span className={cn(
+                  'flex items-center justify-center w-7 h-7 rounded-md transition-all duration-200 shrink-0',
+                  isActive ? 'text-white' : 'text-white/55 group-hover:text-white/90',
+                )}
+                  style={isActive ? {
+                    background: 'oklch(0.55 0.14 225 / 0.30)',
+                    boxShadow: '0 0 12px oklch(0.60 0.18 225 / 0.3)',
+                  } : {}}
+                >
+                  <Icon className="w-4 h-4" />
+                </span>
                 <span className="flex-1">{item.label}</span>
                 {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-50" />
+                )}
+                {!isActive && (
+                  <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    style={{ background: 'rgba(255,255,255,0.04)' }}
+                  />
                 )}
               </Link>
             )
           })}
+
           {isAdmin && (
             <>
-              <div className="h-px bg-sidebar-border mx-1 my-2" />
-              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground mb-1">
-                Administración
-              </p>
+              <div className="my-3 mx-1"
+                style={{ height: '1px', background: 'linear-gradient(90deg, transparent, oklch(0.28 0.05 255), transparent)' }}
+              />
+              <div className="flex items-center gap-2 px-3 pb-2">
+                <ShieldCheck className="w-3.5 h-3.5" style={{ color: 'oklch(0.75 0.15 80)' }} />
+                <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'oklch(0.75 0.15 80)' }}>
+                  Administración
+                </p>
+              </div>
               {adminNavItems.map((item) => {
                 const isActive = pathname.startsWith(item.href)
                 const Icon = item.icon
@@ -200,15 +256,41 @@ export function AppShellLayout() {
                     key={item.href}
                     to={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                      isActive
-                        ? 'bg-sidebar-accent text-sidebar-foreground'
-                        : 'text-sidebar-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+                      'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
+                      isActive ? 'text-white' : 'text-white/55 hover:text-white/90',
                     )}
+                    style={isActive ? {
+                      background: 'linear-gradient(90deg, oklch(0.70 0.15 80 / 0.18), oklch(0.70 0.15 80 / 0.06))',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    } : {}}
                   >
-                    <Icon className={cn('w-4 h-4 shrink-0', isActive ? 'text-sidebar-primary' : '')} />
+                    {/* Left accent bar — golden for admin */}
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
+                        style={{ background: 'linear-gradient(180deg, oklch(0.85 0.16 85), oklch(0.70 0.18 70))' }}
+                      />
+                    )}
+                    <span className={cn(
+                      'flex items-center justify-center w-7 h-7 rounded-md transition-all duration-200 shrink-0',
+                      isActive ? '' : 'text-white/55 group-hover:text-white/90',
+                    )}
+                      style={isActive ? {
+                        background: 'oklch(0.72 0.15 80 / 0.25)',
+                        color: 'oklch(0.88 0.14 85)',
+                        boxShadow: '0 0 12px oklch(0.72 0.15 80 / 0.25)',
+                      } : {}}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
                     <span className="flex-1">{item.label}</span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />}
+                    {isActive && (
+                      <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-50" />
+                    )}
+                    {!isActive && (
+                      <span className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        style={{ background: 'rgba(255,255,255,0.04)' }}
+                      />
+                    )}
                   </Link>
                 )
               })}
@@ -218,31 +300,86 @@ export function AppShellLayout() {
 
         {/* User footer — desktop sidebar */}
         {user && (
-          <div className="shrink-0 px-3 py-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/60">
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback className="bg-sidebar-primary/20 text-sidebar-primary font-semibold text-xs border border-sidebar-primary/30">
-                  {user.name.split(' ').map((n) => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate leading-none">{user.name}</p>
-                <p className="text-[11px] text-sidebar-muted-foreground truncate mt-0.5">{user.email}</p>
+          <div className="relative shrink-0 p-3">
+            <div className="mx-1 mb-3"
+              style={{ height: '1px', background: 'linear-gradient(90deg, transparent, oklch(0.26 0.05 255), transparent)' }}
+            />
+            <div className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200"
+              style={{
+                background: 'oklch(0.18 0.04 255 / 0.7)',
+                border: '1px solid oklch(0.28 0.05 255)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              {/* Avatar with gradient ring */}
+              <div className="relative shrink-0">
+                <div className="absolute -inset-0.5 rounded-full opacity-80"
+                  style={{ background: 'linear-gradient(135deg, oklch(0.65 0.15 225), oklch(0.55 0.18 260))' }}
+                />
+                <Avatar className="relative h-8 w-8">
+                  <AvatarFallback className="font-bold text-xs text-white border-0"
+                    style={{ background: 'linear-gradient(135deg, oklch(0.45 0.18 230), oklch(0.35 0.20 260))' }}
+                  >
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
               </div>
-              <button
-                onClick={openPw}
-                className="p-1.5 rounded-md text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                title="Cambiar contraseña"
-              >
-                <KeyRound className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 rounded-md text-sidebar-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                title="Cerrar sesión"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate leading-none">{user.name}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                      style={{
+                        background: 'oklch(0.72 0.15 80 / 0.20)',
+                        color: 'oklch(0.85 0.14 85)',
+                        border: '1px solid oklch(0.72 0.15 80 / 0.30)',
+                      }}
+                    >
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                      Admin
+                    </span>
+                  )}
+                  {!isAdmin && (
+                    <span className="text-[10px]" style={{ color: 'oklch(0.55 0.04 240)' }}>
+                      {user.email}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={openPw}
+                  className="p-1.5 rounded-lg transition-all duration-150 cursor-pointer"
+                  style={{ color: 'oklch(0.55 0.04 240)' }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'white';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'oklch(0.95 0 0 / 0.08)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.55 0.04 240)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  }}
+                  title="Cambiar contraseña"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 rounded-lg transition-all duration-150 cursor-pointer"
+                  style={{ color: 'oklch(0.55 0.04 240)' }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.65 0.18 25)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'oklch(0.52 0.19 25 / 0.12)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.55 0.04 240)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  }}
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -318,21 +455,44 @@ export function AppShellLayout() {
 
       {/* ── Mobile: drawer ────────────────────────────────── */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">
-        <DrawerContent className="w-[80vw] max-w-[300px] h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-none border-r border-sidebar-border p-0">
+        <DrawerContent className="w-[80vw] max-w-[300px] h-full flex flex-col rounded-none border-r p-0 overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, oklch(0.14 0.045 258) 0%, oklch(0.11 0.035 255) 60%, oklch(0.10 0.03 252) 100%)',
+            borderRight: '1px solid oklch(0.22 0.05 255)',
+          }}
+        >
+          {/* Glow overlay */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 80% 35% at 50% -5%, oklch(0.55 0.14 225 / 0.12) 0%, transparent 70%)',
+            }}
+          />
 
           {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-              <img src="/logo_macabi.png" alt="Macabi" className="w-5 h-5 object-contain brightness-0 invert" />
+          <div className="relative flex items-center gap-3 px-5 py-5 shrink-0"
+            style={{ borderBottom: '1px solid oklch(0.22 0.05 255)' }}
+          >
+            <div className="relative w-9 h-9 shrink-0">
+              <div className="absolute inset-0 rounded-xl blur-sm opacity-60"
+                style={{ background: 'linear-gradient(135deg, oklch(0.60 0.18 230), oklch(0.45 0.20 260))' }}
+              />
+              <div className="relative w-9 h-9 rounded-xl border border-white/20 flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, oklch(0.50 0.18 230 / 0.9), oklch(0.38 0.20 260 / 0.9))' }}
+              >
+                <img src="/logo_macabi.png" alt="Macabi" className="w-5 h-5 object-contain brightness-0 invert" />
+              </div>
             </div>
             <div>
-              <p className="font-bold text-base text-sidebar-foreground leading-none">Macabi</p>
-              <p className="text-[11px] text-sidebar-muted-foreground mt-0.5">Madrijim</p>
+              <p className="font-bold text-base tracking-wide text-white leading-none">Macabi</p>
+              <p className="text-[11px] mt-0.5" style={{ color: 'oklch(0.65 0.06 230)' }}>Madrijim</p>
             </div>
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          <nav className="relative flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'oklch(0.62 0.04 240)' }}>
+              General
+            </p>
             {participantNavItems.map((item) => {
               const isActive = item.isActive(pathname)
               const Icon = item.icon
@@ -341,15 +501,30 @@ export function AppShellLayout() {
                   <Link
                     to={item.href}
                     className={cn(
-                      'flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all',
-                      isActive
-                        ? 'bg-white/15 text-white'
-                        : 'text-sidebar-muted-foreground hover:bg-white/8 hover:text-white',
+                      'group relative flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                      isActive ? 'text-white' : 'text-white/50 hover:text-white',
                     )}
+                    style={isActive ? {
+                      background: 'linear-gradient(90deg, oklch(0.55 0.14 225 / 0.22), oklch(0.55 0.14 225 / 0.08))',
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+                    } : {}}
                   >
-                    <Icon className={cn('w-5 h-5 shrink-0', isActive ? 'text-blue-300' : '')} />
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
+                        style={{ background: 'linear-gradient(180deg, oklch(0.75 0.15 215), oklch(0.58 0.18 240))' }}
+                      />
+                    )}
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all duration-200"
+                      style={isActive ? {
+                        background: 'oklch(0.55 0.14 225 / 0.30)',
+                        color: 'white',
+                        boxShadow: '0 0 12px oklch(0.60 0.18 225 / 0.3)',
+                      } : { color: 'inherit' }}
+                    >
+                      <Icon className="w-4.5 h-4.5" />
+                    </span>
                     <span className="flex-1">{item.label}</span>
-                    {isActive && <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />}
+                    {isActive && <ChevronRight className="w-4 h-4 shrink-0 opacity-40" />}
                   </Link>
                 </DrawerClose>
               )
@@ -357,10 +532,12 @@ export function AppShellLayout() {
 
             {isAdmin && (
               <>
-                <div className="h-px bg-sidebar-border mx-2 my-3" />
-                <div className="flex items-center gap-2 px-4 mb-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-amber-400">
+                <div className="my-3 mx-1"
+                  style={{ height: '1px', background: 'linear-gradient(90deg, transparent, oklch(0.28 0.05 255), transparent)' }}
+                />
+                <div className="flex items-center gap-2 px-3 pb-2">
+                  <ShieldCheck className="w-3.5 h-3.5" style={{ color: 'oklch(0.75 0.15 80)' }} />
+                  <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'oklch(0.75 0.15 80)' }}>
                     Administración
                   </p>
                 </div>
@@ -372,15 +549,30 @@ export function AppShellLayout() {
                       <Link
                         to={item.href}
                         className={cn(
-                          'flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all',
-                          isActive
-                            ? 'bg-amber-500/20 text-amber-200'
-                            : 'text-sidebar-muted-foreground hover:bg-amber-500/10 hover:text-amber-200',
+                          'group relative flex items-center gap-3.5 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                          isActive ? 'text-white' : 'text-white/50 hover:text-white',
                         )}
+                        style={isActive ? {
+                          background: 'linear-gradient(90deg, oklch(0.70 0.15 80 / 0.18), oklch(0.70 0.15 80 / 0.06))',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                        } : {}}
                       >
-                        <Icon className={cn('w-5 h-5 shrink-0', isActive ? 'text-amber-400' : '')} />
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
+                            style={{ background: 'linear-gradient(180deg, oklch(0.85 0.16 85), oklch(0.70 0.18 70))' }}
+                          />
+                        )}
+                        <span className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-all duration-200"
+                          style={isActive ? {
+                            background: 'oklch(0.72 0.15 80 / 0.25)',
+                            color: 'oklch(0.88 0.14 85)',
+                            boxShadow: '0 0 12px oklch(0.72 0.15 80 / 0.25)',
+                          } : { color: 'inherit' }}
+                        >
+                          <Icon className="w-4.5 h-4.5" />
+                        </span>
                         <span className="flex-1">{item.label}</span>
-                        {isActive && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />}
+                        {isActive && <ChevronRight className="w-4 h-4 shrink-0 opacity-40" />}
                       </Link>
                     </DrawerClose>
                   )
@@ -391,21 +583,52 @@ export function AppShellLayout() {
 
           {/* User footer — mobile drawer */}
           {user && (
-            <div className="shrink-0 px-3 py-4 border-t border-sidebar-border">
-              <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/8">
-                <Avatar className="h-9 w-9 shrink-0">
-                  <AvatarFallback className="bg-white/15 text-white font-semibold text-xs">
-                    {user.name.split(' ').map((n) => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
+            <div className="relative shrink-0 p-3">
+              <div className="mx-1 mb-3"
+                style={{ height: '1px', background: 'linear-gradient(90deg, transparent, oklch(0.26 0.05 255), transparent)' }}
+              />
+              <div className="flex items-center gap-3 px-3 py-3 rounded-xl"
+                style={{
+                  background: 'oklch(0.18 0.04 255 / 0.7)',
+                  border: '1px solid oklch(0.28 0.05 255)',
+                }}
+              >
+                <div className="relative shrink-0">
+                  <div className="absolute -inset-0.5 rounded-full opacity-80"
+                    style={{ background: 'linear-gradient(135deg, oklch(0.65 0.15 225), oklch(0.55 0.18 260))' }}
+                  />
+                  <Avatar className="relative h-9 w-9">
+                    <AvatarFallback className="font-bold text-sm text-white border-0"
+                      style={{ background: 'linear-gradient(135deg, oklch(0.45 0.18 230), oklch(0.35 0.20 260))' }}
+                    >
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate leading-none">{user.name}</p>
-                  <p className="text-[11px] text-sidebar-muted-foreground truncate mt-0.5">{user.email}</p>
+                  {isAdmin ? (
+                    <span className="inline-flex items-center gap-0.5 mt-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide"
+                      style={{
+                        background: 'oklch(0.72 0.15 80 / 0.20)',
+                        color: 'oklch(0.85 0.14 85)',
+                        border: '1px solid oklch(0.72 0.15 80 / 0.30)',
+                      }}
+                    >
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                      Admin
+                    </span>
+                  ) : (
+                    <p className="text-[10px] mt-0.5 truncate" style={{ color: 'oklch(0.55 0.04 240)' }}>{user.email}</p>
+                  )}
                 </div>
                 <DrawerClose asChild>
                   <button
                     onClick={openPw}
-                    className="p-2 rounded-lg text-sidebar-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg transition-colors cursor-pointer"
+                    style={{ color: 'oklch(0.55 0.04 240)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'white'; (e.currentTarget as HTMLButtonElement).style.background = 'oklch(0.95 0 0 / 0.08)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.55 0.04 240)'; (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                     title="Cambiar contraseña"
                   >
                     <KeyRound className="w-4 h-4" />
@@ -413,7 +636,10 @@ export function AppShellLayout() {
                 </DrawerClose>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg text-sidebar-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-2 rounded-lg transition-colors cursor-pointer"
+                  style={{ color: 'oklch(0.55 0.04 240)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.65 0.18 25)'; (e.currentTarget as HTMLButtonElement).style.background = 'oklch(0.52 0.19 25 / 0.12)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'oklch(0.55 0.04 240)'; (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
                   title="Cerrar sesión"
                 >
                   <LogOut className="w-4 h-4" />

@@ -54,7 +54,7 @@ import { cn } from '@/lib/utils'
 
 type ProjectSortKey = 'name' | 'description'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
