@@ -35,7 +35,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { changePassword } from '@/lib/api/auth'
-import { NotificationsBell } from '@/components/NotificationsBell'
 import { GlobalLoadingBar } from '@/components/GlobalLoadingBar'
 
 /** Navegación del participante / coordinador fuera del área admin. */
@@ -442,16 +441,6 @@ export function AppShellLayout() {
           </button>
         </nav>
       </div>
-
-      {/* ── Notification bell — fixed top-right ───────────── */}
-      {token && (
-        <div className="fixed top-8 right-4 z-50 lg:top-4">
-          <NotificationsBell
-            token={token}
-            className="p-2 rounded-full bg-background border border-border shadow-md hover:bg-muted text-foreground"
-          />
-        </div>
-      )}
 
       {/* ── Mobile: drawer ────────────────────────────────── */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">
