@@ -8,6 +8,7 @@ export interface ExpenseDTO {
   project_name?: string
   submitted_by_user_id: string
   submitter_name?: string
+  approved_by_name?: string | null
   amount: string
   currency: string
   description: string
@@ -45,4 +46,15 @@ export interface ExpenseNotificationDTO {
 
 export interface UnreadCountDTO {
   unread_count: number
+}
+
+export interface ExpenseAnalyticsDTO {
+  total_approved: string
+  total_count: number
+  pending_count: number
+  approved_count: number
+  rejected_count: number
+  granularity: 'day' | 'month'
+  by_project: { project_id: string; project_name: string; total: string }[]
+  by_bucket: { bucket: string; total: string }[]
 }

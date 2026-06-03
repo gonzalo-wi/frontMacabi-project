@@ -47,9 +47,9 @@ export function NotificationsBell({ token, className }: Props) {
     }
 
     if (user?.role === 'admin') {
-      navigate(`/app/admin/proyectos/${n.project_id}/gastos`)
+      navigate(`/app/admin/gastos/${n.expense_id}`)
     } else {
-      navigate(`/app/gastos?project=${n.project_id}`)
+      navigate(`/app/gastos/${n.expense_id}`)
     }
   }
 

@@ -1,18 +1,8 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { LayoutDashboard, LogOut, User } from 'lucide-react'
+import { LayoutDashboard } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { UserPanelJornadasBlock } from '@/features/panel/UserPanelJornadasBlock'
 import { UserPanelProjectsBlock } from '@/features/panel/UserPanelProjectsBlock'
 import { useUserEventResponsesMap } from '@/features/events/hooks/useUserEventResponsesMap'
@@ -62,8 +52,7 @@ function summaryLine(
 }
 
 export default function PanelPage() {
-  const navigate = useNavigate()
-  const { user, logout, token, isRestoring } = useAuth()
+  const { user, token, isRestoring } = useAuth()
 
   const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
   const upcomingQ = useUserRelevantUpcomingEvents(
@@ -91,11 +80,6 @@ export default function PanelPage() {
     [membershipsQ.isPending, upcomingQ.isPending, membershipsCount, upcomingCount],
   )
 
-  const handleLogout = () => {
-    logout()
-    navigate('/', { replace: true })
-  }
-
   if (!user) return null
 
   const saludoNombre = greetingName(user.name)
@@ -111,41 +95,12 @@ export default function PanelPage() {
 
       <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-6 lg:space-y-8">
         {/* Mobile Welcome Card */}
-        <header className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-5 space-y-3 shadow-premium lg:hidden relative overflow-hidden">
+        <header className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-5 shadow-premium lg:hidden relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-start justify-between gap-4 relative z-10">
-            <div className="min-w-0 space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
-              <h1 className="text-xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}!</h1>
-              <p className="text-xs text-muted-foreground leading-snug mt-1">{resumen}</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="focus:outline-none shrink-0 cursor-pointer active:scale-95 transition-transform duration-200">
-                  <Avatar className="h-9 w-9 border border-primary/20 shadow-md">
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
-                      {user.name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-premium">
-                <DropdownMenuLabel className="font-bold">Mi cuenta</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium truncate">{user.name}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar sesión
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="relative z-10 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary/85 leading-none">{fechaStr}</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">¡Hola, {saludoNombre}!</h1>
+            <p className="text-xs text-muted-foreground leading-snug mt-1">{resumen}</p>
           </div>
         </header>
 

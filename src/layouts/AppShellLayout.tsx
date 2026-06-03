@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import PullToRefresh from 'react-simple-pull-to-refresh'
+import { PullToRefresh } from '@/components/PullToRefresh'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -100,6 +100,7 @@ export function AppShellLayout() {
   }
 
   const isAdmin = user?.role === 'admin'
+
   const canPullToRefresh =
     Boolean(token) &&
     !drawerOpen &&
@@ -387,18 +388,8 @@ export function AppShellLayout() {
       {/* ── Main content area ─────────────────────────────── */}
       <main className="lg:pl-64 min-h-screen">
         <div className="pb-24 lg:pb-0">
-          <PullToRefresh
-            isPullable={canPullToRefresh}
-            onRefresh={handlePullToRefresh}
-            pullingContent="Soltá para actualizar"
-            refreshingContent="Actualizando..."
-            pullDownThreshold={70}
-            maxPullDownDistance={95}
-            resistance={2.5}
-          >
-            <div>
-              <Outlet />
-            </div>
+          <PullToRefresh isPullable={canPullToRefresh} onRefresh={handlePullToRefresh}>
+            <Outlet />
           </PullToRefresh>
         </div>
       </main>

@@ -28,9 +28,11 @@ import type {
   ResourceDTO,
   ResourceType,
 } from '@/features/stock/model/types'
+import { ProjectStockPanel } from '@/features/stock/components/ProjectStockPanel'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
+import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 
@@ -116,6 +118,12 @@ export default function ParticipantMyStockRequestsPage() {
 
   const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
   const projectOptions = membershipsQ.data ?? []
+  const coordinated = projectOptions.filter((p) => p.role === 'coordinator')
+  const hasCoordinated = coordinated.length > 0
+  const [tab, setTab] = useSearchParamState('tab', 'mis')
+  const [proj, setProj] = useSearchParamState('proj', '')
+  const activeTab = hasCoordinated ? tab : 'mis'
+  const selectedProj = proj || coordinated[0]?.id || ''
 
   useEffect(() => {
     setProjectFilter(searchParams.get('project') ?? 'all')
@@ -237,9 +245,58 @@ export default function ParticipantMyStockRequestsPage() {
           </p>
         )}
 
+        {/* ── Solapas (solo si coordina algún proyecto) ── */}
+        {hasCoordinated && (
+          <div className="inline-flex rounded-xl border border-border/70 bg-muted/30 p-1">
+            <button
+              type="button"
+              onClick={() => setTab('mis')}
+              className={cn(
+                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
+                activeTab === 'mis' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Mis pedidos
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('proyecto')}
+              className={cn(
+                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
+                activeTab === 'proyecto' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Del proyecto
+            </button>
+          </div>
+        )}
+
+        {/* ── Solapa "Del proyecto": selector + pedidos del proyecto ── */}
+        {activeTab === 'proyecto' && hasCoordinated && token && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">Proyecto</span>
+              <Select value={selectedProj} onValueChange={setProj}>
+                <SelectTrigger className="h-9 w-[240px]">
+                  <SelectValue placeholder="Elegí un proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {coordinated.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedProj && <ProjectStockPanel token={token} projectId={selectedProj} />}
+          </div>
+        )}
+
+        {activeTab === 'mis' && (
         <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
           <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-base font-extrabold tracking-tight">Pedidos globales</CardTitle>
+            <CardTitle className="text-base font-extrabold tracking-tight">Mis pedidos</CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
               Cada pedido pertenece a un proyecto. Filtrá por proyecto, estado o ítem sin cambiar de pantalla.
             </CardDescription>
@@ -362,6 +419,7 @@ export default function ParticipantMyStockRequestsPage() {
             />
           </CardContent>
         </Card>
+        )}
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-card/95 backdrop-blur-lg shadow-premium">

@@ -61,7 +61,7 @@ export function DeleteExpenseButton({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-destructive hover:text-destructive"
+          className="h-9 w-9 text-destructive hover:text-destructive"
           aria-label="Eliminar gasto"
         >
           <Trash2 className="w-4 h-4" />
