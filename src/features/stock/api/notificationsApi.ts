@@ -16,3 +16,7 @@ export function getUnreadCount(token: string): Promise<UnreadCountDTO> {
 export function markNotificationRead(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/api/stock/notifications/${id}/read`, { method: 'PATCH', token })
 }
+
+export function markAllNotificationsRead(token: string): Promise<void> {
+  return apiRequest<void>('/api/stock/notifications/read-all', { method: 'PATCH', token })
+}

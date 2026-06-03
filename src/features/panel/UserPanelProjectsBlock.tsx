@@ -41,9 +41,13 @@ export function UserPanelProjectsBlock({ memberships, isLoading, className }: Pr
             Todavía no figuras en ningún equipo. Cuando un coordinador te agregue, aparecerá acá.
           </p>
         )}
-        {memberships?.map((p) => (
-          <div 
-            key={p.id} 
+        {memberships?.map((p) => {
+          const isCoord = p.role === 'coordinator'
+          const gastosTo = isCoord ? `/app/gastos?tab=proyecto&proj=${p.id}` : `/app/gastos?project=${p.id}`
+          const stockTo  = isCoord ? `/app/stock?tab=proyecto&proj=${p.id}` : `/app/stock?project=${p.id}`
+          return (
+          <div
+            key={p.id}
             className="rounded-xl border border-border/70 bg-card p-4 shadow-sm hover:border-primary/25 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 select-none group"
           >
             <div className="flex items-start justify-between gap-3">
@@ -60,14 +64,14 @@ export function UserPanelProjectsBlock({ memberships, isLoading, className }: Pr
             )}
             <div className="mt-4 flex flex-wrap gap-2.5">
               <Link
-                to={`/app/gastos?project=${p.id}`}
+                to={gastosTo}
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/80 px-3 text-xs font-semibold hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all select-none cursor-pointer active:scale-95"
               >
                 <Receipt className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
                 Ver gastos
               </Link>
               <Link
-                to={`/app/stock?project=${p.id}`}
+                to={stockTo}
                 className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border/80 px-3 text-xs font-semibold hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all select-none cursor-pointer active:scale-95"
               >
                 <PackageOpen className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
@@ -75,7 +79,8 @@ export function UserPanelProjectsBlock({ memberships, isLoading, className }: Pr
               </Link>
             </div>
           </div>
-        ))}
+          )
+        })}
       </CardContent>
     </Card>
   )

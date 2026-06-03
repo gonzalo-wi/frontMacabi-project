@@ -15,3 +15,7 @@ export function getExpenseUnreadCount(token: string): Promise<UnreadCountDTO> {
 export function markExpenseNotificationRead(token: string, id: string): Promise<void> {
   return apiRequest<void>(`/api/expenses/notifications/${id}/read`, { method: 'PATCH', token })
 }
+
+export function markAllExpenseNotificationsRead(token: string): Promise<void> {
+  return apiRequest<void>('/api/expenses/notifications/read-all', { method: 'PATCH', token })
+}

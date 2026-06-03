@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import PullToRefresh from 'react-simple-pull-to-refresh'
+import { PullToRefresh } from '@/components/PullToRefresh'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -35,7 +35,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { changePassword } from '@/lib/api/auth'
-import { NotificationsBell } from '@/components/NotificationsBell'
 import { GlobalLoadingBar } from '@/components/GlobalLoadingBar'
 
 /** Navegación del participante / coordinador fuera del área admin. */
@@ -101,6 +100,7 @@ export function AppShellLayout() {
   }
 
   const isAdmin = user?.role === 'admin'
+
   const canPullToRefresh =
     Boolean(token) &&
     !drawerOpen &&
@@ -388,18 +388,8 @@ export function AppShellLayout() {
       {/* ── Main content area ─────────────────────────────── */}
       <main className="lg:pl-64 min-h-screen">
         <div className="pb-24 lg:pb-0">
-          <PullToRefresh
-            isPullable={canPullToRefresh}
-            onRefresh={handlePullToRefresh}
-            pullingContent="Soltá para actualizar"
-            refreshingContent="Actualizando..."
-            pullDownThreshold={70}
-            maxPullDownDistance={95}
-            resistance={2.5}
-          >
-            <div>
-              <Outlet />
-            </div>
+          <PullToRefresh isPullable={canPullToRefresh} onRefresh={handlePullToRefresh}>
+            <Outlet />
           </PullToRefresh>
         </div>
       </main>
@@ -442,16 +432,6 @@ export function AppShellLayout() {
           </button>
         </nav>
       </div>
-
-      {/* ── Notification bell — fixed top-right ───────────── */}
-      {token && (
-        <div className="fixed top-8 right-4 z-50 lg:top-4">
-          <NotificationsBell
-            token={token}
-            className="p-2 rounded-full bg-background border border-border shadow-md hover:bg-muted text-foreground"
-          />
-        </div>
-      )}
 
       {/* ── Mobile: drawer ────────────────────────────────── */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} direction="left">

@@ -1,9 +1,7 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
-  AlertCircle,
   BarChart3,
-  Building2,
-  CheckCircle2,
   Clock,
   ExternalLink,
   Receipt,
@@ -11,12 +9,11 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
-import { ActionButton } from '@/components/ActionButton'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -27,142 +24,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  getProjectExpenseSummary,
-  listProjectExpenses,
-} from '@/features/expenses/api/expensesApi'
-import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
+import { getExpenseAnalytics, listAllExpenses } from '@/features/expenses/api/expensesApi'
+import { ExpensesByProjectPie } from '@/features/expenses/components/analytics/ExpensesByProjectPie'
+import { ExpensesBarChart } from '@/features/expenses/components/analytics/ExpensesBarChart'
+import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { listProjects } from '@/features/projects/api/projectsApi'
-import type { ProjectDTO } from '@/features/projects/model/types'
 import { ApiError } from '@/lib/api/apiClient'
+import { formatARS } from '@/lib/currency'
+import { PAGE_SIZE } from '@/lib/pagination'
 import { useAuth } from '@/hooks/useAuth'
+import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Data types & fetchers
-// ─────────────────────────────────────────────────────────────────────────────
-
-type ProjectExpenseStats = {
-  project: ProjectDTO
-  totalApproved: number
-  count: number
-  pending: number
-  approved: number
-  rejected: number
-  lastExpenseDate: string | null
+// ─── Date helpers (presets) ───────────────────────────────────
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+// Defaults = mes actual (se usan como valores iniciales en useSearchParamState)
+const _now = new Date()
+const DEFAULT_DESDE = isoDate(new Date(_now.getFullYear(), _now.getMonth(), 1))
+const DEFAULT_HASTA = isoDate(_now)
 
-type AdminExpenseRow = ExpenseDTO & { project_name: string }
+type DatePreset = { label: string; desde: string; hasta: string }
+const DATE_PRESETS: DatePreset[] = [
+  {
+    label: 'Este mes',
+    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth(), 1)),
+    hasta: isoDate(_now),
+  },
+  {
+    label: 'Mes anterior',
+    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth() - 1, 1)),
+    hasta: isoDate(new Date(_now.getFullYear(), _now.getMonth(), 0)),
+  },
+  {
+    label: 'Últimos 6 meses',
+    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth() - 5, 1)),
+    hasta: isoDate(_now),
+  },
+  {
+    label: 'Este año',
+    desde: isoDate(new Date(_now.getFullYear(), 0, 1)),
+    hasta: isoDate(_now),
+  },
+]
 
-type DashboardData = {
-  projects: ProjectExpenseStats[]
-  expenses: AdminExpenseRow[]
-}
-
-async function fetchAllProjects(token: string): Promise<ProjectDTO[]> {
-  const out: ProjectDTO[] = []
-  let page = 1
-  while (page <= 25) {
-    const r = await listProjects(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
-
-async function fetchAllProjectExpenses(token: string, projectId: string): Promise<ExpenseDTO[]> {
-  const out: ExpenseDTO[] = []
-  let page = 1
-  while (page <= 30) {
-    const r = await listProjectExpenses(token, projectId, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
-
-async function fetchExpenseDashboard(token: string): Promise<DashboardData> {
-  const projects = await fetchAllProjects(token)
-  const rows = await Promise.all(
-    projects.map(async (project) => {
-      const [summary, expenses] = await Promise.all([
-        getProjectExpenseSummary(token, project.id),
-        fetchAllProjectExpenses(token, project.id),
-      ])
-      const counts: Record<ExpenseStatus, number> = { PENDIENTE: 0, APROBADO: 0, RECHAZADO: 0 }
-      for (const exp of expenses) counts[exp.status]++
-      const lastExpenseDate = expenses.map((e) => e.expense_date).sort().at(-1) ?? null
-      return {
-        stats: {
-          project,
-          totalApproved: Number.parseFloat(summary.total_approved || '0') || 0,
-          count: expenses.length,
-          pending: counts.PENDIENTE,
-          approved: counts.APROBADO,
-          rejected: counts.RECHAZADO,
-          lastExpenseDate,
-        },
-        expenses: expenses.map((exp): AdminExpenseRow => ({ ...exp, project_name: project.name })),
-      }
-    }),
-  )
-  return {
-    projects: rows
-      .map((r) => r.stats)
-      .sort((a, b) => {
-        if (b.pending !== a.pending) return b.pending - a.pending
-        if (b.totalApproved !== a.totalApproved) return b.totalApproved - a.totalApproved
-        return a.project.name.localeCompare(b.project.name)
-      }),
-    expenses: rows
-      .flatMap((r) => r.expenses)
-      .sort((a, b) => {
-        const order: Record<ExpenseStatus, number> = { PENDIENTE: 0, APROBADO: 1, RECHAZADO: 2 }
-        const byStatus = order[a.status] - order[b.status]
-        if (byStatus !== 0) return byStatus
-        return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime()
-      }),
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Formatters
-// ─────────────────────────────────────────────────────────────────────────────
-
-function money(n: number) {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
-    maximumFractionDigits: 0,
-  }).format(n)
-}
-
-function shortDate(iso: string | null) {
-  if (!iso) return 'Sin gastos'
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
-}
-
+// ─── Formatters ───────────────────────────────────────────────
 function expenseDate(iso: string) {
   return new Date(`${iso}T12:00:00`).toLocaleDateString('es-AR', {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
   })
-}
-
-function parseAmount(amount: string) {
-  const n = Number.parseFloat(amount)
-  return Number.isNaN(n) ? 0 : n
-}
-
-function projectInitial(name: string) {
-  return name.trim()[0]?.toUpperCase() ?? 'P'
 }
 
 function projectAvatarColor(name: string): string {
@@ -190,64 +103,24 @@ function statusLeftBorder(status: ExpenseStatus) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Skeleton
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-5">
-      {/* Metric cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-24 rounded-2xl bg-muted/50 animate-pulse"
-            style={{ opacity: 1 - i * 0.15 }}
-          />
-        ))}
-      </div>
-      {/* Expenses card */}
-      <div className="rounded-2xl border bg-card p-5 space-y-3">
-        <div className="h-5 w-40 bg-muted/50 rounded animate-pulse" />
-        <div className="h-10 bg-muted/40 rounded-xl animate-pulse" />
-        <div className="space-y-2.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-20 rounded-xl bg-muted/40 animate-pulse"
-              style={{ opacity: 1 - i * 0.25 }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MetricCard
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─── MetricCard ───────────────────────────────────────────────
 type MetricCardProps = {
   title: string
   value: string
   icon: React.ReactNode
   tone?: 'default' | 'warn' | 'green' | 'red'
   sub?: string
+  loading?: boolean
 }
 
-function MetricCard({ title, value, icon, tone = 'default', sub }: MetricCardProps) {
+function MetricCard({ title, value, icon, tone = 'default', sub, loading }: MetricCardProps) {
   return (
     <Card
       className={cn(
         'rounded-2xl shadow-sm overflow-hidden',
-        tone === 'warn' &&
-          'border-amber-200 bg-amber-50/60 dark:border-amber-800/60 dark:bg-amber-950/20',
-        tone === 'green' &&
-          'border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/60 dark:bg-emerald-950/20',
-        tone === 'red' &&
-          'border-red-200/70 bg-red-50/40 dark:border-red-900/60 dark:bg-red-950/20',
+        tone === 'warn' && 'border-amber-200 bg-amber-50/60 dark:border-amber-800/60 dark:bg-amber-950/20',
+        tone === 'green' && 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/60 dark:bg-emerald-950/20',
+        tone === 'red' && 'border-red-200/70 bg-red-50/40 dark:border-red-900/60 dark:bg-red-950/20',
       )}
     >
       <CardContent className="p-4 sm:p-5">
@@ -256,8 +129,12 @@ function MetricCard({ title, value, icon, tone = 'default', sub }: MetricCardPro
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
               {title}
             </p>
-            <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>}
+            {loading ? (
+              <div className="h-7 w-24 bg-muted/60 rounded animate-pulse" />
+            ) : (
+              <p className="text-2xl font-bold tabular-nums text-foreground leading-none">{value}</p>
+            )}
+            {sub && !loading && <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>}
           </div>
           <div
             className={cn(
@@ -276,374 +153,364 @@ function MetricCard({ title, value, icon, tone = 'default', sub }: MetricCardPro
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Page
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─── Page ─────────────────────────────────────────────────────
 export default function AdminGastosPage() {
   const { token, isRestoring } = useAuth()
-  const [query, setQuery] = useState('')
-  const [projectFilter, setProjectFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus | 'all'>('PENDIENTE')
+  const [, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useSearchParamState('q', '')
+  const [projectFilter, setProjectFilter] = useSearchParamState('proyecto', 'all')
+  const [statusRaw, setStatusFilter] = useSearchParamState('estado', 'all')
+  const statusFilter = statusRaw as ExpenseStatus | 'all'
+  const [desde, setDesde] = useSearchParamState('desde', DEFAULT_DESDE)
+  const [hasta, setHasta] = useSearchParamState('hasta', DEFAULT_HASTA)
 
-  const q = useQuery({
-    queryKey: ['admin-expenses-dashboard', token],
-    enabled: Boolean(token) && !isRestoring,
-    queryFn: () => fetchExpenseDashboard(token!),
+  /** Aplica un preset en UN solo setSearchParams para evitar que se pisen. */
+  function applyDatePreset(p: DatePreset) {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        if (p.desde === DEFAULT_DESDE) params.delete('desde')
+        else params.set('desde', p.desde)
+        if (p.hasta === DEFAULT_HASTA) params.delete('hasta')
+        else params.set('hasta', p.hasta)
+        return params
+      },
+      { replace: true },
+    )
+    setPage(1)
+  }
+
+  function resetDates() {
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev)
+        params.delete('desde')
+        params.delete('hasta')
+        return params
+      },
+      { replace: true },
+    )
+    setPage(1)
+  }
+  const [page, setPage] = useState(1)
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, projectFilter, statusFilter, desde, hasta])
+
+  const enabled = Boolean(token) && !isRestoring
+
+  const analyticsQ = useQuery({
+    queryKey: ['expense-analytics', token, desde, hasta],
+    enabled,
+    queryFn: () => getExpenseAnalytics(token!, desde || undefined, hasta || undefined),
   })
 
-  const projects = q.data?.projects ?? []
-  const expenses = q.data?.expenses ?? []
+  const projectsQ = useQuery({
+    queryKey: ['admin-projects-min', token],
+    enabled,
+    queryFn: () => listProjects(token!, 1, 100),
+  })
 
-  const filteredExpenses = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    return expenses.filter((exp) => {
-      if (projectFilter !== 'all' && exp.project_id !== projectFilter) return false
-      if (statusFilter !== 'all' && exp.status !== statusFilter) return false
-      if (!term) return true
-      return (
-        exp.description.toLowerCase().includes(term) ||
-        exp.project_name.toLowerCase().includes(term) ||
-        (exp.submitter_name ?? '').toLowerCase().includes(term)
-      )
-    })
-  }, [expenses, projectFilter, query, statusFilter])
+  const listQ = useQuery({
+    queryKey: ['admin-expenses-list', token, page, projectFilter, statusFilter, desde, hasta, query],
+    enabled,
+    queryFn: () =>
+      listAllExpenses(token!, {
+        page,
+        pageSize: PAGE_SIZE,
+        projectId: projectFilter,
+        status: statusFilter,
+        from: desde || undefined,
+        to: hasta || undefined,
+        q: query,
+      }),
+  })
 
-  const filteredProjects = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    if (!term) return projects
-    return projects.filter((row) => row.project.name.toLowerCase().includes(term))
-  }, [projects, query])
-
-  const totals = useMemo(
-    () => ({
-      approved: projects.reduce((acc, row) => acc + row.totalApproved, 0),
-      pending: projects.reduce((acc, row) => acc + row.pending, 0),
-      rejected: projects.reduce((acc, row) => acc + row.rejected, 0),
-      expenses: projects.reduce((acc, row) => acc + row.count, 0),
-      activeProjects: projects.filter((row) => row.count > 0).length,
-    }),
-    [projects],
-  )
-
-  const hasPending = totals.pending > 0
+  const a = analyticsQ.data
+  const projectOptions = projectsQ.data?.data ?? []
+  const expenses = listQ.data?.data ?? []
+  const pendingCount = a?.pending_count ?? 0
+  const hasPending = pendingCount > 0
 
   return (
     <div className="min-h-screen pb-24">
       <PageHeader
         icon={Receipt}
         title="Gastos"
-        subtitle="Vista global: pendientes, métricas y seguimiento por proyecto."
-        action={
-          hasPending && statusFilter !== 'PENDIENTE' ? (
-            <ActionButton intent="view" onClick={() => setStatusFilter('PENDIENTE')}>
-              <AlertCircle className="w-3.5 h-3.5" />
-              {totals.pending} pendiente{totals.pending !== 1 ? 's' : ''}
-            </ActionButton>
-          ) : null
-        }
+        subtitle="Vista global: métricas, análisis por período y seguimiento de gastos."
+        action={null}
       />
 
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-6xl mx-auto space-y-5">
-        {q.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {q.error instanceof ApiError
-              ? q.error.message
-              : 'No se pudo cargar el módulo de gastos'}
+        {/* ── Filtro de período global — afecta métricas, gráficos Y lista ── */}
+        <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm px-4 py-3.5 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground shrink-0">
+            <BarChart3 className="w-3.5 h-3.5" />
+            Período
           </div>
-        )}
-
-        {q.isLoading && <DashboardSkeleton />}
-
-        {!q.isLoading && (
-          <>
-            {/* ── Métricas globales ── */}
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricCard
-                title="Total aprobado"
-                value={money(totals.approved)}
-                tone="green"
-                icon={<TrendingUp className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
-                sub={`${totals.expenses} gasto${totals.expenses !== 1 ? 's' : ''} en total`}
-              />
-              <MetricCard
-                title="Pendientes"
-                value={String(totals.pending)}
-                tone={hasPending ? 'warn' : 'default'}
-                icon={
-                  <Clock
-                    className={cn(
-                      'h-4 w-4',
-                      hasPending
-                        ? 'text-amber-700 dark:text-amber-400'
-                        : 'text-muted-foreground',
-                    )}
-                  />
-                }
-                sub={hasPending ? 'Requieren revisión' : 'Sin pendientes'}
-              />
-              <MetricCard
-                title="Rechazados"
-                value={String(totals.rejected)}
-                tone={totals.rejected > 0 ? 'red' : 'default'}
-                icon={
-                  <XCircle
-                    className={cn(
-                      'h-4 w-4',
-                      totals.rejected > 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-muted-foreground',
-                    )}
-                  />
-                }
-              />
-              <MetricCard
-                title="Proyectos activos"
-                value={`${totals.activeProjects}`}
-                tone="default"
-                icon={<Building2 className="h-4 w-4 text-primary" />}
-                sub={`de ${projects.length} total`}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-muted-foreground">Desde</label>
+              <Input
+                type="date"
+                value={desde}
+                max={hasta || undefined}
+                onChange={(e) => { setDesde(e.target.value); setPage(1) }}
+                className="h-8 w-[140px] text-xs"
               />
             </div>
-
-            {/* ── Gastos individuales ── */}
-            <Card className="rounded-2xl shadow-sm overflow-hidden">
-              <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <Receipt className="w-4 h-4 text-primary shrink-0" />
-                      Gastos operativos
-                    </CardTitle>
-                    <CardDescription className="mt-0.5 text-xs">
-                      Filtrá por proyecto, persona, estado o descripción.
-                    </CardDescription>
-                  </div>
-                  {filteredExpenses.length > 0 && (
-                    <span className="text-xs text-muted-foreground tabular-nums bg-muted/40 border rounded-full px-2.5 py-0.5">
-                      {filteredExpenses.length} resultado{filteredExpenses.length !== 1 ? 's' : ''}
-                    </span>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-muted-foreground">Hasta</label>
+              <Input
+                type="date"
+                value={hasta}
+                min={desde || undefined}
+                onChange={(e) => { setHasta(e.target.value); setPage(1) }}
+                className="h-8 w-[140px] text-xs"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {DATE_PRESETS.map((p) => {
+              const active = desde === p.desde && hasta === p.hasta
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => applyDatePreset(p)}
+                  className={cn(
+                    'text-[11px] rounded-full border px-2.5 py-1 transition-colors',
+                    active
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
                   )}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={resetDates}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ↺ Resetear
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 ml-auto hidden sm:block">
+            Filtra métricas, gráficos y lista de gastos
+          </p>
+        </div>
+
+        {/* ── Métricas (del período seleccionado) ── */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Total aprobado"
+            value={formatARS(a?.total_approved ?? '0')}
+            tone="green"
+            loading={analyticsQ.isLoading}
+            icon={<TrendingUp className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />}
+            sub={`${a?.total_count ?? 0} gasto${(a?.total_count ?? 0) !== 1 ? 's' : ''} en el período`}
+          />
+          <MetricCard
+            title="Pendientes"
+            value={String(pendingCount)}
+            tone={hasPending ? 'warn' : 'default'}
+            loading={analyticsQ.isLoading}
+            icon={<Clock className={cn('h-4 w-4', hasPending ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')} />}
+            sub={hasPending ? 'Requieren revisión' : 'Sin pendientes'}
+          />
+          <MetricCard
+            title="Rechazados"
+            value={String(a?.rejected_count ?? 0)}
+            tone={(a?.rejected_count ?? 0) > 0 ? 'red' : 'default'}
+            loading={analyticsQ.isLoading}
+            icon={<XCircle className={cn('h-4 w-4', (a?.rejected_count ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')} />}
+          />
+          <MetricCard
+            title="Proyectos con gastos"
+            value={String(a?.by_project.length ?? 0)}
+            tone="default"
+            loading={analyticsQ.isLoading}
+            icon={<BarChart3 className="h-4 w-4 text-primary" />}
+          />
+        </div>
+
+        {/* ── Gráficos ── */}
+        <Card className="rounded-2xl shadow-sm overflow-hidden">
+          <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary shrink-0" />
+              Análisis del período
+            </CardTitle>
+            <CardDescription className="mt-0.5 text-xs">
+              Montos aprobados. Barras por día si el rango ≤ 62 días, o por mes si es mayor.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-5">
+            {analyticsQ.isError && (
+              <p className="text-sm text-destructive">No se pudo cargar el análisis.</p>
+            )}
+            {analyticsQ.isLoading ? (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="h-[260px] rounded-xl bg-muted/40 animate-pulse" />
+                <div className="h-[260px] rounded-xl bg-muted/40 animate-pulse" />
+              </div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Por proyecto</p>
+                  <ExpensesByProjectPie data={a?.by_project ?? []} />
                 </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
-                {/* Filtros */}
-                <div className="grid gap-2 sm:grid-cols-[1fr_180px_160px]">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <Input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Descripción, proyecto o persona…"
-                      className="pl-9 h-10 bg-muted/30 border-border/60 focus:bg-background"
-                    />
-                  </div>
-                  <Select value={projectFilter} onValueChange={setProjectFilter}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Proyecto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los proyectos</SelectItem>
-                      {projects.map((row) => (
-                        <SelectItem key={row.project.id} value={row.project.id}>
-                          {row.project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={statusFilter}
-                    onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los estados</SelectItem>
-                      <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                      <SelectItem value="APROBADO">Aprobado</SelectItem>
-                      <SelectItem value="RECHAZADO">Rechazado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">
+                    Por {a?.granularity === 'day' ? 'día' : 'mes'}
+                  </p>
+                  <ExpensesBarChart data={a?.by_bucket ?? []} granularity={a?.granularity ?? 'month'} />
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-                {/* Lista de gastos */}
-                {filteredExpenses.length > 0 && (
-                  <div className="space-y-2">
-                    {filteredExpenses.map((exp) => (
-                      <div
-                        key={exp.id}
-                        className={cn(
-                          'rounded-xl border-l-[3px] border border-border/70 bg-card overflow-hidden shadow-sm',
-                          statusLeftBorder(exp.status),
-                        )}
-                      >
-                        <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          {/* Info izquierda */}
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            {/* Fila 1: descripción + badges */}
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-foreground leading-tight">
-                                {exp.description}
-                              </p>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  'text-[10px] font-medium px-1.5 py-0 h-4',
-                                  projectAvatarColor(exp.project_name),
-                                )}
-                              >
-                                {exp.project_name}
-                              </Badge>
-                              <ExpenseStatusBadge status={exp.status} />
-                            </div>
-                            {/* Fila 2: fecha + submitter */}
-                            <p className="text-xs text-muted-foreground">
-                              {expenseDate(exp.expense_date)}
-                              {exp.submitter_name && (
-                                <span className="ml-1.5">
-                                  · <span className="text-foreground/70">{exp.submitter_name}</span>
-                                </span>
-                              )}
-                            </p>
-                          </div>
-
-                          {/* Monto + acción derecha */}
-                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                            <p className="font-bold text-base tabular-nums text-foreground">
-                              {money(parseAmount(exp.amount))}
-                            </p>
-                            <ActionButton intent="view" asChild size="sm">
-                              <Link to={`/app/admin/proyectos/${exp.project_id}/gastos`}>
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Ver proyecto</span>
-                                <span className="sm:hidden">Ver</span>
-                              </Link>
-                            </ActionButton>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Vacío */}
-                {filteredExpenses.length === 0 && (
-                  <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">
-                    <Receipt className="w-10 h-10 text-muted-foreground/25" />
-                    <p className="text-sm text-muted-foreground">
-                      No hay gastos para los filtros seleccionados.
-                    </p>
-                    {statusFilter !== 'all' && (
-                      <button
-                        type="button"
-                        onClick={() => setStatusFilter('all')}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Ver todos los estados
-                      </button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* ── Resumen por proyecto ── */}
-            <Card className="rounded-2xl shadow-sm overflow-hidden">
-              <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+        {/* ── Gastos (lista paginada — mismas fechas que el período global) ── */}
+        <Card className="rounded-2xl shadow-sm overflow-hidden">
+          <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-primary shrink-0" />
-                  Resumen por proyecto
+                  <Receipt className="w-4 h-4 text-primary shrink-0" />
+                  Gastos del período
                 </CardTitle>
                 <CardDescription className="mt-0.5 text-xs">
-                  Proyectos con más pendientes aparecen primero. Hacé clic en "Ver gastos" para
-                  gestionar.
+                  Mismo rango de fechas que los gráficos. Filtrá además por proyecto, estado o descripción.
                 </CardDescription>
-              </CardHeader>
+              </div>
+              {listQ.data && (
+                <span className="text-xs text-muted-foreground tabular-nums bg-muted/40 border rounded-full px-2.5 py-0.5">
+                  {listQ.data.total} resultado{listQ.data.total !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </CardHeader>
 
-              <CardContent className="px-4 sm:px-6 pb-5">
-                {filteredProjects.length === 0 && (
-                  <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
-                    <Building2 className="w-9 h-9 text-muted-foreground/25" />
-                    <p className="text-sm text-muted-foreground">Sin proyectos para mostrar.</p>
-                  </div>
-                )}
+          <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+            {/* Filtros secundarios (proyecto / estado / búsqueda — se suman al período) */}
+            <div className="grid gap-2 sm:grid-cols-[1fr_180px_160px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Descripción, proyecto o persona…"
+                  className="pl-9 h-10 bg-muted/30 border-border/60 focus:bg-background"
+                />
+              </div>
+              <Select value={projectFilter} onValueChange={setProjectFilter}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los proyectos</SelectItem>
+                  {projectOptions.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                  <SelectItem value="APROBADO">Aprobado</SelectItem>
+                  <SelectItem value="RECHAZADO">Rechazado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  {filteredProjects.map((row) => {
-                    const hasPendingHere = row.pending > 0
-                    const allApproved = row.approved === row.count && row.count > 0
+            {listQ.isError && (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                {listQ.error instanceof ApiError ? listQ.error.message : 'No se pudieron cargar los gastos'}
+              </div>
+            )}
 
-                    return (
-                      <div
-                        key={row.project.id}
-                        className={cn(
-                          'flex flex-wrap sm:flex-nowrap items-center gap-3 rounded-xl border px-4 py-3 transition-colors hover:bg-muted/20',
-                          hasPendingHere
-                            ? 'border-amber-200/70 dark:border-amber-800/50 bg-amber-50/30 dark:bg-amber-950/10'
-                            : 'border-border/70 bg-card',
-                        )}
-                      >
-                        {/* Avatar del proyecto */}
-                        <div
-                          className={cn(
-                            'h-9 w-9 shrink-0 rounded-xl flex items-center justify-center text-sm font-bold select-none',
-                            projectAvatarColor(row.project.name),
-                          )}
-                        >
-                          {projectInitial(row.project.name)}
-                        </div>
+            {listQ.isLoading && (
+              <div className="space-y-2">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-16 rounded-xl bg-muted/40 animate-pulse" style={{ opacity: 1 - i * 0.25 }} />
+                ))}
+              </div>
+            )}
 
-                        {/* Info */}
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-foreground leading-tight">
-                              {row.project.name}
-                            </p>
-                            {hasPendingHere && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                                <Clock className="h-2.5 w-2.5" />
-                                {row.pending} pendiente{row.pending !== 1 ? 's' : ''}
-                              </span>
-                            )}
-                            {allApproved && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                <CheckCircle2 className="h-2.5 w-2.5" />
-                                Al día
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {row.count} gasto{row.count !== 1 ? 's' : ''} · Último:{' '}
-                            {shortDate(row.lastExpenseDate)}
+            {!listQ.isLoading && expenses.length > 0 && (
+              <div className="space-y-2">
+                {expenses.map((exp) => (
+                  <Link
+                    key={exp.id}
+                    to={`/app/admin/gastos/${exp.id}`}
+                    className={cn(
+                      'block rounded-xl border-l-[3px] border border-border/70 bg-card overflow-hidden shadow-sm transition-colors hover:bg-muted/20',
+                      statusLeftBorder(exp.status),
+                    )}
+                  >
+                    <div className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-foreground leading-tight">
+                            {exp.description}
                           </p>
+                          {exp.project_name && (
+                            <Badge
+                              variant="outline"
+                              className={cn('text-[10px] font-medium px-1.5 py-0 h-4', projectAvatarColor(exp.project_name))}
+                            >
+                              {exp.project_name}
+                            </Badge>
+                          )}
+                          <ExpenseStatusBadge status={exp.status} />
                         </div>
-
-                        {/* Monto aprobado + acción */}
-                        <div className="flex items-center gap-3 shrink-0 ml-auto">
-                          <div className="text-right">
-                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                              Aprobado
-                            </p>
-                            <p className="text-sm font-bold tabular-nums text-foreground">
-                              {money(row.totalApproved)}
-                            </p>
-                          </div>
-                          <ActionButton intent="view" asChild size="sm">
-                            <Link to={`/app/admin/proyectos/${row.project.id}/gastos`}>
-                              Ver gastos
-                            </Link>
-                          </ActionButton>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {expenseDate(exp.expense_date)}
+                          {exp.submitter_name && (
+                            <span className="ml-1.5">
+                              · <span className="text-foreground/70">{exp.submitter_name}</span>
+                            </span>
+                          )}
+                        </p>
                       </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <p className="font-bold text-base tabular-nums text-foreground">
+                          {formatARS(exp.amount)}
+                        </p>
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {!listQ.isLoading && expenses.length === 0 && !listQ.isError && (
+              <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">
+                <Receipt className="w-10 h-10 text-muted-foreground/25" />
+                <p className="text-sm text-muted-foreground">
+                  No hay gastos para los filtros seleccionados.
+                </p>
+              </div>
+            )}
+
+            <PaginationControls
+              page={page}
+              totalPages={listQ.data?.total_pages ?? 1}
+              onPageChange={setPage}
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

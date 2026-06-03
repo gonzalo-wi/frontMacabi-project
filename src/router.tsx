@@ -24,6 +24,7 @@ import AdminStockPage from '@/pages/admin/AdminStockPage'
 import AdminStockRequestDetailPage from '@/pages/admin/AdminStockRequestDetailPage'
 import ParticipantMyStockRequestsPage from '@/pages/participant/ParticipantMyStockRequestsPage'
 import ParticipantMyExpensesPage from '@/pages/participant/ParticipantMyExpensesPage'
+import ExpenseDetailPage from '@/pages/ExpenseDetailPage'
 import EventRespondPage from '@/pages/EventRespondPage'
 
 function LegacyProjectRedirect({ to }: { to: '/app/gastos' | '/app/stock' }) {
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
             path: 'gastos',
             element: <ParticipantMyExpensesPage />,
           },
+          {
+            path: 'gastos/:id',
+            element: <ExpenseDetailPage />,
+          },
           { path: 'mis-proyectos/:id', element: <LegacyProjectRedirect to="/app/gastos" /> },
           { path: 'mis-proyectos/:id/gastos', element: <LegacyProjectRedirect to="/app/gastos" /> },
           { path: 'mis-proyectos/:id/recursos', element: <LegacyProjectRedirect to="/app/stock" /> },
@@ -90,6 +95,7 @@ export const router = createBrowserRouter([
               { path: 'jornadas/:id', element: <AdminJornadaDetailPage /> },
               { path: 'jornadas/:id/editar', element: <AdminJornadaBuilderPage /> },
               { path: 'gastos', element: <AdminGastosPage /> },
+              { path: 'gastos/:id', element: <ExpenseDetailPage /> },
               { path: 'proyectos', element: <AdminProyectosPage /> },
               {
                 path: 'proyectos/:id',

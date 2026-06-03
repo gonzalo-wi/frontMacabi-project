@@ -1,5 +1,10 @@
 import { apiMultipart, apiRequest } from '@/lib/api/apiClient'
-import type { ExpenseDTO, ExpenseSummaryDTO, PaginatedExpensesDTO } from '../model/types'
+import type {
+  ExpenseAnalyticsDTO,
+  ExpenseDTO,
+  ExpenseSummaryDTO,
+  PaginatedExpensesDTO,
+} from '../model/types'
 
 export const RECEIPT_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf'
 export const RECEIPT_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const
@@ -51,6 +56,51 @@ export function listMyExpenses(
 ): Promise<PaginatedExpensesDTO> {
   const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
   return apiRequest<PaginatedExpensesDTO>(`/api/expenses/my?${q}`, { token })
+}
+
+export type ExpenseListFilters = {
+  page?: number
+  pageSize?: number
+  projectId?: string
+  status?: string
+  from?: string
+  to?: string
+  q?: string
+}
+
+/** Lista global de gastos (admin), paginada y filtrada server-side. */
+export function listAllExpenses(
+  token: string,
+  f: ExpenseListFilters = {},
+): Promise<PaginatedExpensesDTO> {
+  const q = new URLSearchParams({
+    page: String(f.page ?? 1),
+    page_size: String(f.pageSize ?? 20),
+  })
+  if (f.projectId && f.projectId !== 'all') q.set('project_id', f.projectId)
+  if (f.status && f.status !== 'all') q.set('status', f.status)
+  if (f.from) q.set('from', f.from)
+  if (f.to) q.set('to', f.to)
+  if (f.q?.trim()) q.set('q', f.q.trim())
+  return apiRequest<PaginatedExpensesDTO>(`/api/expenses?${q}`, { token })
+}
+
+export function getExpense(token: string, id: string): Promise<ExpenseDTO> {
+  return apiRequest<ExpenseDTO>(`/api/expenses/${id}`, { token })
+}
+
+export function getExpenseAnalytics(
+  token: string,
+  from?: string,
+  to?: string,
+): Promise<ExpenseAnalyticsDTO> {
+  const q = new URLSearchParams()
+  if (from) q.set('from', from)
+  if (to) q.set('to', to)
+  const tail = q.toString()
+  return apiRequest<ExpenseAnalyticsDTO>(`/api/expenses/analytics${tail ? `?${tail}` : ''}`, {
+    token,
+  })
 }
 
 export function getProjectExpenseSummary(
@@ -126,6 +176,10 @@ export function receiptUploadUrl(token: string, expenseId: string, contentType: 
 
 export function receiptViewUrl(token: string, expenseId: string) {
   return apiRequest<{ view_url: string }>(`/api/expenses/${expenseId}/receipt`, { token })
+}
+
+export function removeReceipt(token: string, expenseId: string): Promise<void> {
+  return apiRequest<void>(`/api/expenses/${expenseId}/receipt`, { method: 'DELETE', token })
 }
 
 /** Sube el comprobante vía API (evita CORS con Supabase desde el navegador). */
