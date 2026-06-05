@@ -1,2 +1,4 @@
+allowBuilds:
+  sharp: true
 # Espera de 7 días desde la publicación en npm antes de instalar una versión (mitiga supply chain).
 minimumReleaseAge: 10080
