@@ -1,6 +1,7 @@
 import { apiMultipart, apiRequest } from '@/lib/api/apiClient'
 import type {
   ExpenseAnalyticsDTO,
+  ExpenseCategoryDTO,
   ExpenseDTO,
   ExpenseSummaryDTO,
   PaginatedExpensesDTO,
@@ -26,6 +27,7 @@ export type CreateExpenseBody = {
   currency?: string
   description: string
   expense_date: string // YYYY-MM-DD
+  category_id?: string
 }
 
 export type PatchExpenseBody = {
@@ -33,6 +35,7 @@ export type PatchExpenseBody = {
   currency?: string
   description?: string
   expense_date?: string
+  category_id?: string // "" to remove
   receipt_storage_path?: string
 }
 
@@ -130,10 +133,29 @@ export function createExpense(
     fd.append('description', body.description)
     fd.append('expense_date', body.expense_date)
     if (body.currency) fd.append('currency', body.currency)
+    if (body.category_id) fd.append('category_id', body.category_id)
     fd.append('file', receiptFile)
     return apiMultipart<ExpenseDTO>('/api/expenses', fd, token)
   }
   return apiRequest<ExpenseDTO>('/api/expenses', { method: 'POST', token, body })
+}
+
+// ── Categories ────────────────────────────────────────────────
+
+export function getCategories(token: string): Promise<ExpenseCategoryDTO[]> {
+  return apiRequest<ExpenseCategoryDTO[]>('/api/expenses/categories', { token })
+}
+
+export function createCategory(token: string, name: string): Promise<ExpenseCategoryDTO> {
+  return apiRequest<ExpenseCategoryDTO>('/api/expenses/categories', {
+    method: 'POST',
+    token,
+    body: { name },
+  })
+}
+
+export function deleteCategory(token: string, id: string): Promise<void> {
+  return apiRequest<void>(`/api/expenses/categories/${id}`, { method: 'DELETE', token })
 }
 
 export function patchExpense(

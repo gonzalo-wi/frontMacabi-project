@@ -59,7 +59,7 @@ export default function ProyectoResumenPage() {
               Esta pantalla concentra la{' '}
               <strong className="font-semibold text-foreground/60">configuración</strong> del
               proyecto. Para la operación diaria usá las pestañas:{' '}
-              <em>Miembros, Gastos, Jornadas</em> y <em>Stock</em>.
+              <em>Miembros, Gastos, Jornadas</em> y <em>Materiales</em>.
             </p>
           </div>
         </CardContent>

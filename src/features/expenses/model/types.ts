@@ -1,6 +1,12 @@
 /** Negocio: mismos estados que otros módulos (es-AR MAYÚSCULAS). */
 export type ExpenseStatus = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
 
+export interface ExpenseCategoryDTO {
+  id: string
+  name: string
+  created_at: string
+}
+
 export interface ExpenseDTO {
   id: string
   project_id: string
@@ -14,6 +20,8 @@ export interface ExpenseDTO {
   description: string
   expense_date: string
   status: ExpenseStatus
+  category_id?: string | null
+  category_name?: string | null
   receipt_storage_path?: string | null
   approved_by_user_id?: string | null
   approved_at?: string | null

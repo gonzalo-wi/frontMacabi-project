@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { CreditCard, Loader2, Plus } from 'lucide-react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import {
   createExpense,
+  getCategories,
   validateReceiptFile,
   RECEIPT_ACCEPT,
 } from '@/features/expenses/api/expensesApi'
@@ -58,9 +59,17 @@ export function ExpenseFormDialog({
   const [description, setDescription] = useState('')
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
+  const [categoryId, setCategoryId] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const needsProjectPicker = !projectId
+
+  const categoriesQ = useQuery({
+    queryKey: ['expense-categories', token],
+    queryFn: () => getCategories(token),
+    staleTime: 5 * 60_000,
+  })
+  const categories = categoriesQ.data ?? []
 
   function reset() {
     setSelectedProject('')
@@ -68,6 +77,7 @@ export function ExpenseFormDialog({
     setDescription('')
     setExpenseDate(new Date().toISOString().slice(0, 10))
     setReceiptFile(null)
+    setCategoryId('')
     setError(null)
     if (fileRef.current) fileRef.current.value = ''
   }
@@ -91,6 +101,7 @@ export function ExpenseFormDialog({
           amount: cleanAmount,
           description: description.trim(),
           expense_date: expenseDate,
+          category_id: categoryId || undefined,
         },
         receiptFile,
       )
@@ -197,6 +208,23 @@ export function ExpenseFormDialog({
               className="resize-none"
             />
           </div>
+
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Categoría</Label>
+              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sin categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin categoría</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="exp-receipt" className="text-xs font-semibold">

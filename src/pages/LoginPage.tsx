@@ -14,7 +14,7 @@ const features = [
   { icon: Bus,               label: 'Micros',      desc: 'Reservá tu asiento en cada salida' },
   { icon: UtensilsCrossed,   label: 'Comidas',     desc: 'Gestioná almuerzos y menúes' },
   { icon: Receipt,           label: 'Reembolsos',  desc: 'Registrá y controlá tus gastos' },
-  { icon: Package,           label: 'Stock',       desc: 'Accedé al inventario de materiales' },
+  { icon: Package,           label: 'Materiales',  desc: 'Accedé al inventario de materiales' },
 ]
 
 export default function LoginPage() {
@@ -128,7 +128,7 @@ export default function LoginPage() {
               en un solo lugar.
             </h1>
             <p className="text-sm text-sidebar-muted-foreground leading-relaxed max-w-[320px]">
-              Administrá comidas, reembolsos, stock de materiales y asistencia de jornadas sin complicaciones.
+              Administrá comidas, reembolsos, materiales y asistencia de jornadas sin complicaciones.
             </p>
           </div>
 

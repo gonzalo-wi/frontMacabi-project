@@ -6,7 +6,7 @@ import {
   ChevronRight, Loader2, X,
   CheckCircle2, XCircle, Eye, EyeOff,
   KeyRound, UserPlus, FolderKanban,
-  ArrowUpDown, ArrowUp, ArrowDown, Calendar,
+  ArrowUpDown, ArrowUp, ArrowDown, Calendar, Upload,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -40,6 +40,7 @@ import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useAuth } from '@/hooks/useAuth'
 import { updateUserRole, updateUserStatus, updateUser, createUserInvitation } from '@/lib/api/admin'
+import { BulkInviteDialog } from '@/components/admin/BulkInviteDialog'
 import { changePassword } from '@/lib/api/auth'
 import type { UserDTO, UpdateUserRoleBody } from '@/lib/api/types'
 import { ApiError } from '@/lib/api/apiClient'
@@ -305,6 +306,7 @@ export default function AdminUsuariosPage() {
   const [pwSuccess,  setPwSuccess]  = useState(false)
 
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user')
@@ -510,16 +512,25 @@ export default function AdminUsuariosPage() {
         title="Usuarios"
         subtitle="Invitaciones, permisos y estado de cuenta."
         action={
-          <ActionButton
-            intent="primary"
-            onClick={() => {
-              setInviteBanner(null)
-              setInviteOpen(true)
-            }}
-          >
-            <UserPlus className="w-4 h-4 mr-1" />
-            Agregar usuario
-          </ActionButton>
+          <div className="flex items-center gap-2">
+            <ActionButton
+              intent="secondary"
+              onClick={() => setBulkOpen(true)}
+            >
+              <Upload className="w-4 h-4 mr-1" />
+              Importar
+            </ActionButton>
+            <ActionButton
+              intent="primary"
+              onClick={() => {
+                setInviteBanner(null)
+                setInviteOpen(true)
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-1" />
+              Agregar usuario
+            </ActionButton>
+          </div>
         }
       />
 
@@ -968,6 +979,17 @@ export default function AdminUsuariosPage() {
           })()}
         </DrawerContent>
       </Drawer>
+
+      {/* ─────────────────── Bulk invite dialog ─────────────────── */}
+      <BulkInviteDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        token={token!}
+        onDone={() => {
+          queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
+          queryClient.invalidateQueries({ queryKey: ['users-all-admin'] })
+        }}
+      />
 
       {/* ─────────────────── Invite dialog ─────────────────── */}
       <Dialog

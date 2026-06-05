@@ -3,20 +3,35 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   BarChart3,
   Clock,
+  Download,
   ExternalLink,
+  Loader2,
+  Plus,
   Receipt,
   Search,
+  Settings2,
+  Tag,
+  Trash2,
   TrendingUp,
   XCircle,
 } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as XLSX from 'xlsx'
 
+import { ActionButton } from '@/components/ActionButton'
 import { PageHeader } from '@/components/PageHeader'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -24,7 +39,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getExpenseAnalytics, listAllExpenses } from '@/features/expenses/api/expensesApi'
+import {
+  createCategory,
+  deleteCategory,
+  getCategories,
+  getExpenseAnalytics,
+  listAllExpenses,
+} from '@/features/expenses/api/expensesApi'
 import { ExpensesByProjectPie } from '@/features/expenses/components/analytics/ExpensesByProjectPie'
 import { ExpensesBarChart } from '@/features/expenses/components/analytics/ExpensesBarChart'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
@@ -156,6 +177,7 @@ function MetricCard({ title, value, icon, tone = 'default', sub, loading }: Metr
 // ─── Page ─────────────────────────────────────────────────────
 export default function AdminGastosPage() {
   const { token, isRestoring } = useAuth()
+  const queryClient = useQueryClient()
   const [, setSearchParams] = useSearchParams()
   const [query, setQuery] = useSearchParamState('q', '')
   const [projectFilter, setProjectFilter] = useSearchParamState('proyecto', 'all')
@@ -193,12 +215,110 @@ export default function AdminGastosPage() {
     setPage(1)
   }
   const [page, setPage] = useState(1)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [catOpen, setCatOpen] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [catError, setCatError] = useState<string | null>(null)
+  const [exportDesde, setExportDesde] = useState(DEFAULT_DESDE)
+  const [exportHasta, setExportHasta] = useState(DEFAULT_HASTA)
+  const [exportProject, setExportProject] = useState<string>('all')
+  const [exportStatus, setExportStatus] = useState<string>('all')
+  const [downloading, setDownloading] = useState(false)
+
+  function openExportDialog() {
+    setExportDesde(desde || DEFAULT_DESDE)
+    setExportHasta(hasta || DEFAULT_HASTA)
+    setExportProject(projectFilter)
+    setExportStatus(statusFilter)
+    setExportOpen(true)
+  }
+
+  function applyExportPreset(p: DatePreset) {
+    setExportDesde(p.desde)
+    setExportHasta(p.hasta)
+  }
 
   useEffect(() => {
     setPage(1)
   }, [query, projectFilter, statusFilter, desde, hasta])
 
+  async function handleDownloadExcel() {
+    if (!token || downloading) return
+    setDownloading(true)
+    try {
+      const FETCH_SIZE = 500
+      const filters = {
+        pageSize: FETCH_SIZE,
+        projectId: exportProject,
+        status: exportStatus,
+        from: exportDesde || undefined,
+        to: exportHasta || undefined,
+      }
+      const first = await listAllExpenses(token, { ...filters, page: 1 })
+      let all = [...first.data]
+      if (first.total_pages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: first.total_pages - 1 }, (_, i) =>
+            listAllExpenses(token, { ...filters, page: i + 2 }),
+          ),
+        )
+        rest.forEach((r) => all.push(...r.data))
+      }
+
+      const rows = all.map((e) => ({
+        Fecha: new Date(`${e.expense_date}T12:00:00`).toLocaleDateString('es-AR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+        }),
+        Proyecto: e.project_name ?? '',
+        Categoría: e.category_name ?? '',
+        Descripción: e.description,
+        'Monto (ARS)': parseFloat(e.amount),
+        Estado: e.status,
+        'Cargado por': e.submitter_name ?? '',
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(rows)
+      ws['!cols'] = [
+        { wch: 12 }, { wch: 28 }, { wch: 18 }, { wch: 40 },
+        { wch: 14 }, { wch: 12 }, { wch: 22 },
+      ]
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Gastos')
+
+      const desdeLabel = exportDesde ? exportDesde.replace(/-/g, '') : 'inicio'
+      const hastaLabel = exportHasta ? exportHasta.replace(/-/g, '') : 'hoy'
+      XLSX.writeFile(wb, `gastos_${desdeLabel}_${hastaLabel}.xlsx`)
+      setExportOpen(false)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const enabled = Boolean(token) && !isRestoring
+
+  const categoriesQ = useQuery({
+    queryKey: ['expense-categories', token],
+    enabled,
+    queryFn: () => getCategories(token!),
+    staleTime: 5 * 60_000,
+  })
+  const categories = categoriesQ.data ?? []
+
+  const createCatM = useMutation({
+    mutationFn: (name: string) => createCategory(token!, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] })
+      setNewCatName('')
+      setCatError(null)
+    },
+    onError: () => setCatError('No se pudo crear la categoría. Puede que el nombre ya exista.'),
+  })
+
+  const deleteCatM = useMutation({
+    mutationFn: (id: string) => deleteCategory(token!, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expense-categories'] }),
+    onError: () => setCatError('No se puede eliminar: hay gastos asociados a esta categoría.'),
+  })
 
   const analyticsQ = useQuery({
     queryKey: ['expense-analytics', token, desde, hasta],
@@ -239,7 +359,18 @@ export default function AdminGastosPage() {
         icon={Receipt}
         title="Gastos"
         subtitle="Vista global: métricas, análisis por período y seguimiento de gastos."
-        action={null}
+        action={
+          <div className="flex items-center gap-2">
+            <ActionButton intent="secondary" onClick={() => { setCatError(null); setNewCatName(''); setCatOpen(true) }}>
+              <Settings2 className="w-4 h-4 mr-1" />
+              Categorías
+            </ActionButton>
+            <ActionButton intent="secondary" onClick={openExportDialog}>
+              <Download className="w-4 h-4 mr-1" />
+              Exportar Excel
+            </ActionButton>
+          </div>
+        }
       />
 
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-6xl mx-auto space-y-5">
@@ -472,6 +603,12 @@ export default function AdminGastosPage() {
                               {exp.project_name}
                             </Badge>
                           )}
+                          {exp.category_name && (
+                            <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 h-4 gap-0.5 text-violet-700 bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800/60">
+                              <Tag className="w-2.5 h-2.5" />
+                              {exp.category_name}
+                            </Badge>
+                          )}
                           <ExpenseStatusBadge status={exp.status} />
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -512,6 +649,197 @@ export default function AdminGastosPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ─── Export dialog ─── */}
+      <Dialog open={exportOpen} onOpenChange={(o) => { if (!downloading) setExportOpen(o) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <Download className="w-4 h-4 text-primary" />
+              </div>
+              Exportar gastos
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Presets */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Período
+              </Label>
+              <div className="flex flex-wrap gap-1.5">
+                {DATE_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => applyExportPreset(p)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors',
+                      exportDesde === p.desde && exportHasta === p.hasta
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-muted',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Manual dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="exp-desde" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Desde
+                </Label>
+                <Input
+                  id="exp-desde"
+                  type="date"
+                  value={exportDesde}
+                  max={exportHasta || undefined}
+                  onChange={(e) => setExportDesde(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="exp-hasta" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Hasta
+                </Label>
+                <Input
+                  id="exp-hasta"
+                  type="date"
+                  value={exportHasta}
+                  min={exportDesde || undefined}
+                  onChange={(e) => setExportHasta(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Project */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Proyecto
+              </Label>
+              <Select value={exportProject} onValueChange={setExportProject}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los proyectos</SelectItem>
+                  {projectOptions.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Estado
+              </Label>
+              <Select value={exportStatus} onValueChange={setExportStatus}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los estados</SelectItem>
+                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                  <SelectItem value="APROBADO">Aprobado</SelectItem>
+                  <SelectItem value="RECHAZADO">Rechazado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <ActionButton
+                intent="secondary"
+                onClick={() => setExportOpen(false)}
+                disabled={downloading}
+              >
+                Cancelar
+              </ActionButton>
+              <ActionButton
+                intent="primary"
+                onClick={handleDownloadExcel}
+                disabled={downloading || !exportDesde || !exportHasta}
+              >
+                {downloading
+                  ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" />Descargando…</>
+                  : <><Download className="w-4 h-4 mr-1" />Descargar</>}
+              </ActionButton>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Categories manager ─── */}
+      <Dialog open={catOpen} onOpenChange={(o) => { if (!createCatM.isPending) setCatOpen(o) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950/40 shrink-0">
+                <Tag className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              Categorías de gastos
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Create */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Nueva categoría…"
+                value={newCatName}
+                onChange={(e) => { setNewCatName(e.target.value); setCatError(null) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newCatName.trim()) createCatM.mutate(newCatName.trim())
+                }}
+                className="h-9 text-sm"
+              />
+              <ActionButton
+                intent="primary"
+                onClick={() => { if (newCatName.trim()) createCatM.mutate(newCatName.trim()) }}
+                disabled={!newCatName.trim() || createCatM.isPending}
+              >
+                {createCatM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              </ActionButton>
+            </div>
+
+            {catError && (
+              <p className="text-xs text-destructive">{catError}</p>
+            )}
+
+            {/* List */}
+            <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+              {categories.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  Todavía no hay categorías.
+                </p>
+              )}
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-2 px-3 py-2.5">
+                  <Tag className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                  <span className="flex-1 text-sm">{cat.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setCatError(null); deleteCatM.mutate(cat.id) }}
+                    disabled={deleteCatM.isPending}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Eliminar categoría"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <ActionButton intent="secondary" onClick={() => setCatOpen(false)}>
+                Cerrar
+              </ActionButton>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

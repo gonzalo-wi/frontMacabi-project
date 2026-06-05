@@ -178,7 +178,7 @@ export default function AdminStockRequestDetailPage() {
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const approveM = makeTransition(approveRequest, 'Pedido aprobado y stock reservado.')
+  const approveM = makeTransition(approveRequest, 'Pedido aprobado y material reservado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rejectM = makeTransition(rejectRequest, 'Pedido rechazado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -204,7 +204,7 @@ export default function AdminStockRequestDetailPage() {
     <div className="min-h-screen pb-24">
       <PageHeader
         icon={Package}
-        title="Pedido de stock"
+        title="Pedido de material"
         subtitle="Detalle del pedido, proyecto asociado y acciones disponibles."
         action={
           <ActionButton
@@ -311,7 +311,7 @@ export default function AdminStockRequestDetailPage() {
 
               {req.status === 'RECHAZADO' && (
                 <p className="text-sm text-destructive/80 font-medium">
-                  Este pedido fue rechazado y no se reservó stock.
+                  Este pedido fue rechazado y no se reservó material.
                 </p>
               )}
             </div>
@@ -377,7 +377,7 @@ export default function AdminStockRequestDetailPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>¿Rechazar pedido?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Se marcará como rechazado y el stock no será reservado.
+                              Se marcará como rechazado y el material no será reservado.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

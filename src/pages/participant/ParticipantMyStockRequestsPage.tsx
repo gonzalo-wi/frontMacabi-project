@@ -195,7 +195,7 @@ export default function ParticipantMyStockRequestsPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Pedido de stock creado correctamente.', variant: 'success' })
+      setFeedback({ text: 'Pedido de materiales creado correctamente.', variant: 'success' })
       setOpen(false)
       setForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['participant-my-stock-requests-global'] })
@@ -207,8 +207,8 @@ export default function ParticipantMyStockRequestsPage() {
     <div className="min-h-screen pb-24">
       <PageHeader
         icon={Package}
-        title="Stock"
-        subtitle="Tus pedidos de stock en todos los proyectos, con filtros y proyecto visible."
+        title="Materiales"
+        subtitle="Tus pedidos de materiales en todos los proyectos, con filtros y proyecto visible."
         action={
           <Button
             size="sm"
@@ -219,7 +219,7 @@ export default function ParticipantMyStockRequestsPage() {
             disabled={resourcesQ.isLoading || membershipsQ.isLoading}
           >
             <Plus className="w-4 h-4 mr-1" />
-            Pedir stock
+            Solicitar material
           </Button>
         }
       />
@@ -424,7 +424,7 @@ export default function ParticipantMyStockRequestsPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-card/95 backdrop-blur-lg shadow-premium">
             <DialogHeader className="pb-2 border-b border-border/40">
-              <DialogTitle className="text-base font-extrabold tracking-tight">Pedir stock</DialogTitle>
+              <DialogTitle className="text-base font-extrabold tracking-tight">Solicitar material</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-3">
               <div className="space-y-1.5">

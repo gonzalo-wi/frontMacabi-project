@@ -312,8 +312,8 @@ export default function AdminStockPage() {
     <div className="min-h-screen pb-24">
       <PageHeader
         icon={Package}
-        title="Stock"
-        subtitle="Inventario y pedidos de stock en un solo módulo."
+        title="Materiales"
+        subtitle="Inventario y pedidos de materiales en un solo módulo."
         action={
           activeSection === 'inventario' ? (
             <ActionButton
@@ -503,7 +503,7 @@ function InventorySection({
           <CardTitle className="text-base font-bold">Inventario</CardTitle>
         </div>
         <CardDescription className="text-xs mt-0.5">
-          Ítems disponibles y stock actual.
+          Ítems disponibles y cantidad actual.
         </CardDescription>
       </CardHeader>
 
@@ -693,7 +693,7 @@ function RequestsSection({
           <CardTitle className="text-base font-bold">Pedidos</CardTitle>
         </div>
         <CardDescription className="text-xs mt-0.5">
-          Pedidos globales de stock. Tocá una fila para aprobar, entregar o devolver.
+          Pedidos globales de materiales. Tocá una fila para aprobar, entregar o devolver.
         </CardDescription>
       </CardHeader>
 
@@ -844,7 +844,7 @@ function ResourceForm({
           htmlFor="resource-stock"
           className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
-          Stock total
+          Stock total (unidades)
         </Label>
         <Input
           id="resource-stock"

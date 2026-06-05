@@ -1,14 +1,22 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Paperclip, Pencil, Upload, X } from 'lucide-react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  getCategories,
   patchExpense,
   removeReceipt,
   uploadReceipt,
@@ -52,16 +60,25 @@ export function EditExpenseDialog({
   const [amount, setAmount] = useState(() => canonicalToArs(exp.amount))
   const [description, setDescription] = useState(exp.description)
   const [expenseDate, setExpenseDate] = useState(() => exp.expense_date.slice(0, 10))
+  const [categoryId, setCategoryId] = useState(() => exp.category_id ?? '')
   // Cambios de comprobante "staged": se aplican recién al Guardar.
   const [newFile, setNewFile] = useState<File | null>(null)
   const [removeExisting, setRemoveExisting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const categoriesQ = useQuery({
+    queryKey: ['expense-categories', token],
+    queryFn: () => getCategories(token),
+    staleTime: 5 * 60_000,
+  })
+  const categories = categoriesQ.data ?? []
 
   useEffect(() => {
     if (open) {
       setAmount(canonicalToArs(exp.amount))
       setDescription(exp.description)
       setExpenseDate(exp.expense_date.slice(0, 10))
+      setCategoryId(exp.category_id ?? '')
       setNewFile(null)
       setRemoveExisting(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -74,6 +91,7 @@ export function EditExpenseDialog({
         amount: arsToCanonical(amount),
         description: description.trim(),
         expense_date: expenseDate,
+        category_id: categoryId || '',
       })
       // Aplicar el cambio de comprobante recién acá.
       if (newFile) {
@@ -173,6 +191,23 @@ export function EditExpenseDialog({
               className="resize-none"
             />
           </div>
+
+          {categories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Categoría</Label>
+              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sin categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin categoría</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* ── Comprobante (los cambios se aplican al guardar) ── */}
           <div className="space-y-1.5">

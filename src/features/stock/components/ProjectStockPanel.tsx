@@ -80,7 +80,7 @@ export function ProjectStockPanel({ token, projectId }: { token: string; project
         {!q.isLoading && !q.isError && requests.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">
             <Package className="w-10 h-10 text-muted-foreground/25" />
-            <p className="text-sm text-muted-foreground">No hay pedidos de stock en este proyecto.</p>
+            <p className="text-sm text-muted-foreground">No hay pedidos de materiales en este proyecto.</p>
           </div>
         )}
 

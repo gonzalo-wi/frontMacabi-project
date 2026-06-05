@@ -261,7 +261,7 @@ export default function ProyectoRecursosPage() {
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const approveM = makeTransitionMutation(approveRequest, 'Pedido aprobado y stock reservado.')
+  const approveM = makeTransitionMutation(approveRequest, 'Pedido aprobado y material reservado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const rejectM = makeTransitionMutation(rejectRequest, 'Pedido rechazado.')
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -287,7 +287,7 @@ export default function ProyectoRecursosPage() {
             <div className="space-y-1.5 min-w-0">
               <CardTitle className="text-base font-bold flex items-center gap-2">
                 <Package className="w-4 h-4 text-primary shrink-0" />
-                Pedidos de stock
+                Pedidos de materiales
               </CardTitle>
 
               {/* Status chips */}
@@ -423,7 +423,7 @@ export default function ProyectoRecursosPage() {
             <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
               <Package className="w-9 h-9 text-muted-foreground/25" />
               <p className="text-sm text-muted-foreground">
-                Todavía no hay pedidos de stock para este proyecto.
+                Todavía no hay pedidos de materiales para este proyecto.
               </p>
             </div>
           )}
@@ -444,7 +444,7 @@ export default function ProyectoRecursosPage() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
                 <Package className="w-4 h-4 text-primary" />
               </div>
-              Nuevo pedido de stock
+              Nuevo pedido de material
             </DialogTitle>
           </DialogHeader>
           <CreateRequestForm

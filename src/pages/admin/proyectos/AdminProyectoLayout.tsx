@@ -14,7 +14,7 @@ const SECTIONS = [
   { path: 'miembros', label: 'Miembros' },
   { path: 'gastos', label: 'Gastos' },
   { path: 'jornadas', label: 'Jornadas' },
-  { path: 'recursos', label: 'Stock' },
+  { path: 'recursos', label: 'Materiales' },
 ] as const
 
 function tabFromPath(pathname: string): (typeof SECTIONS)[number]['path'] {
@@ -52,7 +52,7 @@ export default function AdminProyectoLayout() {
             projectQ.data?.name ?? 'Proyecto'
           )
         }
-        subtitle="Equipo, gastos, jornadas y pedidos de stock."
+        subtitle="Equipo, gastos, jornadas y pedidos de materiales."
         action={
           <ActionButton intent="back" asChild>
             <Link to="/app/admin/proyectos">Todos los proyectos</Link>
