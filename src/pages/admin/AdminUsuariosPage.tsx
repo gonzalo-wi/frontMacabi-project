@@ -6,7 +6,7 @@ import {
   ChevronRight, Loader2, X,
   CheckCircle2, XCircle, Eye, EyeOff,
   KeyRound, UserPlus, FolderKanban,
-  ArrowUpDown, ArrowUp, ArrowDown, Calendar,
+  ArrowUpDown, ArrowUp, ArrowDown, Calendar, Mail, Clock, MoreVertical, RefreshCw, Trash2,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -37,11 +37,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useAuth } from '@/hooks/useAuth'
-import { updateUserRole, updateUserStatus, updateUser, createUserInvitation } from '@/lib/api/admin'
+import { updateUserRole, updateUserStatus, updateUser, createUserInvitation, getPendingInvitations, resendUserInvitation, revokeUserInvitation } from '@/lib/api/admin'
 import { changePassword } from '@/lib/api/auth'
-import type { UserDTO, UpdateUserRoleBody } from '@/lib/api/types'
+import type { UserDTO, UpdateUserRoleBody, PendingInvitationDTO } from '@/lib/api/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
 import { labelProjectRole } from '@/features/events/lib/eventLabels'
@@ -325,7 +331,14 @@ export default function AdminUsuariosPage() {
     enabled: Boolean(token) && !isRestoring,
   })
 
+  const invitationsQuery = useQuery({
+    queryKey: ['pending-invitations', token],
+    queryFn: () => getPendingInvitations(token!),
+    enabled: Boolean(token) && !isRestoring,
+  })
+
   const userProjectsByUser = userProjectsQuery.data
+  const pendingInvitations: PendingInvitationDTO[] = invitationsQuery.data?.data ?? []
 
   const roleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UpdateUserRoleBody['role'] }) =>
@@ -370,6 +383,33 @@ export default function AdminUsuariosPage() {
     onError: () => setPwError('Contraseña actual incorrecta'),
   })
 
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const resendMutation = useMutation({
+    mutationFn: (id: string) => resendUserInvitation(token!, id),
+    onMutate: (id) => setResendingId(id),
+    onSettled: () => setResendingId(null),
+    onSuccess: () => {
+      setInviteBanner({ text: 'Invitación reenviada correctamente.', variant: 'success' })
+      queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof ApiError ? e.message : 'No se pudo reenviar la invitación.'
+      setInviteBanner({ text: msg, variant: 'error' })
+    },
+  })
+
+  const revokeMutation = useMutation({
+    mutationFn: (id: string) => revokeUserInvitation(token!, id),
+    onSuccess: () => {
+      setInviteBanner({ text: 'Invitación eliminada.', variant: 'success' })
+      queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof ApiError ? e.message : 'No se pudo eliminar la invitación.'
+      setInviteBanner({ text: msg, variant: 'error' })
+    },
+  })
+
   const inviteMutation = useMutation({
     mutationFn: () =>
       createUserInvitation(token!, {
@@ -388,6 +428,7 @@ export default function AdminUsuariosPage() {
       })
       await queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
       await queryClient.invalidateQueries({ queryKey: ['users-all-admin'] })
+      await queryClient.invalidateQueries({ queryKey: ['pending-invitations'] })
     },
     onError: (e: unknown) => {
       const msg =
@@ -696,6 +737,94 @@ export default function AdminUsuariosPage() {
 
             {filteredTotalPages > 1 && pageRows.length > 0 && (
               <PaginationControls page={safePage} totalPages={filteredTotalPages} onPageChange={setPage} compact />
+            )}
+
+            {/* ── Invitaciones pendientes ── */}
+            {(invitationsQuery.data || invitationsQuery.isLoading) && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Invitaciones pendientes
+                    {pendingInvitations.length > 0 && (
+                      <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-[1rem] rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-[10px] font-bold px-1">
+                        {pendingInvitations.length}
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {invitationsQuery.isLoading && (
+                  <div className="space-y-2">
+                    {[0, 1].map((i) => (
+                      <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" style={{ opacity: 1 - i * 0.3 }} />
+                    ))}
+                  </div>
+                )}
+
+                {!invitationsQuery.isLoading && pendingInvitations.length === 0 && (
+                  <p className="text-sm text-muted-foreground rounded-xl border border-dashed border-border px-4 py-3">
+                    No hay invitaciones pendientes de aceptar.
+                  </p>
+                )}
+
+                {pendingInvitations.length > 0 && (
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm divide-y divide-border">
+                    {pendingInvitations.map((inv) => {
+                      const expires = new Date(inv.expires_at)
+                      const expired = expires < new Date()
+                      const busy = resendingId === inv.id || revokeMutation.isPending
+                      return (
+                        <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 border border-amber-200">
+                            <Mail className="w-4 h-4 text-amber-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{inv.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{inv.email}</p>
+                          </div>
+                          <span className={cn(
+                            'shrink-0 inline-flex items-center gap-1 text-[10px]',
+                            expired ? 'text-destructive' : 'text-muted-foreground',
+                          )}>
+                            <Clock className="w-3 h-3" />
+                            {expired
+                              ? 'Expirada'
+                              : `Vence ${expires.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}`}
+                          </span>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40 shrink-0"
+                                aria-label="Acciones de invitación"
+                              >
+                                {busy
+                                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                                  : <MoreVertical className="w-4 h-4" />}
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[10rem]">
+                              <DropdownMenuItem onClick={() => resendMutation.mutate(inv.id)}>
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Reenviar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => revokeMutation.mutate(inv.id)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )}
           </>
         )}

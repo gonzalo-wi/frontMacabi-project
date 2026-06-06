@@ -164,6 +164,19 @@ export default function AdminGastosPage() {
   const [desde, setDesde] = useSearchParamState('desde', DEFAULT_DESDE)
   const [hasta, setHasta] = useSearchParamState('hasta', DEFAULT_HASTA)
 
+  /** Dado un "desde", devuelve el mínimo permitido (máximo 1 año atrás desde "hasta"). */
+  function clampDesde(newDesde: string, currentHasta: string): string {
+    if (!newDesde || !currentHasta) return newDesde
+    const minDesde = isoDate(new Date(new Date(currentHasta + 'T00:00:00').getTime() - 365 * 24 * 60 * 60 * 1000))
+    return newDesde < minDesde ? minDesde : newDesde
+  }
+  /** Dado un "hasta", devuelve el máximo permitido (máximo 1 año adelante desde "desde"). */
+  function clampHasta(currentDesde: string, newHasta: string): string {
+    if (!currentDesde || !newHasta) return newHasta
+    const maxHasta = isoDate(new Date(new Date(currentDesde + 'T00:00:00').getTime() + 365 * 24 * 60 * 60 * 1000))
+    return newHasta > maxHasta ? maxHasta : newHasta
+  }
+
   /** Aplica un preset en UN solo setSearchParams para evitar que se pisen. */
   function applyDatePreset(p: DatePreset) {
     setSearchParams(
@@ -184,6 +197,7 @@ export default function AdminGastosPage() {
     setSearchParams(
       (prev) => {
         const params = new URLSearchParams(prev)
+        // Resetear = mes actual (nunca dejamos el rango abierto)
         params.delete('desde')
         params.delete('hasta')
         return params
@@ -256,7 +270,8 @@ export default function AdminGastosPage() {
                 type="date"
                 value={desde}
                 max={hasta || undefined}
-                onChange={(e) => { setDesde(e.target.value); setPage(1) }}
+                min={hasta ? isoDate(new Date(new Date(hasta + 'T00:00:00').getTime() - 365 * 24 * 60 * 60 * 1000)) : undefined}
+                onChange={(e) => { setDesde(clampDesde(e.target.value, hasta)); setPage(1) }}
                 className="h-8 w-[140px] text-xs"
               />
             </div>
@@ -266,7 +281,8 @@ export default function AdminGastosPage() {
                 type="date"
                 value={hasta}
                 min={desde || undefined}
-                onChange={(e) => { setHasta(e.target.value); setPage(1) }}
+                max={desde ? isoDate(new Date(new Date(desde + 'T00:00:00').getTime() + 365 * 24 * 60 * 60 * 1000)) : undefined}
+                onChange={(e) => { setHasta(clampHasta(desde, e.target.value)); setPage(1) }}
                 className="h-8 w-[140px] text-xs"
               />
             </div>
