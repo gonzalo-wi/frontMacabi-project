@@ -219,7 +219,10 @@ export default function ProyectoRecursosPage() {
       onSuccess: async () => {
         setFeedback({ text: successText, variant: 'success' })
         await qc.invalidateQueries({ queryKey: ['project-stock-requests', projectId] })
-        await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
+        // fix: esta página lista recursos con la key 'stock-resources-all' (fetchAllResources),
+        // no 'admin-stock-resources' (lista paginada del admin). Tras reservar/devolver stock,
+        // hay que invalidar la key propia para que el stock disponible se actualice en pantalla.
+        await qc.invalidateQueries({ queryKey: ['stock-resources-all'] })
       },
       onError: (e) =>
         setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
