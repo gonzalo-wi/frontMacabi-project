@@ -20,6 +20,7 @@ import * as XLSX from 'xlsx'
 
 import { ActionButton } from '@/components/ActionButton'
 import { PageHeader } from '@/components/PageHeader'
+import { SelectFilter } from '@/components/SelectFilter'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Badge } from '@/components/ui/badge'
@@ -53,6 +54,7 @@ import { listProjects } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
 import { PAGE_SIZE } from '@/lib/pagination'
+import { EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
@@ -538,30 +540,23 @@ export default function AdminGastosPage() {
                   className="pl-9 h-10 bg-muted/30 border-border/60 focus:bg-background"
                 />
               </div>
-              <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los proyectos</SelectItem>
-                  {projectOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                  <SelectItem value="APROBADO">Aprobado</SelectItem>
-                  <SelectItem value="RECHAZADO">Rechazado</SelectItem>
-                </SelectContent>
-              </Select>
+              <SelectFilter
+                value={projectFilter}
+                onValueChange={setProjectFilter}
+                placeholder="Proyecto"
+                triggerClassName="h-10"
+                options={[
+                  { value: 'all', label: 'Todos los proyectos' },
+                  ...projectOptions.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
+              <SelectFilter
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}
+                placeholder="Estado"
+                triggerClassName="h-10"
+                options={EXPENSE_STATUS_FILTER_OPTIONS}
+              />
             </div>
 
             {listQ.isError && (

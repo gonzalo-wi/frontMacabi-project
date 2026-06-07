@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
+import { SelectFilter } from '@/components/SelectFilter'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
@@ -28,7 +29,7 @@ import { formatARS } from '@/lib/currency'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
-import { EXPENSE_STATUS_ORDER } from '@/lib/status'
+import { EXPENSE_STATUS_ORDER, EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
@@ -188,30 +189,23 @@ export default function ParticipantMyExpensesPage() {
                   className="pl-9 bg-background/50 focus-visible:ring-primary/30"
                 />
               </div>
-              <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-full bg-background/50 focus:ring-primary/30">
-                  <SelectValue placeholder="Proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los proyectos</SelectItem>
-                  {projectOptions.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}>
-                <SelectTrigger className="w-full bg-background/50 focus:ring-primary/30">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                  <SelectItem value="APROBADO">Aprobado</SelectItem>
-                  <SelectItem value="RECHAZADO">Rechazado</SelectItem>
-                </SelectContent>
-              </Select>
+              <SelectFilter
+                value={projectFilter}
+                onValueChange={setProjectFilter}
+                placeholder="Proyecto"
+                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+                options={[
+                  { value: 'all', label: 'Todos los proyectos' },
+                  ...projectOptions.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
+              <SelectFilter
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}
+                placeholder="Estado"
+                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+                options={EXPENSE_STATUS_FILTER_OPTIONS}
+              />
             </div>
 
             {q.isPending && (
