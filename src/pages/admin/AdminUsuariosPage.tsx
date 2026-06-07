@@ -14,17 +14,8 @@ import { ActionButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/admin/DataToolbar'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import {
   Dialog,
   DialogContent,
@@ -1039,38 +1030,30 @@ export default function AdminUsuariosPage() {
       </Dialog>
 
       {/* ─────────────────── Confirm deactivate ─────────────────── */}
-      <AlertDialog open={confirmDeactivateOpen} onOpenChange={setConfirmDeactivateOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Desactivar esta cuenta?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {selected ? (
-                <>
-                  <span className="font-medium text-foreground">{selected.name}</span>
-                  {' — '}
-                  <span className="break-all">{selected.email}</span>
-                  {' '}no podrá iniciar sesión. Podés volver a activarla cuando quieras.
-                </>
-              ) : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={statusMutation.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={statusMutation.isPending}
-              onClick={() => {
-                if (!selected) return
-                statusMutation.mutate({ id: selected.id, active: false })
-                setConfirmDeactivateOpen(false)
-              }}
-            >
-              {statusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
-              Desactivar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={confirmDeactivateOpen}
+        onOpenChange={setConfirmDeactivateOpen}
+        title="¿Desactivar esta cuenta?"
+        description={
+          selected ? (
+            <>
+              <span className="font-medium text-foreground">{selected.name}</span>
+              {' — '}
+              <span className="break-all">{selected.email}</span>
+              {' '}no podrá iniciar sesión. Podés volver a activarla cuando quieras.
+            </>
+          ) : null
+        }
+        confirmLabel="Desactivar"
+        loadingLabel="Desactivar"
+        destructive
+        loading={statusMutation.isPending}
+        onConfirm={() => {
+          if (!selected) return
+          statusMutation.mutate({ id: selected.id, active: false })
+          setConfirmDeactivateOpen(false)
+        }}
+      />
     </div>
   )
 }

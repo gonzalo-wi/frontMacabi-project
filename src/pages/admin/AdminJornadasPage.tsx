@@ -23,16 +23,7 @@ import { DataToolbar } from '@/components/admin/DataToolbar'
 import { MobileList } from '@/components/admin/MobileList'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { SortableTable, type SortDirection } from '@/components/admin/SortableTable'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -532,62 +523,36 @@ export default function AdminJornadasPage() {
       </div>
 
       {/* Confirm cancel dialog */}
-      <AlertDialog open={Boolean(cancelTarget)} onOpenChange={(o) => { if (!o) setCancelTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar "{cancelTarget?.title}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              La jornada quedará cancelada y los participantes ya no podrán enviar respuestas. Esta acción
-              se puede revertir desde el editor de la jornada.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground"
-              onClick={() => {
-                if (cancelTarget) {
-                  patchStatus.mutate({ id: cancelTarget.id, status: 'cancelled' })
-                  setCancelTarget(null)
-                }
-              }}
-            >
-              Cancelar jornada
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        onOpenChange={(o) => { if (!o) setCancelTarget(null) }}
+        title={`¿Cancelar "${cancelTarget?.title}"?`}
+        description="La jornada quedará cancelada y los participantes ya no podrán enviar respuestas. Esta acción se puede revertir desde el editor de la jornada."
+        cancelLabel="Volver"
+        confirmLabel="Cancelar jornada"
+        destructive
+        onConfirm={() => {
+          if (cancelTarget) {
+            patchStatus.mutate({ id: cancelTarget.id, status: 'cancelled' })
+            setCancelTarget(null)
+          }
+        }}
+      />
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(o) => !deleteMut.isPending && !o && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar "{deleteTarget?.title}"?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminarán el formulario, las preguntas y todas las respuestas. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMut.isPending}>Volver</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground"
-              disabled={deleteMut.isPending}
-              onClick={(e) => {
-                e.preventDefault()
-                if (deleteTarget) deleteMut.mutate(deleteTarget.id)
-              }}
-            >
-              {deleteMut.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 inline animate-spin" />
-                  Eliminando…
-                </>
-              ) : (
-                'Eliminar definitivamente'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(o) => !deleteMut.isPending && !o && setDeleteTarget(null)}
+        title={`¿Eliminar "${deleteTarget?.title}"?`}
+        description="Se eliminarán el formulario, las preguntas y todas las respuestas. Esta acción no se puede deshacer."
+        cancelLabel="Volver"
+        confirmLabel="Eliminar definitivamente"
+        loadingLabel="Eliminando…"
+        destructive
+        loading={deleteMut.isPending}
+        onConfirm={() => {
+          if (deleteTarget) deleteMut.mutate(deleteTarget.id)
+        }}
+      />
 
       <Dialog
         open={dupDialogOpen}

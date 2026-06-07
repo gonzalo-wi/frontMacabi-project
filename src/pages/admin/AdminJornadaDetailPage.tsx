@@ -9,7 +9,6 @@ import {
   ExternalLink,
   FolderOpen,
   Layers,
-  Loader2,
   MoreVertical,
   Pencil,
   Search,
@@ -22,16 +21,7 @@ import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/rea
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -1179,41 +1169,17 @@ export default function AdminJornadaDetailPage() {
       </div>
 
       {/* ── Dialog de confirmación de borrado ── */}
-      <AlertDialog
+      <ConfirmDialog
         open={deleteOpen}
         onOpenChange={(o) => !deleteMut.isPending && setDeleteOpen(o)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar esta jornada?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se eliminará "{title}" por completo: proyectos vinculados al evento, bloques del
-              formulario (módulos, grupos y opciones) y todas las respuestas de los participantes.
-              Esta acción no se puede recuperar.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteMut.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteMut.isPending}
-              onClick={(e) => {
-                e.preventDefault()
-                deleteMut.mutate()
-              }}
-            >
-              {deleteMut.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Eliminando…
-                </>
-              ) : (
-                'Eliminar definitivamente'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="¿Eliminar esta jornada?"
+        description={`Se eliminará "${title}" por completo: proyectos vinculados al evento, bloques del formulario (módulos, grupos y opciones) y todas las respuestas de los participantes. Esta acción no se puede recuperar.`}
+        confirmLabel="Eliminar definitivamente"
+        loadingLabel="Eliminando…"
+        destructive
+        loading={deleteMut.isPending}
+        onConfirm={() => deleteMut.mutate()}
+      />
     </div>
   )
 }
