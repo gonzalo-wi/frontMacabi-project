@@ -12,6 +12,7 @@ import {
   listProjectExpenses,
 } from '@/features/expenses/api/expensesApi'
 import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
+import { ProjectBudgetBanner } from '@/features/expenses/components/ProjectBudgetBanner'
 import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
@@ -63,9 +64,11 @@ type Props = {
   projectId: string
   /** Base path del detalle. Admin: '/app/admin/gastos'; coordinador: '/app/gastos'. */
   detailBasePath?: string
+  /** Solo el admin puede editar el presupuesto mensual. */
+  canEditBudget?: boolean
 }
 
-export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos' }: Props) {
+export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false }: Props) {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [desde, setDesde] = useState('')
@@ -122,6 +125,9 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
         </CardHeader>
 
         <CardContent className="space-y-4 px-4 sm:px-6 pb-5">
+          {/* ── Presupuesto mensual ── */}
+          <ProjectBudgetBanner token={token} projectId={projectId} canEdit={canEditBudget} />
+
           {/* ── Filtro de fechas ── */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">

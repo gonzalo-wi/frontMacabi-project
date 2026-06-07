@@ -7,6 +7,12 @@ export interface ExpenseCategoryDTO {
   created_at: string
 }
 
+export interface ProjectBudgetDTO {
+  monthly_budget: string | null
+  current_month_approved: string
+  month: string // "YYYY-MM"
+}
+
 export interface ExpenseDTO {
   id: string
   project_id: string

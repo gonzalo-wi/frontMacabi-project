@@ -5,6 +5,7 @@ import type {
   ExpenseDTO,
   ExpenseSummaryDTO,
   PaginatedExpensesDTO,
+  ProjectBudgetDTO,
 } from '../model/types'
 
 export const RECEIPT_ACCEPT = 'image/jpeg,image/png,image/webp,application/pdf'
@@ -138,6 +139,25 @@ export function createExpense(
     return apiMultipart<ExpenseDTO>('/api/expenses', fd, token)
   }
   return apiRequest<ExpenseDTO>('/api/expenses', { method: 'POST', token, body })
+}
+
+// ── Presupuesto mensual por proyecto ──────────────────────────
+
+export function getProjectBudget(token: string, projectId: string): Promise<ProjectBudgetDTO> {
+  return apiRequest<ProjectBudgetDTO>(`/api/projects/${projectId}/expenses/budget`, { token })
+}
+
+/** monthlyAmount = null limpia el presupuesto. */
+export function setProjectBudget(
+  token: string,
+  projectId: string,
+  monthlyAmount: string | null,
+): Promise<void> {
+  return apiRequest<void>(`/api/projects/${projectId}/expenses/budget`, {
+    method: 'PUT',
+    token,
+    body: { monthly_amount: monthlyAmount },
+  })
 }
 
 // ── Categories ────────────────────────────────────────────────

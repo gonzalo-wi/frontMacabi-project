@@ -36,11 +36,13 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   approveExpense,
   getExpense,
+  getProjectBudget,
   rejectExpense,
 } from '@/features/expenses/api/expensesApi'
 import { canEditExpense, EditExpenseDialog } from '@/features/expenses/components/EditExpenseDialog'
 import { canDeleteExpense, DeleteExpenseButton } from '@/features/expenses/components/DeleteExpenseButton'
 import { ReceiptLink } from '@/features/expenses/components/ReceiptLink'
+import { wouldExceedBudget } from '@/features/expenses/lib/budget'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
@@ -114,6 +116,7 @@ export default function ExpenseDetailPage() {
   const { pathname } = useLocation()
   const qc = useQueryClient()
   const [rejectReason, setRejectReason] = useState('')
+  const [budgetConfirmOpen, setBudgetConfirmOpen] = useState(false)
   const [feedback, setFeedback] = useState<{
     text: string
     variant: 'success' | 'error' | 'info'
@@ -181,9 +184,33 @@ export default function ExpenseDetailPage() {
 
   const anyPending = approveM.isPending || rejectM.isPending
 
+  const showActions = canManage && exp?.status === 'PENDIENTE'
+
+  // Presupuesto: para avisar si aprobar haría superar el límite del mes.
+  const budgetQ = useQuery({
+    queryKey: ['project-budget', exp?.project_id, token],
+    enabled: Boolean(token && exp?.project_id && showActions),
+    queryFn: () => getProjectBudget(token!, exp!.project_id),
+  })
+  const overBudget =
+    exp && budgetQ.data
+      ? wouldExceedBudget(
+          budgetQ.data.current_month_approved,
+          budgetQ.data.monthly_budget,
+          exp.amount,
+          exp.expense_date,
+          budgetQ.data.month,
+        )
+      : null
+
+  function doApprove() {
+    setFeedback(null)
+    setBudgetConfirmOpen(false)
+    approveM.mutate()
+  }
+
   if (!id) return null
 
-  const showActions = canManage && exp?.status === 'PENDIENTE'
   const showManageRow =
     exp && user
       ? canEditExpense(exp, user.id, canManage) || canDeleteExpense(exp, user.id, canManage)
@@ -294,8 +321,11 @@ export default function ExpenseDetailPage() {
                     intent="approve"
                     disabled={anyPending}
                     onClick={() => {
-                      setFeedback(null)
-                      approveM.mutate()
+                      if (overBudget?.exceeds) {
+                        setBudgetConfirmOpen(true)
+                        return
+                      }
+                      doApprove()
                     }}
                   >
                     {approveM.isPending ? (
@@ -305,6 +335,29 @@ export default function ExpenseDetailPage() {
                     )}
                     Aprobar
                   </ActionButton>
+
+                  {/* Aviso: aprobar supera el presupuesto del mes */}
+                  <AlertDialog open={budgetConfirmOpen} onOpenChange={setBudgetConfirmOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supera el presupuesto del mes</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {overBudget
+                            ? `Aprobar este gasto deja el mes en ${formatARS(overBudget.projected)} de ${formatARS(overBudget.budget)} de presupuesto. ¿Aprobar igual?`
+                            : '¿Aprobar igual?'}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-green-600 text-white hover:bg-green-700"
+                          onClick={doApprove}
+                        >
+                          Aprobar igual
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
 
                   <AlertDialog onOpenChange={(o) => !o && setRejectReason('')}>
                     <AlertDialogTrigger asChild>

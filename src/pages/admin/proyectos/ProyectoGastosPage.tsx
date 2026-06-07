@@ -12,5 +12,12 @@ export default function ProyectoGastosPage({ detailBasePath }: Props) {
 
   if (!projectId || !token || !user) return null
 
-  return <ProjectExpensesPanel token={token} projectId={projectId} detailBasePath={detailBasePath} />
+  return (
+    <ProjectExpensesPanel
+      token={token}
+      projectId={projectId}
+      detailBasePath={detailBasePath}
+      canEditBudget={user.role === 'admin'}
+    />
+  )
 }
