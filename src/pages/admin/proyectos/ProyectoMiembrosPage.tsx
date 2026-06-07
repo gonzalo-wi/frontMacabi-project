@@ -86,7 +86,7 @@ export default function ProyectoMiembrosPage() {
   })
 
   const usersQ = useQuery({
-    queryKey: ['users-all-admin', token],
+    queryKey: ['admin-users-all', token],
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => fetchAllUsersForAdmin(token!),
   })

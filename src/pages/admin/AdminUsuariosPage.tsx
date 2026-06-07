@@ -369,7 +369,6 @@ export default function AdminUsuariosPage() {
         variant: 'success',
       })
       await queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
-      await queryClient.invalidateQueries({ queryKey: ['users-all-admin'] })
     },
     onError: (e: unknown) => {
       const msg =
@@ -967,7 +966,6 @@ export default function AdminUsuariosPage() {
         token={token!}
         onDone={() => {
           queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
-          queryClient.invalidateQueries({ queryKey: ['users-all-admin'] })
         }}
       />
 

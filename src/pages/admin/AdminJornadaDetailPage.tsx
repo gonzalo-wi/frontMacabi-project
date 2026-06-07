@@ -416,7 +416,7 @@ export default function AdminJornadaDetailPage() {
   const linkedPidsForEvent = detailQ.data?.project_ids ?? []
 
   const usersAllQ = useQuery({
-    queryKey: ['users-all-admin', token],
+    queryKey: ['admin-users-all', token],
     enabled:
       Boolean(token) &&
       !isRestoring &&

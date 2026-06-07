@@ -47,9 +47,8 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { createProject, deleteProject, listProjects } from '@/features/projects/api/projectsApi'
 import type { ProjectDTO } from '@/features/projects/model/types'
-import { getUsers } from '@/lib/api/admin'
+import { fetchAllUsersForAdmin } from '@/features/projects/lib/projectAdminQueries'
 import { ApiError } from '@/lib/api/apiClient'
-import type { UserDTO } from '@/lib/api/types'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -167,19 +166,9 @@ export default function AdminProyectosPage() {
   })
 
   const usersQ = useQuery({
-    queryKey: ['admin-users-all-for-coordinator', token],
+    queryKey: ['admin-users-all', token],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: async (): Promise<UserDTO[]> => {
-      const out: UserDTO[] = []
-      let p = 1
-      while (p <= 20) {
-        const r = await getUsers(token!, p, 50)
-        out.push(...r.data)
-        if (p >= r.total_pages) break
-        p++
-      }
-      return out
-    },
+    queryFn: () => fetchAllUsersForAdmin(token!),
   })
 
   const filtered = useMemo(() => {
