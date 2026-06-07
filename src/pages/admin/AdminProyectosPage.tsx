@@ -4,6 +4,7 @@ import { FolderKanban, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/admin/DataToolbar'
@@ -153,16 +154,7 @@ export default function AdminProyectosPage() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<ProjectSortKey>('name')
   const [sortDir, setSortDir] = useState<SortDirection>('asc')
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   useEffect(() => {
     setPage(1)

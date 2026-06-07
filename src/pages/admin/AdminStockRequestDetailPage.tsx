@@ -17,6 +17,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import { ActionButton } from '@/components/ActionButton'
@@ -44,7 +45,6 @@ import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectM
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect, useState } from 'react'
 
 // ── Constants ─────────────────────────────────────────────────
 
@@ -137,16 +137,7 @@ export default function AdminStockRequestDetailPage() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const qc = useQueryClient()
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const requestQ = useQuery({
     queryKey: ['stock-request-detail', id, token],

@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api/apiClient'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import type {
   PaginatedProjectsDTO,
   ProjectDTO,
@@ -29,6 +30,11 @@ export function listProjects(
 ): Promise<PaginatedProjectsDTO> {
   const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
   return apiRequest<PaginatedProjectsDTO>(`/api/projects?${q}`, { token })
+}
+
+/** Todos los proyectos (recolecta páginas). */
+export function fetchAllProjects(token: string, maxPages = 20): Promise<ProjectDTO[]> {
+  return fetchAllPages((page) => listProjects(token, page, 50), maxPages)
 }
 
 export function getProject(token: string, id: string): Promise<ProjectDTO> {

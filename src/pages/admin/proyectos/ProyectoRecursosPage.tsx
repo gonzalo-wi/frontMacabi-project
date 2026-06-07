@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   CalendarDays,
@@ -14,6 +14,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { ActionButton } from '@/components/ActionButton'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
@@ -154,16 +155,7 @@ export default function ProyectoRecursosPage() {
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 10
   const [form, setForm] = useState<RequestFormState>(EMPTY_FORM)
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const requestsQ = useQuery({
     queryKey: ['project-stock-requests', projectId, token, page],

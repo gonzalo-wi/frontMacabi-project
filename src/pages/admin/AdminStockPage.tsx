@@ -16,6 +16,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
@@ -174,16 +175,7 @@ export default function AdminStockPage() {
   const [requestStatus, setRequestStatus] = useState<RequestStatus | 'all'>('all')
   const [resourcePage, setResourcePage] = useState(1)
   const [requestPage, setRequestPage] = useState(1)
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   useEffect(() => { setResourcePage(1) }, [resourceSearch])
   useEffect(() => { setRequestPage(1) }, [requestSearch, requestStatus])

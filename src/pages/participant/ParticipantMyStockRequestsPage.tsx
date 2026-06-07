@@ -4,6 +4,7 @@ import { Loader2, Package, Plus, Search, Calendar, ClipboardList } from 'lucide-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +23,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { fromDatetimeLocalValue } from '@/features/events/lib/datetimeLocal'
 import { createRequest, listMyRequests } from '@/features/stock/api/requestsApi'
-import { listResources } from '@/features/stock/api/stockApi'
+import { fetchAllResources } from '@/features/stock/api/stockApi'
 import type {
   RequestStatus,
   ResourceDTO,
@@ -53,18 +54,6 @@ function formatShort(iso: string): string {
 
 const PAGE_SIZE = 20
 
-async function fetchAllResources(token: string): Promise<ResourceDTO[]> {
-  const out: ResourceDTO[] = []
-  let page = 1
-  while (page <= 50) {
-    const r = await listResources(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
-
 type RequestForm = {
   project_id: string
   resource_id: string
@@ -93,16 +82,7 @@ export default function ParticipantMyStockRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all')
   const [query, setQuery] = useState('')
   const [form, setForm] = useState<RequestForm>(EMPTY_FORM)
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const q = useQuery({
     queryKey: ['participant-my-stock-requests-global', token, page],

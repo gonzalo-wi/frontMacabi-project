@@ -4,6 +4,7 @@ import { CalendarRange, Loader2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,8 +33,7 @@ import { EventStatusBadge } from '@/features/events/components/EventStatusBadge'
 import { labelInstanceStatus, labelInstanceType } from '@/features/events/lib/eventLabels'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/features/events/lib/datetimeLocal'
 import { ProjectPicker } from '@/features/projects/components/ProjectPicker'
-import { listProjects } from '@/features/projects/api/projectsApi'
-import type { ProjectDTO } from '@/features/projects/model/types'
+import { fetchAllProjects } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -57,17 +57,7 @@ export default function AdminJornadaBuilderPage() {
   const projectsQ = useQuery({
     queryKey: ['projects-all-p1', token],
     enabled: Boolean(token) && !isRestoring,
-    queryFn: async () => {
-      const out: ProjectDTO[] = []
-      let page = 1
-      while (page <= 20) {
-        const r = await listProjects(token!, page, 50)
-        out.push(...r.data)
-        if (page >= r.total_pages) break
-        page++
-      }
-      return out
-    },
+    queryFn: () => fetchAllProjects(token!, 20),
   })
 
   // ── Form state ─────────────────────────────────────────────────────────────
@@ -78,16 +68,7 @@ export default function AdminJornadaBuilderPage() {
   const [metaStatus, setMetaStatus] = useState('draft')
   const [evProjects, setEvProjects] = useState<Set<string>>(new Set())
 
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const [builderSection, setBuilderSection] = useState('general')
   const [globalSaving, setGlobalSaving] = useState(false)

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Crown, Loader2, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import {
@@ -74,16 +75,7 @@ export default function ProyectoMiembrosPage() {
   const qc = useQueryClient()
   const [pickUser, setPickUser] = useState('')
   const [pickRole, setPickRole] = useState('madrij')
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const [userSearch, setUserSearch] = useState('')
 

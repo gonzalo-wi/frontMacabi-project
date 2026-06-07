@@ -4,6 +4,7 @@ import {
 } from '@/features/events/api/eventsApi'
 import type { EventDetailDTO } from '@/features/events/model/types'
 import { getUsers } from '@/lib/api/admin'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import type { UserDTO } from '@/lib/api/types'
 
 /**
@@ -29,14 +30,6 @@ export async function loadEventDetailsForProject(
   return out
 }
 
-export async function fetchAllUsersForAdmin(token: string): Promise<UserDTO[]> {
-  const out: UserDTO[] = []
-  let page = 1
-  while (page <= 30) {
-    const r = await getUsers(token, page, 100)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
+export function fetchAllUsersForAdmin(token: string): Promise<UserDTO[]> {
+  return fetchAllPages((page) => getUsers(token, page, 100), 30)
 }

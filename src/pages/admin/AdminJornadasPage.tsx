@@ -16,6 +16,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/admin/DataToolbar'
@@ -77,7 +78,6 @@ import {
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 
-type FeedbackState = { text: string; variant: 'success' | 'error' | 'info' } | null
 type JornadaSortKey = 'title' | 'starts_at' | 'status'
 type JornadaStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled'
 
@@ -195,13 +195,7 @@ export default function AdminJornadasPage() {
   const [startsLocal, setStartsLocal] = useState('')
   const [deadlineLocal, setDeadlineLocal] = useState('')
   const [statusDraft, setStatusDraft] = useState('draft')
-  const [feedback, setFeedback] = useState<FeedbackState>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const [cancelTarget, setCancelTarget] = useState<EventInstanceDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventInstanceDTO | null>(null)

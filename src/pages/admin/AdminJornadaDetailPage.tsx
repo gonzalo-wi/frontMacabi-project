@@ -16,7 +16,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -62,30 +62,18 @@ import {
 } from '@/features/events/lib/attendanceGate'
 import { labelInstanceType, labelProjectRole } from '@/features/events/lib/eventLabels'
 import { formatStartsAR, isBeforeDeadline } from '@/features/events/lib/deadline'
-import { listProjects, listProjectMembers } from '@/features/projects/api/projectsApi'
+import { fetchAllProjects, listProjectMembers } from '@/features/projects/api/projectsApi'
 import { fetchAllUsersForAdmin } from '@/features/projects/lib/projectAdminQueries'
-import type { ProjectDTO } from '@/features/projects/model/types'
 import type { UserDTO } from '@/lib/api/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { cn } from '@/lib/utils'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-async function fetchAllProjects(token: string): Promise<ProjectDTO[]> {
-  const out: ProjectDTO[] = []
-  let page = 1
-  while (page <= 20) {
-    const r = await listProjects(token, page, 50)
-    out.push(...r.data)
-    if (page >= r.total_pages) break
-    page++
-  }
-  return out
-}
 
 type AnswerMaps = {
   optLabels: Map<string, { group: string; label: string }>
@@ -413,13 +401,7 @@ export default function AdminJornadaDetailPage() {
   const { token, isRestoring } = useAuth()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [expandedOptions, setExpandedOptions] = useState<Set<string>>(new Set())
-  const [feedback, setFeedback] = useState<{ text: string; variant: 'success' | 'error' } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const detailQ = useQuery({
     queryKey: ['event-detail', id, token],

@@ -4,6 +4,7 @@ import { CreditCard, Loader2, Search, Calendar, Paperclip, DollarSign } from 'lu
 import { useQuery } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
@@ -38,16 +39,7 @@ export default function ParticipantMyExpensesPage() {
   const [query, setQuery] = useSearchParamState('q', '')
   const [tab, setTab] = useSearchParamState('tab', 'mis')
   const [proj, setProj] = useSearchParamState('proj', '')
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const q = useQuery({
     queryKey: ['my-expenses-global', token, page],

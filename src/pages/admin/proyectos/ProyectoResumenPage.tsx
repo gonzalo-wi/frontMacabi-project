@@ -3,26 +3,17 @@ import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { useFeedback } from '@/hooks/useFeedback'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProjectMetaForm } from '@/features/projects/components/ProjectMetaForm'
 import { getProject } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect, useState } from 'react'
 
 export default function ProyectoResumenPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, isRestoring } = useAuth()
-  const [feedback, setFeedback] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
-
-  useEffect(() => {
-    if (!feedback) return
-    const timer = setTimeout(() => setFeedback(null), 4000)
-    return () => clearTimeout(timer)
-  }, [feedback])
+  const { feedback, setFeedback } = useFeedback()
 
   const projectQ = useQuery({
     queryKey: ['project', projectId, token],
