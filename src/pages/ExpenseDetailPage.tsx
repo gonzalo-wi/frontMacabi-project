@@ -45,31 +45,14 @@ import { canDeleteExpense, DeleteExpenseButton } from '@/features/expenses/compo
 import { ReceiptLink } from '@/features/expenses/components/ReceiptLink'
 import { wouldExceedBudget } from '@/features/expenses/lib/budget'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
-import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
+import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
 import { cn } from '@/lib/utils'
+import { formatExpenseDate, formatDateTime } from '@/lib/date'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Helpers ────────────────────────────────────────────────────
-
-function formatExpenseDate(dateStr: string): string {
-  const parts = dateStr.slice(0, 10).split('-')
-  if (parts.length !== 3) return dateStr
-  const [y, m, d] = parts
-  return `${d}/${m}/${y}`
-}
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function statusBannerClass(status: ExpenseStatus): string {
   switch (status) {
@@ -127,11 +110,8 @@ export default function ExpenseDetailPage() {
   })
 
   const exp = expenseQ.data
-  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
-  const member = membershipsQ.data?.find((m) => m.id === exp?.project_id)
-
   const participantView = !pathname.startsWith('/app/admin/')
-  const canManage = user?.role === 'admin' || member?.role === 'coordinator'
+  const { canManage } = useProjectRole(exp?.project_id)
 
   function goBack() {
     // Volver a la pantalla anterior conserva sus filtros (viven en la URL).

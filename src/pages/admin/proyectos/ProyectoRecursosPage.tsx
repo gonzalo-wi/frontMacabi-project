@@ -64,9 +64,11 @@ import type {
   ResourceRequestDTO,
   ResourceType,
 } from '@/features/stock/model/types'
-import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
+import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
+import { formatShort as formatDateShort } from '@/lib/date'
+import { REQUEST_STATUS_ORDER } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -77,15 +79,6 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-
-function formatDateShort(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
-}
 
 function requestBorderClass(status: RequestStatus): string {
   switch (status) {
@@ -148,7 +141,7 @@ function SkeletonRows({ count = 4 }: { count?: number }) {
 
 export default function ProyectoRecursosPage() {
   const { id: projectId } = useParams<{ id: string }>()
-  const { token, user, isRestoring } = useAuth()
+  const { token, isRestoring } = useAuth()
   const qc = useQueryClient()
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -169,9 +162,7 @@ export default function ProyectoRecursosPage() {
     queryFn: () => fetchAllResources(token!),
   })
 
-  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
-  const member = membershipsQ.data?.find((m) => m.id === projectId)
-  const canManageRequests = user?.role === 'admin' || member?.role === 'coordinator'
+  const { canManage: canManageRequests } = useProjectRole(projectId)
 
   const resourcesMap = useMemo(() => {
     const m = new Map<string, ResourceDTO>()
@@ -182,13 +173,7 @@ export default function ProyectoRecursosPage() {
   const selectedResource = resourcesMap.get(form.resource_id) ?? null
 
   const sorted = useMemo(() => {
-    const STATUS_ORDER: Record<RequestStatus, number> = {
-      PENDIENTE: 0,
-      RESERVADO: 1,
-      ENTREGADO: 2,
-      DEVUELTO: 3,
-      RECHAZADO: 4,
-    }
+    const STATUS_ORDER = REQUEST_STATUS_ORDER
     return [...(requestsQ.data?.data ?? [])].sort((a, b) => {
       const sd = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       if (sd !== 0) return sd

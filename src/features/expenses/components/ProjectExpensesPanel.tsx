@@ -18,15 +18,10 @@ import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { cn } from '@/lib/utils'
+import { formatExpenseDate } from '@/lib/date'
+import { EXPENSE_STATUS_ORDER } from '@/lib/status'
 
 // ─── Formatters ───────────────────────────────────────────────
-
-function formatExpenseDate(dateStr: string): string {
-  const parts = dateStr.split('-')
-  if (parts.length !== 3) return dateStr
-  const [y, m, d] = parts
-  return `${d}/${m}/${y}`
-}
 
 function formatMonth(monthStr: string): string {
   const parts = monthStr.split('-')
@@ -87,7 +82,7 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
   })
 
   const sorted = useMemo(() => {
-    const order: Record<ExpenseStatus, number> = { PENDIENTE: 0, APROBADO: 1, RECHAZADO: 2 }
+    const order = EXPENSE_STATUS_ORDER
     let rows = [...(expensesQ.data?.data ?? [])].sort((a, b) => {
       const d = order[a.status] - order[b.status]
       if (d !== 0) return d

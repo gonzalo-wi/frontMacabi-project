@@ -39,6 +39,7 @@ import {
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useAuth } from '@/hooks/useAuth'
+import { useIsDesktop } from '@/hooks/useIsMobile'
 import { updateUserRole, updateUserStatus, updateUser, createUserInvitation } from '@/lib/api/admin'
 import { BulkInviteDialog } from '@/components/admin/BulkInviteDialog'
 import { changePassword } from '@/lib/api/auth'
@@ -53,18 +54,6 @@ import {
 } from '@/features/projects/lib/userProjectsIndex'
 
 const PAGE_SIZE = 10
-
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth >= 768,
-  )
-  useEffect(() => {
-    const fn = () => setIsDesktop(window.innerWidth >= 768)
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
-  }, [])
-  return isDesktop
-}
 
 const ROLE_META: Record<string, {
   label: string

@@ -41,9 +41,10 @@ import {
   returnRequest,
 } from '@/features/stock/api/requestsApi'
 import type { RequestStatus, ResourceType } from '@/features/stock/model/types'
-import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
+import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
+import { formatDateShort, formatDateTime } from '@/lib/date'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -69,26 +70,6 @@ const CONSUMABLE_STEPS: WorkflowStep[] = [
 ]
 
 // ── Helpers ────────────────────────────────────────────────────
-
-function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function formatDateShort(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function statusBannerClass(status: RequestStatus): string {
   switch (status) {
@@ -133,7 +114,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string
 
 export default function AdminStockRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { token, user, isRestoring } = useAuth()
+  const { token, isRestoring } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const qc = useQueryClient()
@@ -146,8 +127,6 @@ export default function AdminStockRequestDetailPage() {
   })
 
   const req = requestQ.data
-  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
-  const member = membershipsQ.data?.find((m) => m.id === req?.project_id)
 
   // ── Transition mutations ──────────────────────────────────────
 
@@ -178,7 +157,7 @@ export default function AdminStockRequestDetailPage() {
   const returnM = makeTransition(returnRequest, 'Ítem marcado como devuelto.')
 
   const participantView = !pathname.startsWith('/app/admin/')
-  const canManageRequest = user?.role === 'admin' || member?.role === 'coordinator'
+  const { canManage: canManageRequest } = useProjectRole(req?.project_id)
   const anyPending = approveM.isPending || rejectM.isPending || deliverM.isPending || returnM.isPending
 
   if (!id) return null

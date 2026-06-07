@@ -12,18 +12,11 @@ import type { RequestStatus, ResourceType } from '@/features/stock/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { cn } from '@/lib/utils'
+import { formatShort } from '@/lib/date'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
   consumable: 'Consumible',
-}
-
-function formatShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
 }
 
 function borderClass(status: RequestStatus): string {

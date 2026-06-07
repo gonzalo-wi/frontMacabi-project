@@ -28,6 +28,7 @@ import { formatARS } from '@/lib/currency'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
+import { EXPENSE_STATUS_ORDER } from '@/lib/status'
 
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
@@ -59,11 +60,7 @@ export default function ParticipantMyExpensesPage() {
   }, [query, statusFilter, projectFilter])
 
   const sorted = useMemo(() => {
-    const order: Record<ExpenseStatus, number> = {
-      PENDIENTE: 0,
-      APROBADO: 1,
-      RECHAZADO: 2,
-    }
+    const order = EXPENSE_STATUS_ORDER
     return [...(q.data?.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus

@@ -19,6 +19,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -101,12 +102,8 @@ export function AppShellLayout() {
 
   const isAdmin = user?.role === 'admin'
 
-  const canPullToRefresh =
-    Boolean(token) &&
-    !drawerOpen &&
-    !pwOpen &&
-    typeof window !== 'undefined' &&
-    window.matchMedia('(max-width: 1023px)').matches
+  const isMobile = useIsMobile()
+  const canPullToRefresh = Boolean(token) && !drawerOpen && !pwOpen && isMobile
 
   async function handlePullToRefresh() {
     await queryClient.invalidateQueries({ refetchType: 'active' })

@@ -35,6 +35,8 @@ import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
+import { formatShort } from '@/lib/date'
+import { REQUEST_STATUS_ORDER } from '@/lib/status'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
@@ -42,13 +44,6 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   consumable: 'Consumible',
 }
 
-function formatShort(iso: string): string {
-  return new Date(iso).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  })
-}
 
 
 
@@ -122,13 +117,7 @@ export default function ParticipantMyStockRequestsPage() {
   const selectedResource = resourcesMap.get(form.resource_id) ?? null
 
   const rows = useMemo(() => {
-    const order: Record<RequestStatus, number> = {
-      PENDIENTE: 0,
-      RESERVADO: 1,
-      ENTREGADO: 2,
-      DEVUELTO: 3,
-      RECHAZADO: 4,
-    }
+    const order = REQUEST_STATUS_ORDER
     return [...(q.data?.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus

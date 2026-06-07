@@ -66,6 +66,7 @@ import type {
 } from '@/features/stock/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
+import { REQUEST_STATUS_ORDER } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -205,13 +206,7 @@ export default function AdminStockPage() {
   }, [resourcesQ.data, resourceSearch])
 
   const sortedRequests = useMemo(() => {
-    const order: Record<RequestStatus, number> = {
-      PENDIENTE: 0,
-      RESERVADO: 1,
-      ENTREGADO: 2,
-      DEVUELTO: 3,
-      RECHAZADO: 4,
-    }
+    const order = REQUEST_STATUS_ORDER
     return [...(requestsQ.data?.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus
