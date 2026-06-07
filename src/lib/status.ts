@@ -17,6 +17,18 @@ export const REQUEST_STATUS_ORDER: Record<RequestStatus, number> = {
   RECHAZADO: 4,
 }
 
+/** Clase de borde izquierdo por estado de pedido de stock (lista admin/coordinador). */
+export function requestStatusBorderClass(status: RequestStatus): string {
+  switch (status) {
+    case 'PENDIENTE': return 'border-l-amber-400'
+    case 'RESERVADO': return 'border-l-primary'
+    case 'ENTREGADO': return 'border-l-emerald-500'
+    case 'DEVUELTO':  return 'border-l-slate-400'
+    case 'RECHAZADO': return 'border-l-destructive'
+    default:          return 'border-l-border'
+  }
+}
+
 /** Opciones para el filtro de estado de gastos (incluye "todos"). */
 export const EXPENSE_STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'Todos los estados' },

@@ -68,7 +68,7 @@ import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
 import { formatShort as formatDateShort } from '@/lib/date'
-import { REQUEST_STATUS_ORDER } from '@/lib/status'
+import { REQUEST_STATUS_ORDER, requestStatusBorderClass as requestBorderClass } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -79,17 +79,6 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────
-
-function requestBorderClass(status: RequestStatus): string {
-  switch (status) {
-    case 'PENDIENTE': return 'border-l-amber-400'
-    case 'RESERVADO': return 'border-l-primary'
-    case 'ENTREGADO': return 'border-l-emerald-500'
-    case 'DEVUELTO':  return 'border-l-slate-400'
-    case 'RECHAZADO': return 'border-l-destructive'
-    default:          return 'border-l-border'
-  }
-}
 
 function hasActionable(req: ResourceRequestDTO): boolean {
   if (req.status === 'PENDIENTE') return true

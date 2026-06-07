@@ -66,7 +66,7 @@ import type {
 } from '@/features/stock/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
-import { REQUEST_STATUS_ORDER } from '@/lib/status'
+import { REQUEST_STATUS_ORDER, requestStatusBorderClass as requestBorderClass } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 
 // ── Constants ─────────────────────────────────────────────────
@@ -104,17 +104,6 @@ function stockBorderClass(available: number, total: number): string {
   const pct = total > 0 ? available / total : 1
   if (pct <= 0.25) return 'border-l-amber-400'
   return 'border-l-emerald-400'
-}
-
-function requestBorderClass(status: RequestStatus): string {
-  switch (status) {
-    case 'PENDIENTE':  return 'border-l-amber-400'
-    case 'RESERVADO':  return 'border-l-primary'
-    case 'ENTREGADO':  return 'border-l-emerald-500'
-    case 'DEVUELTO':   return 'border-l-slate-400'
-    case 'RECHAZADO':  return 'border-l-destructive'
-    default:           return 'border-l-border'
-  }
 }
 
 // ── Skeleton ───────────────────────────────────────────────────
