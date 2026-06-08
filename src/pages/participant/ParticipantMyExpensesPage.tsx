@@ -7,6 +7,7 @@ import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
+import { SegmentedTabs } from '@/components/SegmentedTabs'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { ExpenseStatusBadge } from '@/components/StatusBadge'
 import { Badge } from '@/components/ui/badge'
@@ -121,28 +122,14 @@ export default function ParticipantMyExpensesPage() {
 
         {/* ── Solapas (solo si coordina algún proyecto) ── */}
         {hasCoordinated && (
-          <div className="inline-flex rounded-xl border border-border/70 bg-muted/30 p-1">
-            <button
-              type="button"
-              onClick={() => setTab('mis')}
-              className={cn(
-                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
-                activeTab === 'mis' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Mis gastos
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('proyecto')}
-              className={cn(
-                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
-                activeTab === 'proyecto' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Del proyecto
-            </button>
-          </div>
+          <SegmentedTabs
+            value={activeTab}
+            onChange={setTab}
+            options={[
+              { value: 'mis', label: 'Mis gastos' },
+              { value: 'proyecto', label: 'Del proyecto' },
+            ]}
+          />
         )}
 
         {/* ── Solapa "Del proyecto": selector + panel completo ── */}

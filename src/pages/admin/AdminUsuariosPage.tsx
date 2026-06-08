@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Users, ShieldCheck, User,
   ChevronRight, Loader2, X,
-  CheckCircle2, XCircle, Eye, EyeOff,
+  CheckCircle2, XCircle,
   KeyRound, UserPlus, FolderKanban,
   ArrowUpDown, ArrowUp, ArrowDown, Calendar, Upload,
 } from 'lucide-react'
@@ -15,6 +15,7 @@ import { DataToolbar } from '@/components/admin/DataToolbar'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { PasswordInput } from '@/components/PasswordInput'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -92,27 +93,16 @@ function PasswordField({
   id: string; label: string; value: string
   onChange: (v: string) => void; placeholder?: string
 }) {
-  const [show, setShow] = useState(false)
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        <Input
-          id={id}
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? '••••••••'}
-          className="h-11 pr-10"
-        />
-        <button
-          type="button"
-          onClick={() => setShow((s) => !s)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
+      <PasswordInput
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder ?? '••••••••'}
+        className="h-11"
+      />
     </div>
   )
 }

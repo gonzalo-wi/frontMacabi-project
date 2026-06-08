@@ -2,8 +2,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/PasswordInput'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, KeyRound, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, KeyRound, Loader2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { ApiError } from '@/lib/api/apiClient'
@@ -172,26 +173,16 @@ export default function RestablecerContrasenaPage() {
                 <Label htmlFor="new-password" className="text-sm font-medium">
                   Nueva contraseña
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="new-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pr-10"
-                    autoComplete="new-password"
-                    disabled={isLoading || !token}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword((s) => !s)}
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
+                <PasswordInput
+                  id="new-password"
+                  show={showPassword}
+                  onToggleShow={() => setShowPassword((s) => !s)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11"
+                  autoComplete="new-password"
+                  disabled={isLoading || !token}
+                />
               </div>
 
               <div className="space-y-1.5">

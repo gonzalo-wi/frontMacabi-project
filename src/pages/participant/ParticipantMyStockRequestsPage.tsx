@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 import { formatShort } from '@/lib/date'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
+import { SegmentedTabs } from '@/components/SegmentedTabs'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
@@ -217,28 +218,14 @@ export default function ParticipantMyStockRequestsPage() {
 
         {/* ── Solapas (solo si coordina algún proyecto) ── */}
         {hasCoordinated && (
-          <div className="inline-flex rounded-xl border border-border/70 bg-muted/30 p-1">
-            <button
-              type="button"
-              onClick={() => setTab('mis')}
-              className={cn(
-                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
-                activeTab === 'mis' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Mis pedidos
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('proyecto')}
-              className={cn(
-                'rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
-                activeTab === 'proyecto' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              Del proyecto
-            </button>
-          </div>
+          <SegmentedTabs
+            value={activeTab}
+            onChange={setTab}
+            options={[
+              { value: 'mis', label: 'Mis pedidos' },
+              { value: 'proyecto', label: 'Del proyecto' },
+            ]}
+          />
         )}
 
         {/* ── Solapa "Del proyecto": selector + pedidos del proyecto ── */}

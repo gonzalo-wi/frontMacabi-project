@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/PasswordInput'
 import { Label } from '@/components/ui/label'
-import { Bus, Eye, EyeOff, Loader2, Package, Receipt, UtensilsCrossed } from 'lucide-react'
+import { Bus, Loader2, Package, Receipt, UtensilsCrossed } from 'lucide-react'
 
 import { ApiError } from '@/lib/api/apiClient'
 import { login } from '@/lib/api/auth'
@@ -22,7 +23,6 @@ export default function LoginPage() {
   const { isAuthenticated, isRestoring, setSession } = useAuth()
   const [email, setEmail]               = useState('')
   const [password, setPassword]         = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError]               = useState('')
 
   const loginMutation = useMutation({
@@ -227,27 +227,15 @@ export default function LoginPage() {
                       ¿La olvidaste?
                     </Link>
                   </div>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 pr-10 rounded-xl focus-visible:ring-primary/20 focus-visible:border-primary border-border bg-card lg:bg-background"
-                      autoComplete="current-password"
-                      disabled={isLoading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      tabIndex={-1}
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    id="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-11 rounded-xl focus-visible:ring-primary/20 focus-visible:border-primary border-border bg-card lg:bg-background"
+                    autoComplete="current-password"
+                    disabled={isLoading}
+                  />
                 </div>
 
                 {/* Error */}
