@@ -62,9 +62,11 @@ type Props = {
   detailBasePath?: string
   /** Solo el admin puede editar el presupuesto mensual. */
   canEditBudget?: boolean
+  /** Mostrar el botón "Nuevo gasto" del header del panel (se oculta si la página ya tiene uno). */
+  showNewExpenseButton?: boolean
 }
 
-export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false }: Props) {
+export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false, showNewExpenseButton = true }: Props) {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [desde, setDesde] = useState(DEFAULT_DESDE)
@@ -122,14 +124,16 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
               </CardDescription>
             </div>
           </div>
-          <ExpenseFormDialog
-            token={token}
-            projectId={projectId}
-            triggerLabel="Nuevo gasto"
-            onCreated={async () => {
-              await Promise.all([expensesQ.refetch(), summaryQ.refetch()])
-            }}
-          />
+          {showNewExpenseButton && (
+            <ExpenseFormDialog
+              token={token}
+              projectId={projectId}
+              triggerLabel="Nuevo gasto"
+              onCreated={async () => {
+                await Promise.all([expensesQ.refetch(), summaryQ.refetch()])
+              }}
+            />
+          )}
         </CardHeader>
 
         <CardContent className="space-y-4 px-4 sm:px-6 pb-5">

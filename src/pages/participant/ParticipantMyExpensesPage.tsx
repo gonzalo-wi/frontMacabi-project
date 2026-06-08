@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CreditCard, Loader2, Search, Calendar, Paperclip, DollarSign } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
@@ -35,6 +35,7 @@ import { EXPENSE_STATUS_ORDER, EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/statu
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const [projectFilter, setProjectFilter] = useSearchParamState('project', 'all')
   const [statusRaw, setStatusFilter] = useSearchParamState('estado', 'all')
@@ -97,6 +98,9 @@ export default function ParticipantMyExpensesPage() {
               onCreated={async () => {
                 setFeedback({ text: 'Gasto cargado correctamente.', variant: 'success' })
                 await q.refetch()
+                // Refresca también el panel "Del proyecto" si el gasto fue para un proyecto visible.
+                await qc.invalidateQueries({ queryKey: ['project-expenses'] })
+                await qc.invalidateQueries({ queryKey: ['project-expense-summary'] })
               }}
             />
           ) : undefined
@@ -151,7 +155,7 @@ export default function ParticipantMyExpensesPage() {
               </Select>
             </div>
             {selectedProj && (
-              <ProjectExpensesPanel token={token} projectId={selectedProj} detailBasePath="/app/gastos" />
+              <ProjectExpensesPanel token={token} projectId={selectedProj} detailBasePath="/app/gastos" showNewExpenseButton={false} />
             )}
           </div>
         )}
