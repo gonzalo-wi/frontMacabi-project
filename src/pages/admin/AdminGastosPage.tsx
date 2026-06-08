@@ -53,44 +53,12 @@ import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { listProjects } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
+import { DATE_PRESETS, DEFAULT_DESDE, DEFAULT_HASTA, type DatePreset } from '@/lib/datePresets'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { cn } from '@/lib/utils'
-
-// ─── Date helpers (presets) ───────────────────────────────────
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-// Defaults = mes actual (se usan como valores iniciales en useSearchParamState)
-const _now = new Date()
-const DEFAULT_DESDE = isoDate(new Date(_now.getFullYear(), _now.getMonth(), 1))
-const DEFAULT_HASTA = isoDate(_now)
-
-type DatePreset = { label: string; desde: string; hasta: string }
-const DATE_PRESETS: DatePreset[] = [
-  {
-    label: 'Este mes',
-    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth(), 1)),
-    hasta: isoDate(_now),
-  },
-  {
-    label: 'Mes anterior',
-    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth() - 1, 1)),
-    hasta: isoDate(new Date(_now.getFullYear(), _now.getMonth(), 0)),
-  },
-  {
-    label: 'Últimos 6 meses',
-    desde: isoDate(new Date(_now.getFullYear(), _now.getMonth() - 5, 1)),
-    hasta: isoDate(_now),
-  },
-  {
-    label: 'Este año',
-    desde: isoDate(new Date(_now.getFullYear(), 0, 1)),
-    hasta: isoDate(_now),
-  },
-]
 
 // ─── Formatters ───────────────────────────────────────────────
 function expenseDate(iso: string) {

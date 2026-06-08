@@ -16,6 +16,7 @@ import { ProjectBudgetBanner } from '@/features/expenses/components/ProjectBudge
 import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
+import { DATE_PRESETS, DEFAULT_DESDE, DEFAULT_HASTA, type DatePreset } from '@/lib/datePresets'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { cn } from '@/lib/utils'
 import { formatExpenseDate } from '@/lib/date'
@@ -66,8 +67,20 @@ type Props = {
 export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false }: Props) {
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
-  const [desde, setDesde] = useState('')
-  const [hasta, setHasta] = useState('')
+  const [desde, setDesde] = useState(DEFAULT_DESDE)
+  const [hasta, setHasta] = useState(DEFAULT_HASTA)
+
+  function applyDatePreset(p: DatePreset) {
+    setDesde(p.desde)
+    setHasta(p.hasta)
+    setPage(1)
+  }
+
+  function resetDates() {
+    setDesde(DEFAULT_DESDE)
+    setHasta(DEFAULT_HASTA)
+    setPage(1)
+  }
 
   const expensesQ = useQuery({
     queryKey: ['project-expenses', projectId, token, page],
@@ -123,39 +136,59 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
           {/* ── Presupuesto mensual ── */}
           <ProjectBudgetBanner token={token} projectId={projectId} canEdit={canEditBudget} />
 
-          {/* ── Filtro de fechas ── */}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-                <CalendarDays className="w-3 h-3" /> Desde
-              </label>
-              <Input
-                type="date"
-                value={desde}
-                max={hasta || undefined}
-                onChange={(e) => { setDesde(e.target.value); setPage(1) }}
-                className="h-8 w-[140px] text-xs"
-              />
+          {/* ── Filtro de fechas (default: mes actual) ── */}
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <label className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
+                  <CalendarDays className="w-3 h-3" /> Desde
+                </label>
+                <Input
+                  type="date"
+                  value={desde}
+                  max={hasta || undefined}
+                  onChange={(e) => { setDesde(e.target.value); setPage(1) }}
+                  className="h-8 w-[140px] text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground">Hasta</label>
+                <Input
+                  type="date"
+                  value={hasta}
+                  min={desde || undefined}
+                  onChange={(e) => { setHasta(e.target.value); setPage(1) }}
+                  className="h-8 w-[140px] text-xs"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-muted-foreground">Hasta</label>
-              <Input
-                type="date"
-                value={hasta}
-                min={desde || undefined}
-                onChange={(e) => { setHasta(e.target.value); setPage(1) }}
-                className="h-8 w-[140px] text-xs"
-              />
-            </div>
-            {(desde || hasta) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DATE_PRESETS.map((p) => {
+                const active = desde === p.desde && hasta === p.hasta
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => applyDatePreset(p)}
+                    className={cn(
+                      'text-[11px] rounded-full border px-2.5 py-1 transition-colors',
+                      active
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
               <button
                 type="button"
-                onClick={() => { setDesde(''); setHasta(''); setPage(1) }}
-                className="text-xs text-primary hover:underline pb-1"
+                onClick={resetDates}
+                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
               >
-                Limpiar
+                ↺ Resetear
               </button>
-            )}
+            </div>
           </div>
 
           {/* ── Resumen financiero ── */}
