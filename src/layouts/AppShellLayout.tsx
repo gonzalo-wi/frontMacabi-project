@@ -19,7 +19,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { useIsMobile } from '@/hooks/useIsMobile'
+import { useIsMobile, useMediaQuery } from '@/hooks/useIsMobile'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -103,6 +103,9 @@ export function AppShellLayout() {
   const isAdmin = user?.role === 'admin'
 
   const isMobile = useIsMobile()
+  // Dialog en desktop / Drawer en mobile: gateamos el `open` por breakpoint (1024px = lg)
+  // para no montar dos overlays a la vez (fondo doblemente oscuro).
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const canPullToRefresh = Boolean(token) && !drawerOpen && !pwOpen && isMobile
 
   async function handlePullToRefresh() {
@@ -634,7 +637,7 @@ export function AppShellLayout() {
       </Drawer>
 
       {/* ── Change password — Dialog (desktop) ─────────── */}
-      <Dialog open={pwOpen} onOpenChange={(o: boolean) => !o && setPwOpen(false)}>
+      <Dialog open={pwOpen && isDesktop} onOpenChange={(o: boolean) => !o && setPwOpen(false)}>
         <DialogContent className="hidden lg:grid sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cambiar contraseña</DialogTitle>
@@ -653,7 +656,7 @@ export function AppShellLayout() {
       </Dialog>
 
       {/* ── Change password — Drawer (mobile) ───────────── */}
-      <Drawer open={pwOpen} onOpenChange={(o) => !o && setPwOpen(false)} direction="bottom">
+      <Drawer open={pwOpen && !isDesktop} onOpenChange={(o) => !o && setPwOpen(false)} direction="bottom">
         <DrawerContent className="lg:hidden px-0 pb-0">
           <div className="px-5 pt-4 pb-8 space-y-5 max-w-md mx-auto w-full">
             <div className="flex items-center justify-between">
