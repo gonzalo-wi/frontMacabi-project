@@ -2,7 +2,7 @@ import { Check, Package, Receipt, Bell, X, RefreshCw } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { DrawerClose } from '@/components/ui/drawer'
-import { type AppNotification, relativeTime, NOTIFICATIONS_LIMIT } from './useNotifications'
+import { type AppNotification, relativeTime, NOTIFICATIONS_LIMIT } from '../hooks/useNotifications'
 
 type Props = {
   notifications: AppNotification[]

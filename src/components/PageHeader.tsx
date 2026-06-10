@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { type LucideIcon } from 'lucide-react'
 
 import { useAuth } from '@/hooks/useAuth'
-import { NotificationsBell } from './NotificationsBell'
+import { NotificationsBell } from '@/features/notifications/components/NotificationsBell'
 
 interface PageHeaderProps {
   icon: LucideIcon

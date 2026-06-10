@@ -12,8 +12,8 @@ import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
 import { useAuth } from '@/hooks/useAuth'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { cn } from '@/lib/utils'
-import { NotificationsPanelContent } from './notifications/NotificationsPanelContent'
-import { useNotifications, type AppNotification } from './notifications/useNotifications'
+import { NotificationsPanelContent } from './NotificationsPanelContent'
+import { useNotifications, type AppNotification } from '../hooks/useNotifications'
 
 type Props = {
   token: string
