@@ -11,8 +11,8 @@ import {
 
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
-import { DataToolbar } from '@/components/admin/DataToolbar'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { DataToolbar } from '@/components/data/DataToolbar'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PasswordInput } from '@/components/PasswordInput'

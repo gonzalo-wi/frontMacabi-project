@@ -4,7 +4,7 @@ import { Calendar, ChevronRight, ClipboardList, Package } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { listProjectRequests } from '@/features/stock/api/requestsApi'

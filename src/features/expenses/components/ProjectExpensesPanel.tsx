@@ -4,7 +4,7 @@ import { CalendarDays, CreditCard, Paperclip, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {

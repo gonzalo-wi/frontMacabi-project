@@ -20,7 +20,7 @@ import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import {
   AlertDialog,
   AlertDialogAction,

@@ -39,7 +39,7 @@ import { formatShort } from '@/lib/date'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
 import { SegmentedTabs } from '@/components/SegmentedTabs'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',

@@ -4,7 +4,7 @@ import { CalendarRange, FileText, MoreVertical, SquarePen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {

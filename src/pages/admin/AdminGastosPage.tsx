@@ -22,7 +22,7 @@ import { ActionButton } from '@/components/ActionButton'
 import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
-import { PaginationControls } from '@/components/admin/PaginationControls'
+import { PaginationControls } from '@/components/data/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
