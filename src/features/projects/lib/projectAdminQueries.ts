@@ -3,7 +3,7 @@ import {
   listEventInstances,
 } from '@/features/events/api/eventsApi'
 import type { EventDetailDTO } from '@/features/events/model/types'
-import { getUsers } from '@/lib/api/admin'
+import { getUsers } from '@/features/users/api/usersApi'
 import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import type { UserDTO } from '@/lib/api/types'
 

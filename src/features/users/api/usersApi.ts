@@ -1,4 +1,4 @@
-import { apiRequest } from './apiClient'
+import { apiRequest } from '@/lib/api/apiClient'
 import type {
   PaginatedUsersDTO,
   UpdateUserRoleBody,
@@ -8,7 +8,7 @@ import type {
   CreateUserInvitationBody,
   InviteUserCreatedResponseDTO,
   ListPendingInvitationsDTO,
-} from './types'
+} from '@/lib/api/types'
 
 export async function createUserInvitation(
   token: string,

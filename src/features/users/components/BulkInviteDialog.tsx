@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { createUserInvitation } from '@/lib/api/admin'
+import { createUserInvitation } from '@/features/users/api/usersApi'
 import { ApiError } from '@/lib/api/apiClient'
 
 const BATCH_SIZE = 10
