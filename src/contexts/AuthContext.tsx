@@ -10,7 +10,7 @@ import {
 
 import { getMe } from '@/lib/api/auth'
 import type { UserDTO } from '@/lib/api/types'
-import { subscribeToPush, unsubscribeFromPush } from '@/features/push/pushSubscription'
+import { subscribeToPush, unsubscribeFromPush } from '@/features/push/lib/pushSubscription'
 
 const STORAGE_KEY = 'macabi_auth'
 
