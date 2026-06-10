@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
 import { SegmentedTabs } from '@/components/SegmentedTabs'
 import { PaginationControls } from '@/components/admin/PaginationControls'
-import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {

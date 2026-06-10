@@ -16,7 +16,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { ActionButton } from '@/components/ActionButton'
-import { StockRequestStatusBadge } from '@/components/StatusBadge'
+import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import {
   AlertDialog,

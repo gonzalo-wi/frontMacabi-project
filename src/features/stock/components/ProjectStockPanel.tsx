@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Calendar, ChevronRight, ClipboardList, Package } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { StockRequestStatusBadge } from '@/components/StatusBadge'
+import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

@@ -19,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
-import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
 import {
   AlertDialog,

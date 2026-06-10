@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CalendarDays, CreditCard, Paperclip, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { PaginationControls } from '@/components/admin/PaginationControls'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
