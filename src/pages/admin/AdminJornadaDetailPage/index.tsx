@@ -20,7 +20,7 @@ import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/rea
 
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Accordion } from '@/components/ui/accordion'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,18 +38,19 @@ import {
   getModuleResponseSummary,
 } from '@/features/events/api/eventsApi'
 import type {
-  EventDetailDTO,
-  EventParticipantAnswerDTO,
   EventParticipantResponseDTO,
   ModuleResponseSummaryDTO,
 } from '@/features/events/model/types'
 import { EventStatusBadge } from '@/features/events/components/EventStatusBadge'
-import type { AttendanceGate } from '@/features/events/lib/attendanceGate'
+import { findAttendanceGate } from '@/features/events/lib/attendanceGate'
 import {
-  attendanceStatusFromAnswers,
-  attendanceStatusLabel,
-  findAttendanceGate,
-} from '@/features/events/lib/attendanceGate'
+  attendanceCounts,
+  buildAnswerMaps,
+  type AnswerMaps,
+  type MembershipRow,
+  type ProjectPlacement,
+  type UnifiedParticipantRow,
+} from '@/features/events/lib/jornadaDetail'
 import { labelInstanceType, labelProjectRole } from '@/features/events/lib/eventLabels'
 import { formatStartsAR, isBeforeDeadline } from '@/features/events/lib/deadline'
 import { fetchAllProjects, listProjectMembers } from '@/features/projects/api/projectsApi'
@@ -61,324 +62,10 @@ import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { cn } from '@/lib/utils'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Data helpers
-// ─────────────────────────────────────────────────────────────────────────────
+import { ParticipantRowAccordionInner } from './ParticipantRowAccordion'
+import { SkeletonRows } from './SkeletonRows'
+import { StatChip } from './StatChip'
 
-type AnswerMaps = {
-  optLabels: Map<string, { group: string; label: string }>
-  groupNames: Map<string, string>
-  groupToModule: Map<string, { title: string; sort: number }>
-}
-
-function buildAnswerMaps(detail: EventDetailDTO): AnswerMaps {
-  const optLabels = new Map<string, { group: string; label: string }>()
-  const groupNames = new Map<string, string>()
-  const groupToModule = new Map<string, { title: string; sort: number }>()
-  for (const md of detail.modules) {
-    for (const gd of md.option_groups) {
-      groupNames.set(gd.group.id, gd.group.name)
-      groupToModule.set(gd.group.id, { title: md.module.title, sort: md.module.sort_order })
-      for (const o of gd.options) {
-        optLabels.set(o.id, { group: gd.group.name, label: o.label })
-      }
-    }
-  }
-  return { optLabels, groupNames, groupToModule }
-}
-
-type AnswerLine = { groupName: string; value: string }
-type ModuleAnswers = { title: string; sort: number; lines: AnswerLine[] }
-
-function groupAnswersByModule(
-  answers: EventParticipantAnswerDTO[],
-  maps: AnswerMaps,
-): ModuleAnswers[] {
-  const byModule = new Map<string, ModuleAnswers>()
-  for (const a of answers) {
-    let groupName = ''
-    let value = ''
-    if (a.option_id?.trim()) {
-      const meta = maps.optLabels.get(a.option_id)
-      if (meta) {
-        groupName = meta.group
-        value = meta.label
-      } else {
-        groupName = 'Opción'
-        value = a.option_id.slice(0, 8) + '…'
-      }
-    } else {
-      const tv = a.text_value != null ? String(a.text_value).trim() : ''
-      if (!tv) continue
-      groupName = (a.group_id && maps.groupNames.get(a.group_id)) ?? 'Respuesta libre'
-      value = tv
-    }
-    const mod = (a.group_id && maps.groupToModule.get(a.group_id)) || { title: 'Otros', sort: 999 }
-    const key = mod.title
-    if (!byModule.has(key)) byModule.set(key, { title: mod.title, sort: mod.sort, lines: [] })
-    byModule.get(key)!.lines.push({ groupName, value })
-  }
-  return [...byModule.values()].sort((a, b) => a.sort - b.sort)
-}
-
-type ProjectPlacement = { projectId: string; projectName: string; userId: string; role: string }
-
-function attendanceCounts(
-  gate: AttendanceGate | null,
-  userIds: string[],
-  rowByUserId: Map<string, UnifiedParticipantRow>,
-) {
-  let attend = 0
-  let decline = 0
-  let pending = 0
-  if (!gate) return { attend, decline, pending }
-  for (const uid of userIds) {
-    const row = rowByUserId.get(uid)
-    const st =
-      row?.responded && row.responseRow
-        ? attendanceStatusFromAnswers(gate, row.responseRow.answers)
-        : 'pending'
-    if (st === 'attends') attend++
-    else if (st === 'declines') decline++
-    else pending++
-  }
-  return { attend, decline, pending }
-}
-
-function attendanceBadgeClass(s: string) {
-  switch (s) {
-    case 'attends':
-      return 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
-    case 'declines':
-      return 'border-muted-foreground/30 bg-muted text-muted-foreground'
-    case 'pending':
-    default:
-      return 'border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
-  }
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
-
-type MembershipRow = { projectId: string; projectName: string; role: string }
-
-type UnifiedParticipantRow = {
-  userId: string
-  displayName: string
-  email: string
-  memberships: MembershipRow[]
-  responded: boolean
-  responseRow: EventParticipantResponseDTO | null
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ParticipantRowAccordionInner
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ParticipantRowAccordionInner({
-  row,
-  accordionValue,
-  linkedPidsForEventLength,
-  eventAttendanceGate,
-  answerMaps,
-  projectMap,
-  subtitleRole,
-}: {
-  row: UnifiedParticipantRow
-  accordionValue: string
-  linkedPidsForEventLength: number
-  eventAttendanceGate: AttendanceGate | null
-  answerMaps: AnswerMaps
-  projectMap: Map<string, string>
-  subtitleRole?: string | null
-}) {
-  const rowResponse = row.responseRow
-  const pid = rowResponse?.response.project_id ?? null
-
-  const att =
-    eventAttendanceGate && row.responded && rowResponse
-      ? attendanceStatusFromAnswers(eventAttendanceGate, rowResponse.answers)
-      : eventAttendanceGate
-        ? 'pending'
-        : null
-
-  return (
-    <AccordionItem value={accordionValue} className="border-0">
-      <AccordionTrigger className="px-4 py-0 hover:no-underline hover:bg-muted/40 rounded-none [&>svg]:shrink-0 [&>svg]:text-muted-foreground min-h-[64px]">
-        <div className="min-w-0 flex-1 flex items-center gap-3 text-left py-3">
-          {/* Avatar iniciales */}
-          <div
-            className={cn(
-              'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold select-none',
-              row.responded
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
-                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300',
-            )}
-          >
-            {getInitials(row.displayName) || '?'}
-          </div>
-
-          {/* Contenido */}
-          <div className="min-w-0 flex-1 space-y-1">
-            {/* Línea 1: nombre + badge asistencia */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-semibold text-sm text-foreground leading-tight">
-                {row.displayName}
-              </span>
-              {eventAttendanceGate && att && att !== 'answered_no_gate' && (
-                <Badge
-                  variant="outline"
-                  className={cn('text-[10px] font-medium py-0 px-1.5 h-4', attendanceBadgeClass(att))}
-                >
-                  {attendanceStatusLabel(att)}
-                </Badge>
-              )}
-            </div>
-
-            {/* Línea 2: email + rol/proyecto */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-xs text-muted-foreground">
-              <span className="truncate max-w-[200px]">{row.email}</span>
-              {subtitleRole && (
-                <>
-                  <span className="text-border">·</span>
-                  <span>{subtitleRole}</span>
-                </>
-              )}
-              {!subtitleRole && row.memberships.length > 0 && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="truncate">
-                    {row.memberships
-                      .map((m) => `${m.projectName} (${labelProjectRole(m.role)})`)
-                      .join(' · ')}
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Línea 3: estado de respuesta */}
-            <div className="flex flex-wrap items-center gap-1 text-xs">
-              {row.responded && rowResponse ? (
-                <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                  Respondió el {formatStartsAR(rowResponse.response.created_at)}
-                  {pid && projectMap.get(pid) && (
-                    <span className="text-foreground/60 font-normal">
-                      {' '}· {projectMap.get(pid)}
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <span className="text-amber-700 dark:text-amber-400">Sin respuesta aún</span>
-              )}
-              {linkedPidsForEventLength > 0 && row.responded && row.memberships.length === 0 && (
-                <span className="text-orange-700 dark:text-orange-400">
-                  · No figura en el roster
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </AccordionTrigger>
-
-      <AccordionContent className="border-t border-border/50 bg-muted/10 px-0 pb-0">
-        {!row.responded || !rowResponse ? (
-          <p className="px-4 py-4 text-xs text-muted-foreground text-center">
-            Aún no hay respuesta enviada.
-          </p>
-        ) : (() => {
-          const modules = groupAnswersByModule(rowResponse.answers, answerMaps)
-          if (modules.length === 0) {
-            return (
-              <p className="px-4 py-4 text-xs text-muted-foreground text-center">
-                La respuesta no tiene contenido registrado.
-              </p>
-            )
-          }
-          return (
-            <div className="divide-y divide-border/40">
-              {modules.map((mod) => (
-                <div key={mod.title} className="px-4 py-3 space-y-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">
-                    {mod.title}
-                  </p>
-                  <dl className="space-y-2">
-                    {mod.lines.map((line, i) => (
-                      <div key={i} className="flex gap-3 text-sm">
-                        <dt className="shrink-0 text-muted-foreground text-xs w-24 pt-0.5 leading-tight">
-                          {line.groupName}
-                        </dt>
-                        <dd className="font-medium text-foreground min-w-0 break-words">
-                          {line.value}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              ))}
-            </div>
-          )
-        })()}
-      </AccordionContent>
-    </AccordionItem>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Stat chip helper
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StatChip({
-  children,
-  color = 'neutral',
-}: {
-  children: React.ReactNode
-  color?: 'neutral' | 'green' | 'amber' | 'orange'
-}) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium tabular-nums',
-        color === 'green' &&
-          'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
-        color === 'amber' &&
-          'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
-        color === 'orange' &&
-          'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300',
-        color === 'neutral' && 'border-border bg-card text-muted-foreground',
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Skeleton loader
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SkeletonRows({ count = 3 }: { count?: number }) {
-  return (
-    <div className="space-y-2 py-1">
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-16 rounded-xl bg-muted/50 animate-pulse"
-          style={{ opacity: 1 - i * 0.2 }}
-        />
-      ))}
-    </div>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Page component
