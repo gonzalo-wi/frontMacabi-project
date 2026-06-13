@@ -1,8 +1,5 @@
-import { Link } from 'react-router-dom'
 import { Clock, Search } from 'lucide-react'
 
-import { PaginationControls } from '@/components/data/PaginationControls'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,14 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
+import { StockRequestsList } from '@/features/stock/components/StockRequestsList'
 import type { RequestStatus, ResourceRequestDTO } from '@/features/stock/model/types'
-import { RESOURCE_TYPE_LABELS } from '@/features/stock/lib/stockLabels'
-import { formatStockDate } from '@/features/stock/lib/stockHelpers'
-import { ApiError } from '@/lib/api/apiClient'
-import { requestStatusBorderClass } from '@/lib/status'
-import { cn } from '@/lib/utils'
-import { SkeletonRows } from './SkeletonRows'
 
 export function RequestsSection({
   requestsQ,
@@ -81,59 +72,18 @@ export function RequestsSection({
           </Select>
         </div>
 
-        {requestsQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {requestsQ.error instanceof ApiError
-              ? requestsQ.error.message
-              : 'No se pudieron cargar los pedidos'}
-          </div>
-        )}
-
-        {requestsQ.isLoading && <SkeletonRows count={5} />}
-
-        {!requestsQ.isLoading && filteredRequests.length > 0 && (
-          <div className="space-y-2">
-            {filteredRequests.map((req) => (
-              <Link
-                key={req.id}
-                to={`/app/admin/stock/requests/${req.id}`}
-                className={cn(
-                  'flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-xl border border-border/70 bg-card pl-3.5 pr-3 py-3 border-l-[3px] hover:bg-muted/20 transition-colors',
-                  requestStatusBorderClass(req.status),
-                )}
-              >
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-sm text-foreground">{req.resource_name}</p>
-                    <Badge variant="outline" className="text-[10px] font-medium">
-                      {req.project_name}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {req.quantity} u. · {RESOURCE_TYPE_LABELS[req.resource_type]} ·{' '}
-                    {req.requester_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground/60">
-                    Retiro: {formatStockDate(req.withdrawal_date)}
-                    {req.return_date ? ` · Dev.: ${formatStockDate(req.return_date)}` : ''}
-                  </p>
-                </div>
-                <StockRequestStatusBadge status={req.status} />
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {!requestsQ.isLoading && filteredRequests.length === 0 && !requestsQ.isError && (
-          <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
-            <Clock className="w-9 h-9 text-muted-foreground/25" />
-            <p className="text-sm text-muted-foreground">
-              No hay pedidos para los filtros seleccionados.
-            </p>
-          </div>
-        )}
-
-        <PaginationControls page={page} totalPages={totalPages} onPageChange={onPageChange} />
+        <StockRequestsList
+          requests={filteredRequests}
+          isLoading={requestsQ.isLoading}
+          isError={requestsQ.isError}
+          error={requestsQ.error}
+          detailBasePath="/app/admin/stock/requests"
+          showProject
+          emptyMessage="No hay pedidos para los filtros seleccionados."
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
       </CardContent>
     </Card>
   )

@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Loader2, Package, Plus, Search, Calendar, ClipboardList } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Loader2, Package, Plus, Search } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
-import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -30,16 +28,14 @@ import type {
   ResourceType,
 } from '@/features/stock/model/types'
 import { ProjectStockPanel } from '@/features/stock/components/ProjectStockPanel'
+import { StockRequestsList } from '@/features/stock/components/StockRequestsList'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
-import { cn } from '@/lib/utils'
-import { formatShort } from '@/lib/date'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
 import { SegmentedTabs } from '@/components/SegmentedTabs'
-import { PaginationControls } from '@/components/data/PaginationControls'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
@@ -246,7 +242,9 @@ export default function ParticipantMyStockRequestsPage() {
                 </SelectContent>
               </Select>
             </div>
-            {selectedProj && <ProjectStockPanel token={token} projectId={selectedProj} />}
+            {selectedProj && (
+              <ProjectStockPanel token={token} projectId={selectedProj} canManage />
+            )}
           </div>
         )}
 
@@ -288,79 +286,14 @@ export default function ParticipantMyStockRequestsPage() {
               />
             </div>
 
-            {q.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader2 className="w-7 h-7 animate-spin text-primary" />
-              </div>
-            )}
-
-            {!q.isPending && !q.isError && filtered.length > 0 && (
-              <div className="space-y-3.5">
-                {filtered.map((req) => {
-                  const borderCls =
-                    req.status === 'ENTREGADO'
-                      ? 'border-l-emerald-500/80 dark:border-l-emerald-500'
-                      : req.status === 'RECHAZADO'
-                        ? 'border-l-red-500/80 dark:border-l-red-500'
-                        : req.status === 'PENDIENTE'
-                          ? 'border-l-amber-500/80 dark:border-l-amber-500'
-                          : req.status === 'RESERVADO'
-                            ? 'border-l-sky-500/80 dark:border-l-sky-500'
-                            : 'border-l-muted-foreground'
-
-                  return (
-                    <Link
-                      key={req.id}
-                      to={`/app/stock/requests/${req.id}`}
-                      className={cn(
-                        "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/30 backdrop-blur-xs p-4 sm:p-5 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md hover:border-primary/20 border-l-[5px] block select-none",
-                        borderCls
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1.5 min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-extrabold text-sm text-foreground tracking-tight leading-snug truncate">
-                              {req.resource_name}
-                            </h4>
-                            <Badge variant="secondary" className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-secondary/60 border-border/40 text-secondary-foreground">
-                              {req.project_name}
-                            </Badge>
-                            <Badge variant="outline" className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-background/50 border-border/50 text-muted-foreground">
-                              {RESOURCE_TYPE_LABELS[req.resource_type]}
-                            </Badge>
-                          </div>
-                          
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1.5">
-                              <ClipboardList className="w-3.5 h-3.5 text-muted-foreground/75" />
-                              Cantidad: <span className="font-bold text-foreground">{req.quantity} u.</span>
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-muted-foreground/75" />
-                              Pedido el: <span className="font-semibold text-foreground">{formatShort(req.created_at)}</span>
-                            </span>
-                          </div>
-                        </div>
-                        <div className="shrink-0">
-                          <StockRequestStatusBadge status={req.status} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5" />
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-
-            {!q.isPending && !q.isError && filtered.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-border/80 p-10 text-center">
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                  No hay pedidos para los filtros seleccionados.
-                </p>
-              </div>
-            )}
-
-            <PaginationControls
+            <StockRequestsList
+              requests={filtered}
+              isLoading={q.isPending}
+              isError={q.isError}
+              error={q.error}
+              detailBasePath="/app/stock/requests"
+              showProject
+              emptyMessage="No hay pedidos para los filtros seleccionados."
               page={page}
               totalPages={q.data?.total_pages ?? 1}
               onPageChange={setPage}

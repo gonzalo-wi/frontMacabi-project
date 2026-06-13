@@ -32,6 +32,7 @@ type CreateRequestFormProps = {
   error?: string
 }
 
+/** Formulario de creación de pedido (proyecto ya conocido por el contexto). */
 export function CreateRequestForm({
   form,
   onChange,
