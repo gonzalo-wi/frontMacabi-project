@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CalendarRange, FileText, MoreVertical, SquarePen } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { PaginationControls } from '@/components/data/PaginationControls'
+import { useClientPagination } from '@/hooks/useClientPagination'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -73,11 +74,12 @@ export default function ProyectoJornadasPage() {
 
   const hasAnyLinkedEvents = (eventsQ.data?.length ?? 0) > 0
 
-  const [jornadasPage, setJornadasPage] = useState(1)
-  useEffect(() => { setJornadasPage(1) }, [dateFrom, dateTo])
-  const JORNADAS_PAGE_SIZE = 10
-  const jornadasTotalPages = Math.max(1, Math.ceil(filteredEvents.length / JORNADAS_PAGE_SIZE))
-  const pagedEvents = filteredEvents.slice((jornadasPage - 1) * JORNADAS_PAGE_SIZE, jornadasPage * JORNADAS_PAGE_SIZE)
+  const {
+    page: jornadasPage,
+    setPage: setJornadasPage,
+    totalPages: jornadasTotalPages,
+    pageItems: pagedEvents,
+  } = useClientPagination(filteredEvents, { resetKey: `${dateFrom}|${dateTo}` })
 
   if (!projectId) return null
 

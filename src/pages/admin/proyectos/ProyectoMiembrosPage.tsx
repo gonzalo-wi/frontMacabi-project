@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { PaginationControls } from '@/components/data/PaginationControls'
+import { useClientPagination } from '@/hooks/useClientPagination'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,10 +122,12 @@ export default function ProyectoMiembrosPage() {
 
   const coordinatorCount = sortedMembers.filter((m) => m.role === 'coordinator').length
 
-  const [memberPage, setMemberPage] = useState(1)
-  const MEMBER_PAGE_SIZE = 10
-  const memberTotalPages = Math.max(1, Math.ceil(sortedMembers.length / MEMBER_PAGE_SIZE))
-  const pagedMembers = sortedMembers.slice((memberPage - 1) * MEMBER_PAGE_SIZE, memberPage * MEMBER_PAGE_SIZE)
+  const {
+    page: memberPage,
+    setPage: setMemberPage,
+    totalPages: memberTotalPages,
+    pageItems: pagedMembers,
+  } = useClientPagination(sortedMembers)
 
   const addMem = useMutation({
     mutationFn: async () => {

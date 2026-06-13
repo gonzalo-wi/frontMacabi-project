@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Upload, UserPlus, Users } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -28,7 +28,7 @@ import { fetchUserProjectsByUser } from '@/features/projects/lib/userProjectsInd
 import { changePassword } from '@/lib/api/auth'
 import { ApiError } from '@/lib/api/apiClient'
 import type { UpdateUserRoleBody, UserDTO } from '@/lib/api/types'
-import { PAGE_SIZE } from '@/lib/pagination'
+import { useClientPagination } from '@/hooks/useClientPagination'
 import { useAuth } from '@/hooks/useAuth'
 import { useIsDesktop } from '@/hooks/useIsMobile'
 
@@ -48,7 +48,6 @@ export default function AdminUsuariosPage() {
   const queryClient = useQueryClient()
   const isDesktop = useIsDesktop()
   const isAdmin = me?.role === 'admin'
-  const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -222,9 +221,6 @@ export default function AdminUsuariosPage() {
 
   const allUsers = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
 
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => { setPage(1) }, [search, sortKey, sortDir])
-
   const filteredSorted = useMemo(() => {
     const q = search.trim().toLowerCase()
     let list = [...allUsers]
@@ -237,20 +233,9 @@ export default function AdminUsuariosPage() {
     return list
   }, [allUsers, search, sortKey, sortDir])
 
-  const filteredTotalPages = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE))
-
-  useEffect(() => {
-    const maxP = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE))
-    setPage((p) => Math.min(p, maxP))
-  }, [filteredSorted.length])
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const safePage = Math.min(page, filteredTotalPages)
-
-  const pageRows = useMemo(
-    () => filteredSorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [filteredSorted, safePage],
-  )
+  const { page, setPage, totalPages, pageItems: pageRows } = useClientPagination(filteredSorted, {
+    resetKey: `${search}|${sortKey}|${sortDir}`,
+  })
 
   const sortMobileValue = `${sortKey}:${sortDir}` as typeof SORT_MOBILE_VALUES[number]
   const totalUsers = allUsers.length
@@ -325,8 +310,8 @@ export default function AdminUsuariosPage() {
               onOpenDrawer={openDrawer}
             />
 
-            {filteredTotalPages > 1 && pageRows.length > 0 && (
-              <PaginationControls page={safePage} totalPages={filteredTotalPages} onPageChange={setPage} compact />
+            {totalPages > 1 && pageRows.length > 0 && (
+              <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} compact />
             )}
           </>
         )}
