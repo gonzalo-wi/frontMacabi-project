@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CreditCard, Loader2, Search, Calendar, Paperclip, DollarSign } from 'lucide-react'
+import { CreditCard, Search } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { FeedbackBanner } from '@/components/FeedbackBanner'
@@ -8,9 +7,9 @@ import { useFeedback } from '@/hooks/useFeedback'
 import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
 import { SegmentedTabs } from '@/components/SegmentedTabs'
-import { PaginationControls } from '@/components/data/PaginationControls'
-import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
-import { Badge } from '@/components/ui/badge'
+import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
+import { ProjectExpensesPanel } from '@/features/expenses/components/ProjectExpensesPanel'
+import { ExpensesList } from '@/features/expenses/components/ExpensesList'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -21,20 +20,15 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { listMyExpenses } from '@/features/expenses/api/expensesApi'
-import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
-import { ProjectExpensesPanel } from '@/features/expenses/components/ProjectExpensesPanel'
-import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
+import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
-import { formatARS } from '@/lib/currency'
 import { useAuth } from '@/hooks/useAuth'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
-import { cn } from '@/lib/utils'
 import { EXPENSE_STATUS_ORDER, EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
-  const navigate = useNavigate()
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const [projectFilter, setProjectFilter] = useSearchParamState('project', 'all')
@@ -199,88 +193,13 @@ export default function ParticipantMyExpensesPage() {
               />
             </div>
 
-            {q.isPending && (
-              <div className="flex justify-center py-16">
-                <Loader2 className="h-7 w-7 animate-spin text-primary" />
-              </div>
-            )}
-
-            {!q.isPending && filtered.length > 0 && (
-              <div className="space-y-3.5">
-                {filtered.map((e: ExpenseDTO) => {
-                  const borderCls =
-                    e.status === 'APROBADO'
-                      ? 'border-l-emerald-500/80 dark:border-l-emerald-500'
-                      : e.status === 'RECHAZADO'
-                        ? 'border-l-red-500/80 dark:border-l-red-500'
-                        : 'border-l-amber-500/80 dark:border-l-amber-500'
-
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      onClick={() => navigate(`/app/gastos/${e.id}`)}
-                      className={cn(
-                        'w-full text-left flex flex-col gap-3.5 rounded-2xl border border-border/60 bg-card/30 backdrop-blur-xs p-4 sm:p-5 shadow-sm transition-all duration-200 hover:scale-[1.01] hover:shadow-md hover:border-primary/20 border-l-[5px] cursor-pointer',
-                        borderCls,
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1.5 min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-extrabold text-sm text-foreground tracking-tight leading-snug break-words">
-                              {e.description}
-                            </h4>
-                            <Badge variant="secondary" className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-secondary/60 border-border/40 text-secondary-foreground">
-                              {e.project_name?.trim() || 'Proyecto'}
-                            </Badge>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="w-3.5 h-3.5 text-muted-foreground/75" />
-                              {new Date(`${e.expense_date}T12:00:00`).toLocaleDateString('es-AR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: '2-digit',
-                              })}
-                            </span>
-                            {e.receipt_storage_path && (
-                              <span className="flex items-center gap-1.5 text-muted-foreground">
-                                <Paperclip className="w-3.5 h-3.5 text-muted-foreground/75" />
-                                Comprobante
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="shrink-0">
-                          <ExpenseStatusBadge status={e.status} className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5" />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 pt-3 border-t border-border/40 mt-1">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <DollarSign className="w-4 h-4" />
-                        </div>
-                        <span className="text-base font-extrabold tabular-nums text-foreground tracking-tight">
-                          {formatARS(e.amount)}
-                        </span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {!q.isPending && filtered.length === 0 && !q.isError && (
-              <div className="rounded-2xl border border-dashed border-border/80 p-10 text-center">
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                  No hay gastos para los filtros seleccionados.
-                </p>
-              </div>
-            )}
-
-            <PaginationControls
+            <ExpensesList
+              expenses={filtered}
+              isLoading={q.isPending}
+              isError={q.isError}
+              error={q.error}
+              detailBasePath="/app/gastos"
+              showProject
               page={page}
               totalPages={q.data?.total_pages ?? 1}
               onPageChange={setPage}

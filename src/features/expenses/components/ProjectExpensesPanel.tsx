@@ -1,10 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CalendarDays, CreditCard, Paperclip, TrendingUp } from 'lucide-react'
+import { CalendarDays, CreditCard, TrendingUp } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 
-import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
-import { PaginationControls } from '@/components/data/PaginationControls'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,14 +9,12 @@ import {
   listProjectExpenses,
 } from '@/features/expenses/api/expensesApi'
 import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
+import { ExpensesList } from '@/features/expenses/components/ExpensesList'
 import { ProjectBudgetBanner } from '@/features/expenses/components/ProjectBudgetBanner'
-import type { ExpenseDTO, ExpenseStatus } from '@/features/expenses/model/types'
-import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
 import { DATE_PRESETS, DEFAULT_DESDE, DEFAULT_HASTA, type DatePreset } from '@/lib/datePresets'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { cn } from '@/lib/utils'
-import { formatExpenseDate } from '@/lib/date'
 import { EXPENSE_STATUS_ORDER } from '@/lib/status'
 
 // ─── Formatters ───────────────────────────────────────────────
@@ -31,26 +26,6 @@ function formatMonth(monthStr: string): string {
   const labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const idx = parseInt(month, 10) - 1
   return `${labels[idx] ?? month} ${year.slice(2)}`
-}
-
-function statusBorderClass(status: ExpenseStatus): string {
-  switch (status) {
-    case 'APROBADO':  return 'border-l-emerald-500 dark:border-l-emerald-600'
-    case 'RECHAZADO': return 'border-l-red-400 dark:border-l-red-600'
-    default:          return 'border-l-amber-400 dark:border-l-amber-500'
-  }
-}
-
-// ─── Skeleton ─────────────────────────────────────────────────
-
-function ExpenseSkeleton() {
-  return (
-    <div className="space-y-2.5">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-20 rounded-xl bg-muted/50 animate-pulse" style={{ opacity: 1 - i * 0.25 }} />
-      ))}
-    </div>
-  )
 }
 
 // ─── Panel ────────────────────────────────────────────────────
@@ -67,7 +42,6 @@ type Props = {
 }
 
 export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false, showNewExpenseButton = true }: Props) {
-  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [desde, setDesde] = useState(DEFAULT_DESDE)
   const [hasta, setHasta] = useState(DEFAULT_HASTA)
@@ -233,36 +207,17 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
           )}
 
           {/* ── Lista ── */}
-          {expensesQ.isLoading && <ExpenseSkeleton />}
-
-          {expensesQ.isError && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {expensesQ.error instanceof ApiError ? expensesQ.error.message : 'Error al cargar los gastos'}
-            </div>
-          )}
-
-          {!expensesQ.isLoading && !expensesQ.isError && sorted.length === 0 && (
-            <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">
-              <CreditCard className="w-10 h-10 text-muted-foreground/25" />
-              <p className="text-sm text-muted-foreground">
-                {desde || hasta ? 'No hay gastos en el rango de fechas seleccionado.' : 'No hay gastos registrados para este proyecto.'}
-              </p>
-            </div>
-          )}
-
-          {sorted.length > 0 && (
-            <div className="space-y-2.5">
-              {sorted.map((exp) => (
-                <ExpenseRow
-                  key={exp.id}
-                  exp={exp}
-                  onClick={() => navigate(`${detailBasePath}/${exp.id}`)}
-                />
-              ))}
-            </div>
-          )}
-
-          <PaginationControls
+          <ExpensesList
+            expenses={sorted}
+            isLoading={expensesQ.isLoading}
+            isError={expensesQ.isError}
+            error={expensesQ.error}
+            detailBasePath={detailBasePath}
+            emptyMessage={
+              desde || hasta
+                ? 'No hay gastos en el rango de fechas seleccionado.'
+                : 'No hay gastos registrados para este proyecto.'
+            }
             page={page}
             totalPages={expensesQ.data?.total_pages ?? 1}
             onPageChange={setPage}
@@ -273,50 +228,3 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
   )
 }
 
-// ─── ExpenseRow ────────────────────────────────────────────────
-
-function ExpenseRow({ exp, onClick }: { exp: ExpenseDTO; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'w-full text-left rounded-xl border-l-[3px] border border-border bg-card overflow-hidden shadow-sm transition-all hover:shadow-md hover:border-primary/20 cursor-pointer',
-        statusBorderClass(exp.status),
-      )}
-    >
-      <div className="px-4 py-3.5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-          <div className="flex items-center gap-2.5">
-            <span className="font-bold text-base tabular-nums text-foreground">{formatARS(exp.amount)}</span>
-            <ExpenseStatusBadge status={exp.status} />
-          </div>
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {formatExpenseDate(exp.expense_date)}
-          </span>
-        </div>
-
-        {exp.description && (
-          <p className="text-sm text-foreground/80 leading-snug">{exp.description}</p>
-        )}
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          {exp.submitter_name && (
-            <span>
-              Cargado por <span className="font-medium text-foreground/70">{exp.submitter_name}</span>
-            </span>
-          )}
-          {exp.receipt_storage_path && (
-            <span className="inline-flex items-center gap-1">
-              <Paperclip className="w-3.5 h-3.5" />
-              Comprobante
-            </span>
-          )}
-          {exp.rejection_reason && (
-            <span className="text-destructive font-medium">Motivo: {exp.rejection_reason}</span>
-          )}
-        </div>
-      </div>
-    </button>
-  )
-}
