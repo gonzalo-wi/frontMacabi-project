@@ -58,8 +58,7 @@ import { fetchAllUsersForAdmin } from '@/features/projects/lib/projectAdminQueri
 import type { UserDTO } from '@/lib/api/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { useAuth } from '@/hooks/useAuth'
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 import { ParticipantRowAccordionInner } from './ParticipantRowAccordion'
@@ -78,7 +77,6 @@ export default function AdminJornadaDetailPage() {
   const { token, isRestoring } = useAuth()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [expandedOptions, setExpandedOptions] = useState<Set<string>>(new Set())
-  const { feedback, setFeedback } = useFeedback()
 
   const detailQ = useQuery({
     queryKey: ['event-detail', id, token],
@@ -154,16 +152,12 @@ export default function AdminJornadaDetailPage() {
       return deleteEventInstance(token, id)
     },
     onSuccess: async () => {
-      setFeedback(null)
       setDeleteOpen(false)
       await qc.invalidateQueries({ queryKey: ['admin-events'] })
       navigate('/app/admin/jornadas')
     },
     onError: (e) => {
-      setFeedback({
-        text: e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo eliminar',
-        variant: 'error',
-      })
+      toast.error(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo eliminar')
       setDeleteOpen(false)
     },
   })
@@ -343,7 +337,6 @@ export default function AdminJornadaDetailPage() {
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive gap-2"
                     onClick={() => {
-                      setFeedback(null)
                       setDeleteOpen(true)
                     }}
                   >
@@ -358,7 +351,6 @@ export default function AdminJornadaDetailPage() {
       />
 
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-4xl mx-auto space-y-4 sm:space-y-6">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {detailQ.isError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">

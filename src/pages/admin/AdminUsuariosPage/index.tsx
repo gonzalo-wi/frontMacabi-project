@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Upload, UserPlus, Users } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
-import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataToolbar } from '@/components/data/DataToolbar'
 import { PaginationControls } from '@/components/data/PaginationControls'
@@ -70,10 +70,6 @@ export default function AdminUsuariosPage() {
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user')
-  const [inviteBanner, setInviteBanner] = useState<{
-    text: string
-    variant: 'success' | 'error' | 'info'
-  } | null>(null)
 
   const usersQuery = useQuery({
     queryKey: ['admin-users-all', token],
@@ -144,24 +140,22 @@ export default function AdminUsuariosPage() {
       setInviteName('')
       setInviteEmail('')
       setInviteRole('user')
-      setInviteBanner({
-        text: data.message ?? 'Invitación enviada: la persona recibirá un correo para crear su cuenta.',
-        variant: 'success',
-      })
+      toast.success(
+        data.message ?? 'Invitación enviada: la persona recibirá un correo para crear su cuenta.',
+      )
       await queryClient.invalidateQueries({ queryKey: ['admin-users-all'] })
     },
     onError: (e: unknown) => {
       const msg =
         e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo enviar la invitación.'
-      setInviteBanner({ text: msg, variant: 'error' })
+      toast.error(msg)
     },
   })
 
   function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setInviteBanner(null)
     if (!inviteName.trim() || !inviteEmail.trim()) {
-      setInviteBanner({ text: 'Nombre y email son obligatorios', variant: 'error' })
+      toast.error('Nombre y email son obligatorios')
       return
     }
     inviteMutation.mutate()
@@ -274,10 +268,7 @@ export default function AdminUsuariosPage() {
               <Upload className="w-4 h-4 mr-1" />
               Importar
             </ActionButton>
-            <ActionButton
-              intent="primary"
-              onClick={() => { setInviteBanner(null); setInviteOpen(true) }}
-            >
+            <ActionButton intent="primary" onClick={() => setInviteOpen(true)}>
               <UserPlus className="w-4 h-4 mr-1" />
               Agregar usuario
             </ActionButton>
@@ -286,8 +277,6 @@ export default function AdminUsuariosPage() {
       />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-        {inviteBanner && <FeedbackBanner message={inviteBanner.text} variant={inviteBanner.variant} />}
-
         {usersQuery.isError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             No se pudo cargar la lista de usuarios.

@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, ArchiveX, Clock, Package, Pencil, Plus } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -35,7 +34,6 @@ export default function AdminStockPage() {
   const [requestStatus, setRequestStatus] = useState<RequestStatus | 'all'>('all')
   const [resourcePage, setResourcePage] = useState(1)
   const [requestPage, setRequestPage] = useState(1)
-  const { feedback, setFeedback } = useFeedback()
 
   useEffect(() => { setResourcePage(1) }, [resourceSearch])
   useEffect(() => { setRequestPage(1) }, [requestSearch, requestStatus])
@@ -93,7 +91,7 @@ export default function AdminStockPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Ítem creado.', variant: 'success' })
+      toast.success('Ítem creado.')
       setCreateOpen(false)
       setCreateForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
@@ -113,7 +111,7 @@ export default function AdminStockPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Ítem actualizado.', variant: 'success' })
+      toast.success('Ítem actualizado.')
       setEditTarget(null)
       await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
     },
@@ -122,14 +120,10 @@ export default function AdminStockPage() {
   const delM = useMutation({
     mutationFn: async (id: string) => deleteResource(token!, id),
     onSuccess: async () => {
-      setFeedback({ text: 'Ítem eliminado.', variant: 'success' })
+      toast.success('Ítem eliminado.')
       await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
     },
-    onError: (e) =>
-      setFeedback({
-        text: e instanceof Error ? e.message : 'Error al eliminar',
-        variant: 'error',
-      }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
   })
 
   function setSection(next: StockSection) {
@@ -156,7 +150,6 @@ export default function AdminStockPage() {
             <ActionButton
               intent="primary"
               onClick={() => {
-                setFeedback(null)
                 setCreateForm(EMPTY_FORM)
                 setCreateOpen(true)
               }}
@@ -174,7 +167,6 @@ export default function AdminStockPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-6xl mx-auto space-y-5">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {/* ── Metrics ── */}
         <div className="grid gap-3 sm:grid-cols-3">
@@ -268,7 +260,6 @@ export default function AdminStockPage() {
             form={createForm}
             onChange={setCreateForm}
             onSubmit={() => {
-              setFeedback(null)
               createM.mutate()
             }}
             isPending={createM.isPending}
@@ -296,7 +287,6 @@ export default function AdminStockPage() {
             form={editForm}
             onChange={setEditForm}
             onSubmit={() => {
-              setFeedback(null)
               editM.mutate()
             }}
             isPending={editM.isPending}

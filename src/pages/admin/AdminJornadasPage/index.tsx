@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom'
 import { CalendarRange, Plus } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/data/DataToolbar'
@@ -48,7 +47,6 @@ export default function AdminJornadasPage() {
   const [sortKey, setSortKey] = useState<JornadaSortKey>('starts_at')
   const [sortDir, setSortDir] = useState<SortDirection>('desc')
   const [createOpen, setCreateOpen] = useState(false)
-  const { feedback, setFeedback } = useFeedback()
 
   const [cancelTarget, setCancelTarget] = useState<EventInstanceDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<EventInstanceDTO | null>(null)
@@ -72,12 +70,12 @@ export default function AdminJornadasPage() {
     },
     onSuccess: async () => {
       setPendingId(null)
-      setFeedback({ text: 'Estado actualizado.', variant: 'success' })
+      toast.success('Estado actualizado.')
       await qc.invalidateQueries({ queryKey: ['admin-events'] })
     },
     onError: (e) => {
       setPendingId(null)
-      setFeedback({ text: e instanceof Error ? e.message : 'Error al actualizar', variant: 'error' })
+      toast.error(e instanceof Error ? e.message : 'Error al actualizar')
     },
   })
 
@@ -89,13 +87,13 @@ export default function AdminJornadasPage() {
     onSuccess: async () => {
       setPendingId(null)
       setDeleteTarget(null)
-      setFeedback({ text: 'Jornada eliminada.', variant: 'success' })
+      toast.success('Jornada eliminada.')
       await qc.invalidateQueries({ queryKey: ['admin-events'] })
     },
     onError: (e) => {
       setPendingId(null)
       setDeleteTarget(null)
-      setFeedback({ text: e instanceof Error ? e.message : 'Error al eliminar', variant: 'error' })
+      toast.error(e instanceof Error ? e.message : 'Error al eliminar')
     },
   })
 
@@ -145,7 +143,7 @@ export default function AdminJornadasPage() {
       <JornadaActionsMenu
         row={row}
         pendingId={pendingId}
-        onDuplicate={() => { setFeedback(null); setDupSeedId(row.id) }}
+        onDuplicate={() => { setDupSeedId(row.id) }}
         onOpen={() => patchStatus.mutate({ id: row.id, status: 'open' })}
         onClose={() => patchStatus.mutate({ id: row.id, status: 'closed' })}
         onCancelRequest={() => setCancelTarget(row)}
@@ -161,7 +159,7 @@ export default function AdminJornadasPage() {
         title="Jornadas"
         subtitle="Planificá actividades, abrí respuestas y revisá asistencia."
         action={
-          <ActionButton intent="primary" onClick={() => { setFeedback(null); setCreateOpen(true) }}>
+          <ActionButton intent="primary" onClick={() => { setCreateOpen(true) }}>
             <Plus className="w-4 h-4 mr-1" />
             Nueva jornada
           </ActionButton>
@@ -169,7 +167,6 @@ export default function AdminJornadasPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-4xl mx-auto space-y-4">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {listQ.isError && (
           <p className="text-sm text-destructive">
@@ -305,16 +302,16 @@ export default function AdminJornadasPage() {
         seedId={dupSeedId}
         token={token ?? ''}
         onOpenChange={(o) => { if (!o) setDupSeedId(null) }}
-        onDuplicated={() => setFeedback({ text: 'Copia en borrador lista.', variant: 'success' })}
-        onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+        onDuplicated={() => toast.success('Copia en borrador lista.')}
+        onError={(msg) => toast.error(msg)}
       />
 
       <CreateJornadaDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
         token={token ?? ''}
-        onCreated={() => setFeedback({ text: 'Jornada creada.', variant: 'success' })}
-        onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+        onCreated={() => toast.success('Jornada creada.')}
+        onError={(msg) => toast.error(msg)}
       />
     </div>
   )

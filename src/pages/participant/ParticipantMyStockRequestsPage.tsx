@@ -3,8 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Loader2, Package, Plus, Search } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -75,7 +74,6 @@ export default function ParticipantMyStockRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all')
   const [query, setQuery] = useState('')
   const [form, setForm] = useState<RequestForm>(EMPTY_FORM)
-  const { feedback, setFeedback } = useFeedback()
 
   const q = useQuery({
     queryKey: ['participant-my-stock-requests-global', token, page],
@@ -162,7 +160,7 @@ export default function ParticipantMyStockRequestsPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Pedido de materiales creado correctamente.', variant: 'success' })
+      toast.success('Pedido de materiales creado correctamente.')
       setOpen(false)
       setForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['participant-my-stock-requests-global'] })
@@ -180,7 +178,6 @@ export default function ParticipantMyStockRequestsPage() {
           <Button
             size="sm"
             onClick={() => {
-              setFeedback(null)
               setOpen(true)
             }}
             disabled={resourcesQ.isLoading || membershipsQ.isLoading}
@@ -192,7 +189,6 @@ export default function ParticipantMyStockRequestsPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-5">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {q.isError && (
           <p className="text-sm text-destructive">

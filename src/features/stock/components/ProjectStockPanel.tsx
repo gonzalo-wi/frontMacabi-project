@@ -3,7 +3,6 @@ import { Package, Plus } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { ActionButton } from '@/components/ActionButton'
-import { FeedbackBanner } from '@/components/FeedbackBanner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createRequest } from '@/features/stock/api/requestsApi'
@@ -13,7 +12,7 @@ import { StockRequestsList } from '@/features/stock/components/StockRequestsList
 import { useProjectStockRequests } from '@/features/stock/hooks/useProjectStockRequests'
 import type { RequestStatus, ResourceDTO } from '@/features/stock/model/types'
 import { fromDatetimeLocalValue } from '@/features/events/lib/datetimeLocal'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 
 const EMPTY_FORM: RequestFormState = {
   resource_id: '',
@@ -41,7 +40,6 @@ export function ProjectStockPanel({
   const [createOpen, setCreateOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [form, setForm] = useState<RequestFormState>(EMPTY_FORM)
-  const { feedback, setFeedback } = useFeedback()
 
   const requestsQ = useProjectStockRequests(token, projectId, page, false)
 
@@ -86,7 +84,7 @@ export function ProjectStockPanel({
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Pedido creado correctamente.', variant: 'success' })
+      toast.success('Pedido creado correctamente.')
       setCreateOpen(false)
       setForm(EMPTY_FORM)
       await qc.invalidateQueries({ queryKey: ['project-stock-requests', projectId] })
@@ -95,7 +93,6 @@ export function ProjectStockPanel({
 
   return (
     <div className="space-y-4">
-      {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
       <Card className="rounded-2xl shadow-sm overflow-hidden">
         <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
@@ -135,7 +132,6 @@ export function ProjectStockPanel({
                 intent="primary"
                 size="sm"
                 onClick={() => {
-                  setFeedback(null)
                   setForm(EMPTY_FORM)
                   setCreateOpen(true)
                 }}
@@ -180,7 +176,6 @@ export function ProjectStockPanel({
               resources={resourcesQ.data ?? []}
               selectedResource={selectedResource}
               onSubmit={() => {
-                setFeedback(null)
                 createM.mutate()
               }}
               isPending={createM.isPending}

@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Crown, Loader2, Search, Trash2, UserPlus, Users, X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import {
@@ -75,7 +74,6 @@ export default function ProyectoMiembrosPage() {
   const qc = useQueryClient()
   const [pickUser, setPickUser] = useState('')
   const [pickRole, setPickRole] = useState('madrij')
-  const { feedback, setFeedback } = useFeedback()
 
   const [userSearch, setUserSearch] = useState('')
 
@@ -134,14 +132,14 @@ export default function ProyectoMiembrosPage() {
       await addProjectMember(token!, projectId, { user_id: pickUser, role: pickRole })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Miembro agregado.', variant: 'success' })
+      toast.success('Miembro agregado.')
       setPickUser('')
       setUserSearch('')
       await qc.invalidateQueries({ queryKey: ['project-members', projectId] })
       await qc.invalidateQueries({ queryKey: ['user-projects-by-user', token] })
     },
     onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
+      toast.error(e instanceof Error ? e.message : 'Error'),
   })
 
   const remMem = useMutation({
@@ -150,12 +148,12 @@ export default function ProyectoMiembrosPage() {
       await removeProjectMember(token!, projectId, userId)
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Miembro quitado.', variant: 'success' })
+      toast.success('Miembro quitado.')
       await qc.invalidateQueries({ queryKey: ['project-members', projectId] })
       await qc.invalidateQueries({ queryKey: ['user-projects-by-user', token] })
     },
     onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
+      toast.error(e instanceof Error ? e.message : 'Error'),
   })
 
   if (!projectId) return null
@@ -165,7 +163,6 @@ export default function ProyectoMiembrosPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
       {/* ── Agregar miembro ── */}
       <Card className="rounded-2xl shadow-sm overflow-hidden">
@@ -217,7 +214,6 @@ export default function ProyectoMiembrosPage() {
                       className="w-full text-left px-3 py-2.5 flex items-center gap-2.5 hover:bg-muted/50 transition-colors"
                       onClick={() => {
                         setPickUser(u.id)
-                        setFeedback(null)
                       }}
                     >
                       <div className="h-7 w-7 shrink-0 rounded-full bg-muted flex items-center justify-center text-[11px] font-bold select-none text-muted-foreground">
@@ -282,7 +278,6 @@ export default function ProyectoMiembrosPage() {
                   className="h-10 shrink-0"
                   disabled={addMem.isPending}
                   onClick={() => {
-                    setFeedback(null)
                     addMem.mutate()
                   }}
                 >

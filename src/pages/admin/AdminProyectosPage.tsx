@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom'
 import { FolderKanban, Loader2, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/data/DataToolbar'
@@ -153,7 +152,6 @@ export default function AdminProyectosPage() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<ProjectSortKey>('name')
   const [sortDir, setSortDir] = useState<SortDirection>('asc')
-  const { feedback, setFeedback } = useFeedback()
 
   useEffect(() => {
     setPage(1)
@@ -209,31 +207,23 @@ export default function AdminProyectosPage() {
       })
     },
     onSuccess: async () => {
-      setFeedback({ text: 'Proyecto creado.', variant: 'success' })
+      toast.success('Proyecto creado.')
       setOpen(false)
       setName('')
       setDescription('')
       setCoordinatorId('')
       await qc.invalidateQueries({ queryKey: ['admin-projects-all'] })
     },
-    onError: (e) =>
-      setFeedback({
-        text: e instanceof Error ? e.message : 'Error al crear el proyecto',
-        variant: 'error',
-      }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al crear el proyecto'),
   })
 
   const delM = useMutation({
     mutationFn: async (pid: string) => deleteProject(token!, pid),
     onSuccess: async () => {
-      setFeedback({ text: 'Proyecto eliminado.', variant: 'success' })
+      toast.success('Proyecto eliminado.')
       await qc.invalidateQueries({ queryKey: ['admin-projects-all'] })
     },
-    onError: (e) =>
-      setFeedback({
-        text: e instanceof Error ? e.message : 'Error al eliminar',
-        variant: 'error',
-      }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error al eliminar'),
   })
 
   return (
@@ -246,7 +236,6 @@ export default function AdminProyectosPage() {
           <ActionButton
             intent="primary"
             onClick={() => {
-              setFeedback(null)
               setOpen(true)
             }}
           >
@@ -258,7 +247,6 @@ export default function AdminProyectosPage() {
       />
 
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-5xl mx-auto space-y-4">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         <DataToolbar
           search={search}
@@ -456,7 +444,6 @@ export default function AdminProyectosPage() {
             <Button
               disabled={createM.isPending}
               onClick={() => {
-                setFeedback(null)
                 createM.mutate()
               }}
               className="w-full"

@@ -2,8 +2,6 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProjectMetaForm } from '@/features/projects/components/ProjectMetaForm'
 import { getProject } from '@/features/projects/api/projectsApi'
@@ -13,7 +11,6 @@ import { useAuth } from '@/hooks/useAuth'
 export default function ProyectoResumenPage() {
   const { id: projectId } = useParams<{ id: string }>()
   const { token, isRestoring } = useAuth()
-  const { feedback, setFeedback } = useFeedback()
 
   const projectQ = useQuery({
     queryKey: ['project', projectId, token],
@@ -30,15 +27,12 @@ export default function ProyectoResumenPage() {
           {projectQ.error instanceof ApiError ? projectQ.error.message : 'Error al cargar el proyecto'}
         </div>
       )}
-      {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
-
       {projectQ.data && (
         <ProjectMetaForm
           key={`${projectQ.data.id}-${projectQ.data.name}-${projectQ.data.description}`}
           project={projectQ.data}
           token={token!}
           projectId={projectId}
-          onFeedback={setFeedback}
         />
       )}
 

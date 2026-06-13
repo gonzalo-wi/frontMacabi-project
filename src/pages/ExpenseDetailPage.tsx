@@ -16,8 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
@@ -101,7 +100,6 @@ export default function ExpenseDetailPage() {
   const qc = useQueryClient()
   const [rejectReason, setRejectReason] = useState('')
   const [budgetConfirmOpen, setBudgetConfirmOpen] = useState(false)
-  const { feedback, setFeedback } = useFeedback()
 
   const expenseQ = useQuery({
     queryKey: ['expense-detail', id, token],
@@ -136,22 +134,22 @@ export default function ExpenseDetailPage() {
   const approveM = useMutation({
     mutationFn: () => approveExpense(token!, id!),
     onSuccess: async () => {
-      setFeedback({ text: 'Gasto aprobado.', variant: 'success' })
+      toast.success('Gasto aprobado.')
       await invalidate()
     },
     onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
+      toast.error(e instanceof Error ? e.message : 'Error'),
   })
 
   const rejectM = useMutation({
     mutationFn: (reason: string) => rejectExpense(token!, id!, reason),
     onSuccess: async () => {
       setRejectReason('')
-      setFeedback({ text: 'Gasto rechazado.', variant: 'success' })
+      toast.success('Gasto rechazado.')
       await invalidate()
     },
     onError: (e) =>
-      setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
+      toast.error(e instanceof Error ? e.message : 'Error'),
   })
 
   const anyPending = approveM.isPending || rejectM.isPending
@@ -176,7 +174,6 @@ export default function ExpenseDetailPage() {
       : null
 
   function doApprove() {
-    setFeedback(null)
     setBudgetConfirmOpen(false)
     approveM.mutate()
   }
@@ -203,7 +200,6 @@ export default function ExpenseDetailPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-4">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {expenseQ.isLoading && <DetailSkeleton />}
 
@@ -272,7 +268,7 @@ export default function ExpenseDetailPage() {
                       token={token}
                       expenseId={exp.id}
                       storagePath={exp.receipt_storage_path}
-                      onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                      onError={(msg) => toast.error(msg)}
                       className="text-sm font-medium text-primary"
                     />
                   </div>
@@ -361,7 +357,6 @@ export default function ExpenseDetailPage() {
                         <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           onClick={() => {
-                            setFeedback(null)
                             rejectM.mutate(rejectReason.trim())
                           }}
                         >
@@ -388,10 +383,10 @@ export default function ExpenseDetailPage() {
                       viewerUserId={user.id}
                       coordinatorMode={canManage}
                       onEdited={async () => {
-                        setFeedback({ text: 'Gasto actualizado.', variant: 'success' })
+                        toast.success('Gasto actualizado.')
                         await invalidate()
                       }}
-                      onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                      onError={(msg) => toast.error(msg)}
                     />
                     <DeleteExpenseButton
                       token={token!}
@@ -402,7 +397,7 @@ export default function ExpenseDetailPage() {
                         await invalidate()
                         goBack()
                       }}
-                      onError={(msg) => setFeedback({ text: msg, variant: 'error' })}
+                      onError={(msg) => toast.error(msg)}
                     />
                   </div>
                 </CardContent>

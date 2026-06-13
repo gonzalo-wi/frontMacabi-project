@@ -3,8 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { CalendarRange, Loader2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -68,7 +67,6 @@ export default function AdminJornadaBuilderPage() {
   const [metaStatus, setMetaStatus] = useState('draft')
   const [evProjects, setEvProjects] = useState<Set<string>>(new Set())
 
-  const { feedback, setFeedback } = useFeedback()
 
   const [builderSection, setBuilderSection] = useState('general')
   const [globalSaving, setGlobalSaving] = useState(false)
@@ -223,19 +221,15 @@ export default function AdminJornadaBuilderPage() {
   // ── Global save ────────────────────────────────────────────────────────────
   const handleSaveAll = async () => {
     setGlobalSaving(true)
-    setFeedback(null)
     try {
       const calls: Promise<unknown>[] = []
       if (metaDirty) calls.push(saveMeta.mutateAsync())
       if (projectsDirty) calls.push(saveEventProjects.mutateAsync())
       for (const saver of moduleSavers.current) calls.push(saver())
       await Promise.all(calls)
-      setFeedback({ text: 'Cambios guardados correctamente.', variant: 'success' })
+      toast.success('Cambios guardados correctamente.')
     } catch (e) {
-      setFeedback({
-        text: e instanceof Error ? e.message : 'Error al guardar',
-        variant: 'error',
-      })
+      toast.error(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setGlobalSaving(false)
     }
@@ -301,7 +295,6 @@ export default function AdminJornadaBuilderPage() {
           </p>
         )}
 
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {detailQ.isLoading && (
           <div className="space-y-4">

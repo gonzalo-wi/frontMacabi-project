@@ -16,8 +16,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
@@ -118,7 +117,6 @@ export default function AdminStockRequestDetailPage() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const qc = useQueryClient()
-  const { feedback, setFeedback } = useFeedback()
 
   const requestQ = useQuery({
     queryKey: ['stock-request-detail', id, token],
@@ -137,13 +135,13 @@ export default function AdminStockRequestDetailPage() {
     return useMutation({
       mutationFn: () => fn(token!, id!),
       onSuccess: async () => {
-        setFeedback({ text: successText, variant: 'success' })
+        toast.success(successText)
         await qc.invalidateQueries({ queryKey: ['stock-request-detail', id] })
         await qc.invalidateQueries({ queryKey: ['project-stock-requests', req?.project_id] })
         await qc.invalidateQueries({ queryKey: ['admin-stock-resources'] })
       },
       onError: (e) =>
-        setFeedback({ text: e instanceof Error ? e.message : 'Error', variant: 'error' }),
+        toast.error(e instanceof Error ? e.message : 'Error'),
     })
   }
 
@@ -194,7 +192,6 @@ export default function AdminStockRequestDetailPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-2xl mx-auto space-y-4">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {requestQ.isLoading && <DetailSkeleton />}
 
@@ -326,7 +323,7 @@ export default function AdminStockRequestDetailPage() {
                       <ActionButton
                         intent="approve"
                         disabled={anyPending}
-                        onClick={() => { setFeedback(null); approveM.mutate() }}
+                        onClick={() => { approveM.mutate() }}
                       >
                         {approveM.isPending
                           ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -354,7 +351,7 @@ export default function AdminStockRequestDetailPage() {
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive text-destructive-foreground"
-                              onClick={() => { setFeedback(null); rejectM.mutate() }}
+                              onClick={() => { rejectM.mutate() }}
                             >
                               Rechazar
                             </AlertDialogAction>
@@ -368,7 +365,7 @@ export default function AdminStockRequestDetailPage() {
                     <ActionButton
                       intent="deliver"
                       disabled={anyPending}
-                      onClick={() => { setFeedback(null); deliverM.mutate() }}
+                      onClick={() => { deliverM.mutate() }}
                     >
                       {deliverM.isPending
                         ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -381,7 +378,7 @@ export default function AdminStockRequestDetailPage() {
                     <ActionButton
                       intent="return"
                       disabled={anyPending}
-                      onClick={() => { setFeedback(null); returnM.mutate() }}
+                      onClick={() => { returnM.mutate() }}
                     >
                       {returnM.isPending
                         ? <Loader2 className="w-4 h-4 animate-spin" />

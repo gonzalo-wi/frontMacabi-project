@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CreditCard, Search } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
-import { useFeedback } from '@/hooks/useFeedback'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
 import { SegmentedTabs } from '@/components/SegmentedTabs'
@@ -37,7 +36,6 @@ export default function ParticipantMyExpensesPage() {
   const [query, setQuery] = useSearchParamState('q', '')
   const [tab, setTab] = useSearchParamState('tab', 'mis')
   const [proj, setProj] = useSearchParamState('proj', '')
-  const { feedback, setFeedback } = useFeedback()
 
   const q = useQuery({
     queryKey: ['my-expenses-global', token, page],
@@ -90,7 +88,7 @@ export default function ParticipantMyExpensesPage() {
               token={token}
               projectOptions={projectOptions}
               onCreated={async () => {
-                setFeedback({ text: 'Gasto cargado correctamente.', variant: 'success' })
+                toast.success('Gasto cargado correctamente.')
                 await q.refetch()
                 // Refresca también el panel "Del proyecto" si el gasto fue para un proyecto visible.
                 await qc.invalidateQueries({ queryKey: ['project-expenses'] })
@@ -102,7 +100,6 @@ export default function ParticipantMyExpensesPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-5">
-        {feedback && <FeedbackBanner message={feedback.text} variant={feedback.variant} />}
 
         {q.isError && (
           <p className="text-sm text-destructive">

@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { CreditCard, Loader2, Plus } from 'lucide-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { toast } from 'sonner'
+
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -60,7 +61,6 @@ export function ExpenseFormDialog({
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [categoryId, setCategoryId] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   const needsProjectPicker = !projectId
 
@@ -78,7 +78,6 @@ export function ExpenseFormDialog({
     setExpenseDate(new Date().toISOString().slice(0, 10))
     setReceiptFile(null)
     setCategoryId('')
-    setError(null)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -112,7 +111,7 @@ export function ExpenseFormDialog({
       await onCreated()
     },
     onError: (e) => {
-      setError(
+      toast.error(
         e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo cargar el gasto',
       )
     },
@@ -143,8 +142,6 @@ export function ExpenseFormDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {error && <FeedbackBanner message={error} variant="error" />}
-
           {needsProjectPicker && (
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Proyecto</Label>
