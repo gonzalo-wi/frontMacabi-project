@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { CreditCard, Search } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -22,14 +22,15 @@ import { listMyExpenses } from '@/features/expenses/api/expensesApi'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { useAuth } from '@/hooks/useAuth'
+import { useClientPagination } from '@/hooks/useClientPagination'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { EXPENSE_STATUS_ORDER, EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 
 export default function ParticipantMyExpensesPage() {
   const { token, user, isRestoring } = useAuth()
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
   const [projectFilter, setProjectFilter] = useSearchParamState('project', 'all')
   const [statusRaw, setStatusFilter] = useSearchParamState('estado', 'all')
   const statusFilter = statusRaw as ExpenseStatus | 'all'
@@ -38,8 +39,8 @@ export default function ParticipantMyExpensesPage() {
   const [proj, setProj] = useSearchParamState('proj', '')
 
   const q = useQuery({
-    queryKey: ['my-expenses-global', token, page],
-    queryFn: () => listMyExpenses(token!, page, 20),
+    queryKey: ['my-expenses-global', token],
+    queryFn: () => fetchAllPages((p) => listMyExpenses(token!, p, 50)),
     enabled: Boolean(token) && !isRestoring,
   })
 
@@ -50,13 +51,9 @@ export default function ParticipantMyExpensesPage() {
   const activeTab = hasCoordinated ? tab : 'mis'
   const selectedProj = proj || coordinated[0]?.id || ''
 
-  useEffect(() => {
-    setPage(1)
-  }, [query, statusFilter, projectFilter])
-
   const sorted = useMemo(() => {
     const order = EXPENSE_STATUS_ORDER
-    return [...(q.data?.data ?? [])].sort((a, b) => {
+    return [...(q.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus
       return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime()
@@ -75,6 +72,10 @@ export default function ParticipantMyExpensesPage() {
       )
     })
   }, [projectFilter, query, sorted, statusFilter])
+
+  const { page, setPage, totalPages, pageItems } = useClientPagination(filtered, {
+    resetKey: `${projectFilter}|${statusFilter}|${query}`,
+  })
 
   return (
     <div className="min-h-screen pb-24">
@@ -191,14 +192,14 @@ export default function ParticipantMyExpensesPage() {
             </div>
 
             <ExpensesList
-              expenses={filtered}
+              expenses={pageItems}
               isLoading={q.isPending}
               isError={q.isError}
               error={q.error}
               detailBasePath="/app/gastos"
               showProject
               page={page}
-              totalPages={q.data?.total_pages ?? 1}
+              totalPages={totalPages}
               onPageChange={setPage}
             />
           </CardContent>

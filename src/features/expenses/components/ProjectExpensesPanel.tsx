@@ -11,11 +11,12 @@ import {
 import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
 import { ExpensesList } from '@/features/expenses/components/ExpensesList'
 import { ProjectBudgetBanner } from '@/features/expenses/components/ProjectBudgetBanner'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { formatARS } from '@/lib/currency'
 import { DATE_PRESETS, DEFAULT_DESDE, DEFAULT_HASTA, type DatePreset } from '@/lib/datePresets'
-import { PAGE_SIZE } from '@/lib/pagination'
 import { cn } from '@/lib/utils'
 import { EXPENSE_STATUS_ORDER } from '@/lib/status'
+import { useClientPagination } from '@/hooks/useClientPagination'
 
 // ─── Formatters ───────────────────────────────────────────────
 
@@ -42,25 +43,22 @@ type Props = {
 }
 
 export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/admin/gastos', canEditBudget = false, showNewExpenseButton = true }: Props) {
-  const [page, setPage] = useState(1)
   const [desde, setDesde] = useState(DEFAULT_DESDE)
   const [hasta, setHasta] = useState(DEFAULT_HASTA)
 
   function applyDatePreset(p: DatePreset) {
     setDesde(p.desde)
     setHasta(p.hasta)
-    setPage(1)
   }
 
   function resetDates() {
     setDesde(DEFAULT_DESDE)
     setHasta(DEFAULT_HASTA)
-    setPage(1)
   }
 
   const expensesQ = useQuery({
-    queryKey: ['project-expenses', projectId, token, page],
-    queryFn: () => listProjectExpenses(token, projectId, page, PAGE_SIZE),
+    queryKey: ['project-expenses', projectId, token],
+    queryFn: () => fetchAllPages((p) => listProjectExpenses(token, projectId, p, 50)),
     enabled: Boolean(token && projectId),
   })
 
@@ -72,16 +70,20 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
 
   const sorted = useMemo(() => {
     const order = EXPENSE_STATUS_ORDER
-    let rows = [...(expensesQ.data?.data ?? [])].sort((a, b) => {
+    let rows = [...(expensesQ.data ?? [])].sort((a, b) => {
       const d = order[a.status] - order[b.status]
       if (d !== 0) return d
       return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime()
     })
-    // Client-side date filter (list doesn't support backend date params yet)
+    // Filtro de fechas client-side (el list aún no soporta params de fecha en backend)
     if (desde) rows = rows.filter((e) => e.expense_date >= desde)
     if (hasta) rows = rows.filter((e) => e.expense_date <= hasta)
     return rows
   }, [expensesQ.data, desde, hasta])
+
+  const { page, setPage, totalPages, pageItems } = useClientPagination(sorted, {
+    resetKey: `${desde}|${hasta}`,
+  })
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -125,7 +127,7 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
                   type="date"
                   value={desde}
                   max={hasta || undefined}
-                  onChange={(e) => { setDesde(e.target.value); setPage(1) }}
+                  onChange={(e) => setDesde(e.target.value)}
                   className="h-8 w-[140px] text-xs"
                 />
               </div>
@@ -135,7 +137,7 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
                   type="date"
                   value={hasta}
                   min={desde || undefined}
-                  onChange={(e) => { setHasta(e.target.value); setPage(1) }}
+                  onChange={(e) => setHasta(e.target.value)}
                   className="h-8 w-[140px] text-xs"
                 />
               </div>
@@ -208,7 +210,7 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
 
           {/* ── Lista ── */}
           <ExpensesList
-            expenses={sorted}
+            expenses={pageItems}
             isLoading={expensesQ.isLoading}
             isError={expensesQ.isError}
             error={expensesQ.error}
@@ -219,7 +221,7 @@ export function ProjectExpensesPanel({ token, projectId, detailBasePath = '/app/
                 : 'No hay gastos registrados para este proyecto.'
             }
             page={page}
-            totalPages={expensesQ.data?.total_pages ?? 1}
+            totalPages={totalPages}
             onPageChange={setPage}
           />
         </CardContent>

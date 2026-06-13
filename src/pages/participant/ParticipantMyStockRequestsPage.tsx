@@ -30,7 +30,9 @@ import { ProjectStockPanel } from '@/features/stock/components/ProjectStockPanel
 import { StockRequestsList } from '@/features/stock/components/StockRequestsList'
 import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { useAuth } from '@/hooks/useAuth'
+import { useClientPagination } from '@/hooks/useClientPagination'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
@@ -40,11 +42,6 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
   consumable: 'Consumible',
 }
-
-
-
-
-const PAGE_SIZE = 20
 
 type RequestForm = {
   project_id: string
@@ -69,15 +66,14 @@ export default function ParticipantMyStockRequestsPage() {
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const [open, setOpen] = useState(false)
-  const [page, setPage] = useState(1)
   const [projectFilter, setProjectFilter] = useState(searchParams.get('project') ?? 'all')
   const [statusFilter, setStatusFilter] = useState<RequestStatus | 'all'>('all')
   const [query, setQuery] = useState('')
   const [form, setForm] = useState<RequestForm>(EMPTY_FORM)
 
   const q = useQuery({
-    queryKey: ['participant-my-stock-requests-global', token, page],
-    queryFn: () => listMyRequests(token!, page, PAGE_SIZE),
+    queryKey: ['participant-my-stock-requests-global', token],
+    queryFn: () => fetchAllPages((p) => listMyRequests(token!, p, 50)),
     enabled: Boolean(token) && !isRestoring,
   })
 
@@ -100,10 +96,6 @@ export default function ParticipantMyStockRequestsPage() {
     setProjectFilter(searchParams.get('project') ?? 'all')
   }, [searchParams])
 
-  useEffect(() => {
-    setPage(1)
-  }, [query, statusFilter, projectFilter])
-
   const resourcesMap = useMemo(() => {
     const out = new Map<string, ResourceDTO>()
     for (const r of resourcesQ.data ?? []) out.set(r.id, r)
@@ -114,7 +106,7 @@ export default function ParticipantMyStockRequestsPage() {
 
   const rows = useMemo(() => {
     const order = REQUEST_STATUS_ORDER
-    return [...(q.data?.data ?? [])].sort((a, b) => {
+    return [...(q.data ?? [])].sort((a, b) => {
       const byStatus = order[a.status] - order[b.status]
       if (byStatus !== 0) return byStatus
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -133,6 +125,10 @@ export default function ParticipantMyStockRequestsPage() {
       )
     })
   }, [projectFilter, query, rows, statusFilter])
+
+  const { page, setPage, totalPages, pageItems } = useClientPagination(filtered, {
+    resetKey: `${projectFilter}|${statusFilter}|${query}`,
+  })
 
   function setFormValue<K extends keyof RequestForm>(key: K, value: RequestForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -283,7 +279,7 @@ export default function ParticipantMyStockRequestsPage() {
             </div>
 
             <StockRequestsList
-              requests={filtered}
+              requests={pageItems}
               isLoading={q.isPending}
               isError={q.isError}
               error={q.error}
@@ -291,7 +287,7 @@ export default function ParticipantMyStockRequestsPage() {
               showProject
               emptyMessage="No hay pedidos para los filtros seleccionados."
               page={page}
-              totalPages={q.data?.total_pages ?? 1}
+              totalPages={totalPages}
               onPageChange={setPage}
             />
           </CardContent>
