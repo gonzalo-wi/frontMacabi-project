@@ -61,7 +61,7 @@ const EMPTY_FORM: RequestForm = {
   notes: '',
 }
 
-export default function ParticipantMyStockRequestsPage() {
+export default function MisMaterialesPage() {
   const { token, user, isRestoring } = useAuth()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()

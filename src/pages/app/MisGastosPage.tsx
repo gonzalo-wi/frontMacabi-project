@@ -28,7 +28,7 @@ import { useClientPagination } from '@/hooks/useClientPagination'
 import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { EXPENSE_STATUS_ORDER, EXPENSE_STATUS_FILTER_OPTIONS } from '@/lib/status'
 
-export default function ParticipantMyExpensesPage() {
+export default function MisGastosPage() {
   const { token, user, isRestoring } = useAuth()
   const qc = useQueryClient()
   const [projectFilter, setProjectFilter] = useSearchParamState('project', 'all')

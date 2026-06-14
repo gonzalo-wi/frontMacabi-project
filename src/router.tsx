@@ -9,11 +9,16 @@ import ProyectoMiembrosPage from '@/pages/admin/proyectos/ProyectoMiembrosPage'
 import ProyectoGastosPage from '@/pages/admin/proyectos/ProyectoGastosPage'
 import ProyectoJornadasPage from '@/pages/admin/proyectos/ProyectoJornadasPage'
 import ProyectoRecursosPage from '@/pages/admin/proyectos/ProyectoRecursosPage'
-import LoginPage from '@/pages/LoginPage'
-import RecuperarPasswordPage from '@/pages/RecuperarPasswordPage'
-import RestablecerContrasenaPage from '@/pages/RestablecerContrasenaPage'
-import AceptarInvitacionPage from '@/pages/AceptarInvitacionPage'
-import PanelPage from '@/pages/PanelPage'
+import LoginPage from '@/pages/auth/LoginPage'
+import RecuperarPasswordPage from '@/pages/auth/RecuperarPasswordPage'
+import RestablecerContrasenaPage from '@/pages/auth/RestablecerContrasenaPage'
+import AceptarInvitacionPage from '@/pages/auth/AceptarInvitacionPage'
+import PanelPage from '@/pages/app/PanelPage'
+import EventRespondPage from '@/pages/app/EventRespondPage'
+import MisGastosPage from '@/pages/app/MisGastosPage'
+import MisMaterialesPage from '@/pages/app/MisMaterialesPage'
+import ExpenseDetailPage from '@/pages/app/ExpenseDetailPage'
+import StockRequestDetailPage from '@/pages/app/StockRequestDetailPage'
 import AdminUsuariosPage from '@/pages/admin/AdminUsuariosPage'
 import AdminJornadasPage from '@/pages/admin/AdminJornadasPage'
 import AdminJornadaDetailPage from '@/pages/admin/AdminJornadaDetailPage'
@@ -21,11 +26,6 @@ import AdminJornadaBuilderPage from '@/pages/admin/AdminJornadaBuilderPage'
 import AdminProyectosPage from '@/pages/admin/AdminProyectosPage'
 import AdminGastosPage from '@/pages/admin/AdminGastosPage'
 import AdminStockPage from '@/pages/admin/AdminStockPage'
-import AdminStockRequestDetailPage from '@/pages/admin/AdminStockRequestDetailPage'
-import ParticipantMyStockRequestsPage from '@/pages/participant/ParticipantMyStockRequestsPage'
-import ParticipantMyExpensesPage from '@/pages/participant/ParticipantMyExpensesPage'
-import ExpenseDetailPage from '@/pages/ExpenseDetailPage'
-import EventRespondPage from '@/pages/EventRespondPage'
 
 function LegacyProjectRedirect({ to }: { to: '/app/gastos' | '/app/stock' }) {
   const { id } = useParams<{ id: string }>()
@@ -65,15 +65,15 @@ export const router = createBrowserRouter([
           { path: 'gastos/proyectos', element: <Navigate to="/app/gastos" replace /> },
           {
             path: 'stock',
-            element: <ParticipantMyStockRequestsPage />,
+            element: <MisMaterialesPage />,
           },
           {
             path: 'stock/requests/:id',
-            element: <AdminStockRequestDetailPage />,
+            element: <StockRequestDetailPage />,
           },
           {
             path: 'gastos',
-            element: <ParticipantMyExpensesPage />,
+            element: <MisGastosPage />,
           },
           {
             path: 'gastos/:id',
@@ -112,7 +112,7 @@ export const router = createBrowserRouter([
               { path: 'usuarios', element: <AdminUsuariosPage /> },
               { path: 'solicitudes', element: <Navigate to="/app/admin/stock?tab=pedidos" replace /> },
               { path: 'stock', element: <AdminStockPage /> },
-              { path: 'stock/requests/:id', element: <AdminStockRequestDetailPage /> },
+              { path: 'stock/requests/:id', element: <StockRequestDetailPage /> },
             ],
           },
         ],

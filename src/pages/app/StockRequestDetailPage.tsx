@@ -112,7 +112,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string
 
 // ── Page ──────────────────────────────────────────────────────
 
-export default function AdminStockRequestDetailPage() {
+export default function StockRequestDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { token, isRestoring } = useAuth()
   const navigate = useNavigate()
