@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { SegmentedTabs } from '@/components/SegmentedTabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -40,14 +40,12 @@ export function ProjectScopeTabs({
   return (
     <>
       {hasCoordinated && (
-        <SegmentedTabs
-          value={activeTab}
-          onChange={onTabChange}
-          options={[
-            { value: 'mis', label: misLabel },
-            { value: 'proyecto', label: 'Del proyecto' },
-          ]}
-        />
+        <Tabs value={activeTab} onValueChange={onTabChange}>
+          <TabsList>
+            <TabsTrigger value="mis">{misLabel}</TabsTrigger>
+            <TabsTrigger value="proyecto">Del proyecto</TabsTrigger>
+          </TabsList>
+        </Tabs>
       )}
 
       {hasCoordinated && activeTab === 'proyecto' ? (
