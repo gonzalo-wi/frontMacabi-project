@@ -4,6 +4,7 @@ import { Calendar, ChevronRight, ClipboardList, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
+import { SkeletonRows } from '@/components/data/SkeletonRows'
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { RESOURCE_TYPE_LABELS } from '@/features/stock/lib/stockLabels'
 import type { ResourceRequestDTO } from '@/features/stock/model/types'
@@ -50,17 +51,7 @@ export function StockRequestsList({
         />
       )}
 
-      {isLoading && (
-        <div className="space-y-2.5">
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-20 rounded-xl bg-muted/50 animate-pulse"
-              style={{ opacity: 1 - i * 0.2 }}
-            />
-          ))}
-        </div>
-      )}
+      {isLoading && <SkeletonRows count={4} className="h-20" />}
 
       {!isLoading && !isError && requests.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">

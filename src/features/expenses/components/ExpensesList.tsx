@@ -4,6 +4,7 @@ import { ChevronRight, Paperclip, Receipt, Tag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
+import { SkeletonRows } from '@/components/data/SkeletonRows'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import {
   expenseStatusBorderClass,
@@ -53,17 +54,7 @@ export function ExpensesList({
         />
       )}
 
-      {isLoading && (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-16 rounded-xl bg-muted/40 animate-pulse"
-              style={{ opacity: 1 - i * 0.25 }}
-            />
-          ))}
-        </div>
-      )}
+      {isLoading && <SkeletonRows count={3} />}
 
       {!isLoading && !isError && expenses.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-12 text-center border border-dashed rounded-xl">

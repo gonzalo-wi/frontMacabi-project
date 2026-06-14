@@ -2,6 +2,7 @@ import { Package, Search } from 'lucide-react'
 
 import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
+import { SkeletonRows } from '@/components/data/SkeletonRows'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,7 +12,6 @@ import { resourceStockBorderClass } from '@/features/stock/lib/stockHelpers'
 import { ApiError } from '@/lib/api/apiClient'
 import { cn } from '@/lib/utils'
 import { ResourceActions } from './ResourceActions'
-import { SkeletonRows } from './SkeletonRows'
 
 export function InventorySection({
   resourcesQ,
@@ -64,7 +64,7 @@ export function InventorySection({
           />
         )}
 
-        {resourcesQ.isLoading && <SkeletonRows count={4} />}
+        {resourcesQ.isLoading && <SkeletonRows count={4} className="h-[72px]" />}
 
         {!resourcesQ.isLoading && filteredResources.length > 0 && (
           <div className="space-y-2">

@@ -62,8 +62,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
+import { SkeletonRows } from '@/components/data/SkeletonRows'
+
 import { ParticipantRowAccordionInner } from './ParticipantRowAccordion'
-import { SkeletonRows } from './SkeletonRows'
 import { StatChip } from './StatChip'
 
 
