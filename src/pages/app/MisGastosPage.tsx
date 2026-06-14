@@ -5,22 +5,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { SelectFilter } from '@/components/SelectFilter'
-import { SegmentedTabs } from '@/components/SegmentedTabs'
 import { ExpenseFormDialog } from '@/features/expenses/components/ExpenseFormDialog'
 import { ProjectExpensesPanel } from '@/features/expenses/components/ProjectExpensesPanel'
 import { ExpensesList } from '@/features/expenses/components/ExpensesList'
+import { ProjectScopeTabs } from '@/features/projects/components/ProjectScopeTabs'
+import { useProjectScope } from '@/features/projects/hooks/useProjectScope'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { listMyExpenses } from '@/features/expenses/api/expensesApi'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
-import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
 import { ApiError } from '@/lib/api/apiClient'
 import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { useAuth } from '@/hooks/useAuth'
@@ -35,21 +28,14 @@ export default function MisGastosPage() {
   const [statusRaw, setStatusFilter] = useSearchParamState('estado', 'all')
   const statusFilter = statusRaw as ExpenseStatus | 'all'
   const [query, setQuery] = useSearchParamState('q', '')
-  const [tab, setTab] = useSearchParamState('tab', 'mis')
-  const [proj, setProj] = useSearchParamState('proj', '')
+
+  const scope = useProjectScope(token, user?.id, isRestoring)
 
   const q = useQuery({
     queryKey: ['my-expenses-global', token],
     queryFn: () => fetchAllPages((p) => listMyExpenses(token!, p, 50)),
     enabled: Boolean(token) && !isRestoring,
   })
-
-  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
-  const projectOptions = membershipsQ.data ?? []
-  const coordinated = projectOptions.filter((p) => p.role === 'coordinator')
-  const hasCoordinated = coordinated.length > 0
-  const activeTab = hasCoordinated ? tab : 'mis'
-  const selectedProj = proj || coordinated[0]?.id || ''
 
   const sorted = useMemo(() => {
     const order = EXPENSE_STATUS_ORDER
@@ -77,6 +63,59 @@ export default function MisGastosPage() {
     resetKey: `${projectFilter}|${statusFilter}|${query}`,
   })
 
+  const misContent = (
+    <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/40">
+        <CardTitle className="text-base font-extrabold tracking-tight">Mis gastos</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Tocá un gasto para ver el detalle, su estado y las acciones disponibles.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5 pt-5">
+        <div className="grid gap-2.5 md:grid-cols-[1fr_180px_180px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por descripción o proyecto..."
+              className="pl-9 bg-background/50 focus-visible:ring-primary/30"
+            />
+          </div>
+          <SelectFilter
+            value={projectFilter}
+            onValueChange={setProjectFilter}
+            placeholder="Proyecto"
+            triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+            options={[
+              { value: 'all', label: 'Todos los proyectos' },
+              ...scope.projectOptions.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
+          <SelectFilter
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}
+            placeholder="Estado"
+            triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+            options={EXPENSE_STATUS_FILTER_OPTIONS}
+          />
+        </div>
+
+        <ExpensesList
+          expenses={pageItems}
+          isLoading={q.isPending}
+          isError={q.isError}
+          error={q.error}
+          detailBasePath="/app/gastos"
+          showProject
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      </CardContent>
+    </Card>
+  )
+
   return (
     <div className="min-h-screen pb-24">
       <PageHeader
@@ -87,7 +126,7 @@ export default function MisGastosPage() {
           token ? (
             <ExpenseFormDialog
               token={token}
-              projectOptions={projectOptions}
+              projectOptions={scope.projectOptions}
               onCreated={async () => {
                 toast.success('Gasto cargado correctamente.')
                 await q.refetch()
@@ -101,110 +140,37 @@ export default function MisGastosPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-5">
-
         {q.isError && (
           <p className="text-sm text-destructive">
             {q.error instanceof ApiError ? q.error.message : 'No se pudieron cargar tus gastos'}
           </p>
         )}
-
-        {membershipsQ.isError && (
+        {scope.membershipsQ.isError && (
           <p className="text-sm text-destructive">
-            {membershipsQ.error instanceof ApiError
-              ? membershipsQ.error.message
+            {scope.membershipsQ.error instanceof ApiError
+              ? scope.membershipsQ.error.message
               : 'No se pudieron cargar tus proyectos'}
           </p>
         )}
 
-        {/* ── Solapas (solo si coordina algún proyecto) ── */}
-        {hasCoordinated && (
-          <SegmentedTabs
-            value={activeTab}
-            onChange={setTab}
-            options={[
-              { value: 'mis', label: 'Mis gastos' },
-              { value: 'proyecto', label: 'Del proyecto' },
-            ]}
-          />
-        )}
-
-        {/* ── Solapa "Del proyecto": selector + panel completo ── */}
-        {activeTab === 'proyecto' && hasCoordinated && token && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Proyecto</span>
-              <Select value={selectedProj} onValueChange={setProj}>
-                <SelectTrigger className="h-9 w-[240px]">
-                  <SelectValue placeholder="Elegí un proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {coordinated.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedProj && (
-              <ProjectExpensesPanel token={token} projectId={selectedProj} detailBasePath="/app/gastos" showNewExpenseButton={false} />
-            )}
-          </div>
-        )}
-
-        {/* ── Solapa "Mis gastos" (o usuario sin proyectos a coordinar) ── */}
-        {activeTab === 'mis' && (
-        <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
-          <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-base font-extrabold tracking-tight">Mis gastos</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Tocá un gasto para ver el detalle, su estado y las acciones disponibles.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 pt-5">
-            <div className="grid gap-2.5 md:grid-cols-[1fr_180px_180px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por descripción o proyecto..."
-                  className="pl-9 bg-background/50 focus-visible:ring-primary/30"
-                />
-              </div>
-              <SelectFilter
-                value={projectFilter}
-                onValueChange={setProjectFilter}
-                placeholder="Proyecto"
-                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
-                options={[
-                  { value: 'all', label: 'Todos los proyectos' },
-                  ...projectOptions.map((p) => ({ value: p.id, label: p.name })),
-                ]}
-              />
-              <SelectFilter
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as ExpenseStatus | 'all')}
-                placeholder="Estado"
-                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
-                options={EXPENSE_STATUS_FILTER_OPTIONS}
-              />
-            </div>
-
-            <ExpensesList
-              expenses={pageItems}
-              isLoading={q.isPending}
-              isError={q.isError}
-              error={q.error}
+        <ProjectScopeTabs
+          misLabel="Mis gastos"
+          coordinated={scope.coordinated}
+          hasCoordinated={scope.hasCoordinated}
+          activeTab={scope.activeTab}
+          onTabChange={scope.setTab}
+          selectedProjectId={scope.selectedProjectId}
+          onProjectChange={scope.setProj}
+          misContent={misContent}
+          projectPanel={
+            <ProjectExpensesPanel
+              token={token!}
+              projectId={scope.selectedProjectId}
               detailBasePath="/app/gastos"
-              showProject
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
+              showNewExpenseButton={false}
             />
-          </CardContent>
-        </Card>
-        )}
+          }
+        />
       </div>
     </div>
   )

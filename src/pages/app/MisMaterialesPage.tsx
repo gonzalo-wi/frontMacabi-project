@@ -28,15 +28,14 @@ import type {
 } from '@/features/stock/model/types'
 import { ProjectStockPanel } from '@/features/stock/components/ProjectStockPanel'
 import { StockRequestsList } from '@/features/stock/components/StockRequestsList'
-import { useMyProjectMemberships } from '@/features/projects/hooks/useMyProjectMemberships'
+import { ProjectScopeTabs } from '@/features/projects/components/ProjectScopeTabs'
+import { useProjectScope } from '@/features/projects/hooks/useProjectScope'
 import { ApiError } from '@/lib/api/apiClient'
 import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { useAuth } from '@/hooks/useAuth'
 import { useClientPagination } from '@/hooks/useClientPagination'
-import { useSearchParamState } from '@/hooks/useSearchParamState'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
-import { SegmentedTabs } from '@/components/SegmentedTabs'
 
 const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   returnable: 'Retornable',
@@ -71,6 +70,8 @@ export default function MisMaterialesPage() {
   const [query, setQuery] = useState('')
   const [form, setForm] = useState<RequestForm>(EMPTY_FORM)
 
+  const scope = useProjectScope(token, user?.id, isRestoring)
+
   const q = useQuery({
     queryKey: ['participant-my-stock-requests-global', token],
     queryFn: () => fetchAllPages((p) => listMyRequests(token!, p, 50)),
@@ -82,15 +83,6 @@ export default function MisMaterialesPage() {
     queryFn: () => fetchAllResources(token!),
     enabled: Boolean(token) && !isRestoring,
   })
-
-  const membershipsQ = useMyProjectMemberships(token, user?.id, isRestoring)
-  const projectOptions = membershipsQ.data ?? []
-  const coordinated = projectOptions.filter((p) => p.role === 'coordinator')
-  const hasCoordinated = coordinated.length > 0
-  const [tab, setTab] = useSearchParamState('tab', 'mis')
-  const [proj, setProj] = useSearchParamState('proj', '')
-  const activeTab = hasCoordinated ? tab : 'mis'
-  const selectedProj = proj || coordinated[0]?.id || ''
 
   useEffect(() => {
     setProjectFilter(searchParams.get('project') ?? 'all')
@@ -164,6 +156,60 @@ export default function MisMaterialesPage() {
     },
   })
 
+  const misContent = (
+    <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
+      <CardHeader className="pb-3 border-b border-border/40">
+        <CardTitle className="text-base font-extrabold tracking-tight">Mis pedidos</CardTitle>
+        <CardDescription className="text-xs text-muted-foreground">
+          Cada pedido pertenece a un proyecto. Filtrá por proyecto, estado o ítem sin cambiar de pantalla.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5 pt-5">
+        <div className="grid gap-2.5 md:grid-cols-[1fr_180px_180px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar ítem o proyecto..."
+              className="pl-9 bg-background/50 focus-visible:ring-primary/30"
+            />
+          </div>
+          <SelectFilter
+            value={projectFilter}
+            onValueChange={setProjectFilter}
+            placeholder="Proyecto"
+            triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+            options={[
+              { value: 'all', label: 'Todos los proyectos' },
+              ...scope.projectOptions.map((p) => ({ value: p.id, label: p.name })),
+            ]}
+          />
+          <SelectFilter
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as RequestStatus | 'all')}
+            placeholder="Estado"
+            triggerClassName="w-full bg-background/50 focus:ring-primary/30"
+            options={REQUEST_STATUS_FILTER_OPTIONS}
+          />
+        </div>
+
+        <StockRequestsList
+          requests={pageItems}
+          isLoading={q.isPending}
+          isError={q.isError}
+          error={q.error}
+          detailBasePath="/app/stock/requests"
+          showProject
+          emptyMessage="No hay pedidos para los filtros seleccionados."
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
+      </CardContent>
+    </Card>
+  )
+
   return (
     <div className="min-h-screen pb-24">
       <PageHeader
@@ -173,10 +219,8 @@ export default function MisMaterialesPage() {
         action={
           <Button
             size="sm"
-            onClick={() => {
-              setOpen(true)
-            }}
-            disabled={resourcesQ.isLoading || membershipsQ.isLoading}
+            onClick={() => setOpen(true)}
+            disabled={resourcesQ.isLoading || scope.membershipsQ.isLoading}
           >
             <Plus className="w-4 h-4 mr-1" />
             Solicitar material
@@ -185,7 +229,6 @@ export default function MisMaterialesPage() {
       />
 
       <div className="p-4 lg:p-6 max-w-5xl mx-auto space-y-5">
-
         {q.isError && (
           <p className="text-sm text-destructive">
             {q.error instanceof ApiError ? q.error.message : 'No se pudieron cargar tus pedidos'}
@@ -196,103 +239,27 @@ export default function MisMaterialesPage() {
             {resourcesQ.error instanceof ApiError ? resourcesQ.error.message : 'No se pudo cargar el catálogo'}
           </p>
         )}
-        {membershipsQ.isError && (
+        {scope.membershipsQ.isError && (
           <p className="text-sm text-destructive">
-            {membershipsQ.error instanceof ApiError
-              ? membershipsQ.error.message
+            {scope.membershipsQ.error instanceof ApiError
+              ? scope.membershipsQ.error.message
               : 'No se pudieron cargar tus proyectos'}
           </p>
         )}
 
-        {/* ── Solapas (solo si coordina algún proyecto) ── */}
-        {hasCoordinated && (
-          <SegmentedTabs
-            value={activeTab}
-            onChange={setTab}
-            options={[
-              { value: 'mis', label: 'Mis pedidos' },
-              { value: 'proyecto', label: 'Del proyecto' },
-            ]}
-          />
-        )}
-
-        {/* ── Solapa "Del proyecto": selector + pedidos del proyecto ── */}
-        {activeTab === 'proyecto' && hasCoordinated && token && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Proyecto</span>
-              <Select value={selectedProj} onValueChange={setProj}>
-                <SelectTrigger className="h-9 w-[240px]">
-                  <SelectValue placeholder="Elegí un proyecto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {coordinated.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedProj && (
-              <ProjectStockPanel token={token} projectId={selectedProj} canManage />
-            )}
-          </div>
-        )}
-
-        {activeTab === 'mis' && (
-        <Card className="border border-border/50 bg-card/60 backdrop-blur-md shadow-premium rounded-2xl overflow-hidden">
-          <CardHeader className="pb-3 border-b border-border/40">
-            <CardTitle className="text-base font-extrabold tracking-tight">Mis pedidos</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Cada pedido pertenece a un proyecto. Filtrá por proyecto, estado o ítem sin cambiar de pantalla.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 pt-5">
-            <div className="grid gap-2.5 md:grid-cols-[1fr_180px_180px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar ítem o proyecto..."
-                  className="pl-9 bg-background/50 focus-visible:ring-primary/30"
-                />
-              </div>
-              <SelectFilter
-                value={projectFilter}
-                onValueChange={setProjectFilter}
-                placeholder="Proyecto"
-                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
-                options={[
-                  { value: 'all', label: 'Todos los proyectos' },
-                  ...projectOptions.map((p) => ({ value: p.id, label: p.name })),
-                ]}
-              />
-              <SelectFilter
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as RequestStatus | 'all')}
-                placeholder="Estado"
-                triggerClassName="w-full bg-background/50 focus:ring-primary/30"
-                options={REQUEST_STATUS_FILTER_OPTIONS}
-              />
-            </div>
-
-            <StockRequestsList
-              requests={pageItems}
-              isLoading={q.isPending}
-              isError={q.isError}
-              error={q.error}
-              detailBasePath="/app/stock/requests"
-              showProject
-              emptyMessage="No hay pedidos para los filtros seleccionados."
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
-          </CardContent>
-        </Card>
-        )}
+        <ProjectScopeTabs
+          misLabel="Mis pedidos"
+          coordinated={scope.coordinated}
+          hasCoordinated={scope.hasCoordinated}
+          activeTab={scope.activeTab}
+          onTabChange={scope.setTab}
+          selectedProjectId={scope.selectedProjectId}
+          onProjectChange={scope.setProj}
+          misContent={misContent}
+          projectPanel={
+            <ProjectStockPanel token={token!} projectId={scope.selectedProjectId} canManage />
+          }
+        />
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-md rounded-2xl border border-border/50 bg-card/95 backdrop-blur-lg shadow-premium">
@@ -307,7 +274,7 @@ export default function MisMaterialesPage() {
                     <SelectValue placeholder="Elegí un proyecto" />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    {projectOptions.map((p) => (
+                    {scope.projectOptions.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
@@ -383,7 +350,7 @@ export default function MisMaterialesPage() {
                 </p>
               )}
               <Button
-                disabled={createM.isPending || projectOptions.length === 0 || (resourcesQ.data ?? []).length === 0}
+                disabled={createM.isPending || scope.projectOptions.length === 0 || (resourcesQ.data ?? []).length === 0}
                 className="w-full h-11 rounded-xl font-bold transition-transform active:scale-[0.98] shadow-sm cursor-pointer mt-1"
                 onClick={() => createM.mutate()}
               >
