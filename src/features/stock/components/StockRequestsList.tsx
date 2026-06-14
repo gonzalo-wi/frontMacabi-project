@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Calendar, ChevronRight, ClipboardList, Package } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { RESOURCE_TYPE_LABELS } from '@/features/stock/lib/stockLabels'
@@ -44,9 +45,9 @@ export function StockRequestsList({
   return (
     <div className="space-y-2.5">
       {isError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error instanceof ApiError ? error.message : 'No se pudieron cargar los pedidos'}
-        </div>
+        <ErrorBanner
+          message={error instanceof ApiError ? error.message : 'No se pudieron cargar los pedidos'}
+        />
       )}
 
       {isLoading && (

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight, Paperclip, Receipt, Tag } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import {
@@ -47,9 +48,9 @@ export function ExpensesList({
   return (
     <div className="space-y-2">
       {isError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {error instanceof ApiError ? error.message : 'No se pudieron cargar los gastos'}
-        </div>
+        <ErrorBanner
+          message={error instanceof ApiError ? error.message : 'No se pudieron cargar los gastos'}
+        />
       )}
 
       {isLoading && (

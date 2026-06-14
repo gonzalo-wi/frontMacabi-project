@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
 import {
@@ -204,11 +205,9 @@ export default function ExpenseDetailPage() {
         {expenseQ.isLoading && <DetailSkeleton />}
 
         {expenseQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {expenseQ.error instanceof ApiError
-              ? expenseQ.error.message
-              : 'No se pudo cargar el gasto.'}
-          </div>
+          <ErrorBanner
+            message={expenseQ.error instanceof ApiError ? expenseQ.error.message : 'No se pudo cargar el gasto.'}
+          />
         )}
 
         {exp && (

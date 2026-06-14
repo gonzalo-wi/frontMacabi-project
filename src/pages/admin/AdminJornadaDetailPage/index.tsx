@@ -20,6 +20,7 @@ import { useQueries, useQuery, useMutation, useQueryClient } from '@tanstack/rea
 
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { Accordion } from '@/components/ui/accordion'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Badge } from '@/components/ui/badge'
@@ -353,9 +354,9 @@ export default function AdminJornadaDetailPage() {
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-4xl mx-auto space-y-4 sm:space-y-6">
 
         {detailQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {detailQ.error instanceof ApiError ? detailQ.error.message : 'Error al cargar la jornada'}
-          </div>
+          <ErrorBanner
+            message={detailQ.error instanceof ApiError ? detailQ.error.message : 'Error al cargar la jornada'}
+          />
         )}
 
         {detailQ.isLoading && (
@@ -662,11 +663,9 @@ export default function AdminJornadaDetailPage() {
                 {participationLoading && <SkeletonRows count={3} />}
 
                 {participantQ.isError && (
-                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-                    {participantQ.error instanceof ApiError
-                      ? participantQ.error.message
-                      : 'No se pudieron cargar las respuestas.'}
-                  </div>
+                  <ErrorBanner
+                    message={participantQ.error instanceof ApiError ? participantQ.error.message : 'No se pudieron cargar las respuestas.'}
+                  />
                 )}
 
                 {participantQ.isSuccess && !participationLoading && (

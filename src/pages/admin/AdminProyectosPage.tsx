@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ActionButton, ActionIconButton } from '@/components/ActionButton'
 import { DataToolbar } from '@/components/data/DataToolbar'
 import { MobileList } from '@/components/data/MobileList'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { SortableTable, type SortDirection } from '@/components/data/SortableTable'
 import {
@@ -260,9 +261,9 @@ export default function AdminProyectosPage() {
         />
 
         {listQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {listQ.error instanceof ApiError ? listQ.error.message : 'Error al cargar proyectos'}
-          </div>
+          <ErrorBanner
+            message={listQ.error instanceof ApiError ? listQ.error.message : 'Error al cargar proyectos'}
+          />
         )}
 
         {/* Desktop table */}

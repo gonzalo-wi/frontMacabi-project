@@ -1,5 +1,6 @@
 import { Package, Search } from 'lucide-react'
 
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -58,11 +59,9 @@ export function InventorySection({
         </div>
 
         {resourcesQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {resourcesQ.error instanceof ApiError
-              ? resourcesQ.error.message
-              : 'Error al cargar inventario'}
-          </div>
+          <ErrorBanner
+            message={resourcesQ.error instanceof ApiError ? resourcesQ.error.message : 'Error al cargar inventario'}
+          />
         )}
 
         {resourcesQ.isLoading && <SkeletonRows count={4} />}

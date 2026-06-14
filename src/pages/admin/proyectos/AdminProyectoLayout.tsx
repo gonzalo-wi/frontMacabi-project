@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getProject } from '@/features/projects/api/projectsApi'
 import { ApiError } from '@/lib/api/apiClient'
@@ -94,11 +95,10 @@ export default function AdminProyectoLayout() {
 
       <div className="px-3 py-4 sm:px-4 lg:px-6 lg:py-6 max-w-4xl mx-auto">
         {projectQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive mb-4">
-            {projectQ.error instanceof ApiError
-              ? projectQ.error.message
-              : 'Error al cargar el proyecto'}
-          </div>
+          <ErrorBanner
+            className="mb-4"
+            message={projectQ.error instanceof ApiError ? projectQ.error.message : 'Error al cargar el proyecto'}
+          />
         )}
         <Outlet />
       </div>

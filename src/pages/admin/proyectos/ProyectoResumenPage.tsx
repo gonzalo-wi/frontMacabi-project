@@ -2,6 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
 
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProjectMetaForm } from '@/features/projects/components/ProjectMetaForm'
 import { getProject } from '@/features/projects/api/projectsApi'
@@ -23,9 +24,9 @@ export default function ProyectoResumenPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {projectQ.isError && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {projectQ.error instanceof ApiError ? projectQ.error.message : 'Error al cargar el proyecto'}
-        </div>
+        <ErrorBanner
+          message={projectQ.error instanceof ApiError ? projectQ.error.message : 'Error al cargar el proyecto'}
+        />
       )}
       {projectQ.data && (
         <ProjectMetaForm

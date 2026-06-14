@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataToolbar } from '@/components/data/DataToolbar'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import {
@@ -263,9 +264,7 @@ export default function AdminUsuariosPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         {usersQuery.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            No se pudo cargar la lista de usuarios.
-          </div>
+          <ErrorBanner message="No se pudo cargar la lista de usuarios." />
         )}
 
         {!usersQuery.isError && (

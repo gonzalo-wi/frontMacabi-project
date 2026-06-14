@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
+import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { StockRequestStatusBadge } from '@/features/stock/components/StockRequestStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
 import {
@@ -196,11 +197,9 @@ export default function AdminStockRequestDetailPage() {
         {requestQ.isLoading && <DetailSkeleton />}
 
         {requestQ.isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {requestQ.error instanceof ApiError
-              ? requestQ.error.message
-              : 'No se pudo cargar el pedido.'}
-          </div>
+          <ErrorBanner
+            message={requestQ.error instanceof ApiError ? requestQ.error.message : 'No se pudo cargar el pedido.'}
+          />
         )}
 
         {req && (
