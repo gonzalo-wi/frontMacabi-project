@@ -24,7 +24,7 @@ function tabFromPath(pathname: string): (typeof SECTIONS)[number]['path'] {
   return hit?.path ?? 'resumen'
 }
 
-export default function AdminProyectoLayout() {
+export default function ProyectoLayout() {
   const { id } = useParams<{ id: string }>()
   const { token, isRestoring } = useAuth()
   const navigate = useNavigate()

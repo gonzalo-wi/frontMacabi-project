@@ -3,12 +3,12 @@ import { createBrowserRouter, Navigate, useParams } from 'react-router-dom'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { RequireAdmin } from '@/auth/RequireAdmin'
 import { AppShellLayout } from '@/layouts/AppShellLayout'
-import AdminProyectoLayout from '@/pages/admin/proyectos/AdminProyectoLayout'
-import ProyectoResumenPage from '@/pages/admin/proyectos/ProyectoResumenPage'
-import ProyectoMiembrosPage from '@/pages/admin/proyectos/ProyectoMiembrosPage'
-import ProyectoGastosPage from '@/pages/admin/proyectos/ProyectoGastosPage'
-import ProyectoJornadasPage from '@/pages/admin/proyectos/ProyectoJornadasPage'
-import ProyectoRecursosPage from '@/pages/admin/proyectos/ProyectoRecursosPage'
+import ProyectoLayout from '@/pages/admin/AdminProyectoDetalle/ProyectoLayout'
+import ProyectoResumenPage from '@/pages/admin/AdminProyectoDetalle/ProyectoResumenPage'
+import ProyectoMiembrosPage from '@/pages/admin/AdminProyectoDetalle/ProyectoMiembrosPage'
+import ProyectoGastosPage from '@/pages/admin/AdminProyectoDetalle/ProyectoGastosPage'
+import ProyectoJornadasPage from '@/pages/admin/AdminProyectoDetalle/ProyectoJornadasPage'
+import ProyectoRecursosPage from '@/pages/admin/AdminProyectoDetalle/ProyectoRecursosPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import RecuperarPasswordPage from '@/pages/auth/RecuperarPasswordPage'
 import RestablecerContrasenaPage from '@/pages/auth/RestablecerContrasenaPage'
@@ -99,7 +99,7 @@ export const router = createBrowserRouter([
               { path: 'proyectos', element: <AdminProyectosPage /> },
               {
                 path: 'proyectos/:id',
-                element: <AdminProyectoLayout />,
+                element: <ProyectoLayout />,
                 children: [
                   { index: true, element: <Navigate to="resumen" replace /> },
                   { path: 'resumen', element: <ProyectoResumenPage /> },
