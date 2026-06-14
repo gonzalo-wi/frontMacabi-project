@@ -37,35 +37,13 @@ import {
 } from '@/features/projects/api/projectsApi'
 import { fetchAllUsersForAdmin } from '@/features/projects/lib/projectAdminQueries'
 import type { UserDTO } from '@/lib/api/types'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
+import {
+  memberAvatarClass,
+  memberBorderClass,
+  roleBadgeClass,
+} from '@/features/projects/lib/projectHelpers'
 import { useAuth } from '@/hooks/useAuth'
-
-// ── Helpers ────────────────────────────────────────────────────
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-function memberBorderClass(role: string) {
-  return role === 'coordinator' ? 'border-l-primary' : 'border-l-border/40'
-}
-
-function avatarClass(role: string) {
-  return role === 'coordinator'
-    ? 'bg-primary/15 text-primary'
-    : 'bg-muted text-muted-foreground'
-}
-
-function roleBadgeClass(role: string) {
-  return role === 'coordinator'
-    ? 'bg-primary/8 text-primary border-primary/20'
-    : 'bg-muted/60 text-muted-foreground border-border/60'
-}
 
 // ── Page ───────────────────────────────────────────────────────
 
@@ -364,7 +342,7 @@ export default function ProyectoMiembrosPage() {
                     <div
                       className={cn(
                         'h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold select-none',
-                        avatarClass(m.role),
+                        memberAvatarClass(m.role),
                       )}
                     >
                       {initials}

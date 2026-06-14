@@ -38,3 +38,14 @@ export function formatShort(iso: string): string {
     year: '2-digit',
   })
 }
+
+const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+/** "YYYY-MM" → "Mmm aa" (ej.: "2026-03" → "Mar 26"). */
+export function formatMonth(monthStr: string): string {
+  const parts = monthStr.split('-')
+  if (parts.length < 2) return monthStr
+  const [year, month] = parts
+  const idx = parseInt(month, 10) - 1
+  return `${MONTH_LABELS[idx] ?? month} ${year.slice(2)}`
+}

@@ -2,10 +2,10 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, ChevronRight, Users } from '
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { UserDTO } from '@/lib/api/types'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 
 import { RoleBadge, StatusBadge } from './UserBadges'
-import { formatUserCreatedAt, getInitials, type SortKey } from './userHelpers'
+import { formatUserCreatedAt, type SortKey } from './userHelpers'
 
 function SortCol({
   label,

@@ -6,12 +6,11 @@ import { formatStartsAR } from '@/features/events/lib/deadline'
 import { labelProjectRole } from '@/features/events/lib/eventLabels'
 import {
   attendanceBadgeClass,
-  getInitials,
   groupAnswersByModule,
   type AnswerMaps,
   type UnifiedParticipantRow,
 } from '@/features/events/lib/jornadaDetail'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 
 export function ParticipantRowAccordionInner({
   row,

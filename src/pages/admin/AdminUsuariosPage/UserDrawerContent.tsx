@@ -18,10 +18,10 @@ import {
 import { labelProjectRole } from '@/features/events/lib/eventLabels'
 import type { UserProjectLink } from '@/features/projects/lib/userProjectsIndex'
 import type { UpdateUserRoleBody, UserDTO } from '@/lib/api/types'
-import { cn } from '@/lib/utils'
+import { cn, getInitials } from '@/lib/utils'
 
 import { RoleBadge } from './UserBadges'
-import { formatUserCreatedAt, getInitials } from './userHelpers'
+import { formatUserCreatedAt } from './userHelpers'
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (

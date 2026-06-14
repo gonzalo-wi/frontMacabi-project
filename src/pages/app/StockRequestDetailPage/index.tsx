@@ -44,6 +44,7 @@ import {
 import type { RequestStatus, ResourceType } from '@/features/stock/model/types'
 import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
+import { requestStatusBannerClass } from '@/lib/status'
 import { cn } from '@/lib/utils'
 import { formatDateShort, formatDateTime } from '@/lib/date'
 import { useAuth } from '@/hooks/useAuth'
@@ -70,18 +71,6 @@ const CONSUMABLE_STEPS: WorkflowStep[] = [
   { key: 'ENTREGADO', label: 'Entregado' },
 ]
 
-// ── Helpers ────────────────────────────────────────────────────
-
-function statusBannerClass(status: RequestStatus): string {
-  switch (status) {
-    case 'PENDIENTE':  return 'border-amber-200   bg-amber-50/50'
-    case 'RESERVADO':  return 'border-primary/20   bg-primary/5'
-    case 'ENTREGADO':  return 'border-emerald-200  bg-emerald-50/50'
-    case 'DEVUELTO':   return 'border-slate-200    bg-slate-50/30'
-    case 'RECHAZADO':  return 'border-destructive/20 bg-destructive/5'
-    default:           return 'border-border bg-muted/5'
-  }
-}
 
 // ── Page ──────────────────────────────────────────────────────
 
@@ -181,7 +170,7 @@ export default function StockRequestDetailPage() {
             <div
               className={cn(
                 'rounded-2xl border p-4 sm:p-5 space-y-4',
-                statusBannerClass(req.status),
+                requestStatusBannerClass(req.status),
               )}
             >
               {/* Header */}

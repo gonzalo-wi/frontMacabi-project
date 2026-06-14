@@ -29,6 +29,28 @@ export function requestStatusBorderClass(status: RequestStatus): string {
   }
 }
 
+/** Fondo + borde del banner de estado en el detalle de un gasto. */
+export function expenseStatusBannerClass(status: ExpenseStatus): string {
+  switch (status) {
+    case 'PENDIENTE': return 'border-amber-200 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-950/20'
+    case 'APROBADO':  return 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/60 dark:bg-emerald-950/20'
+    case 'RECHAZADO': return 'border-destructive/20 bg-destructive/5'
+    default:          return 'border-border bg-muted/5'
+  }
+}
+
+/** Fondo + borde del banner de estado en el detalle de un pedido de stock. */
+export function requestStatusBannerClass(status: RequestStatus): string {
+  switch (status) {
+    case 'PENDIENTE': return 'border-amber-200 bg-amber-50/50'
+    case 'RESERVADO': return 'border-primary/20 bg-primary/5'
+    case 'ENTREGADO': return 'border-emerald-200 bg-emerald-50/50'
+    case 'DEVUELTO':  return 'border-slate-200 bg-slate-50/30'
+    case 'RECHAZADO': return 'border-destructive/20 bg-destructive/5'
+    default:          return 'border-border bg-muted/5'
+  }
+}
+
 /** Opciones para el filtro de estado de gastos (incluye "todos"). */
 export const EXPENSE_STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'Todos los estados' },

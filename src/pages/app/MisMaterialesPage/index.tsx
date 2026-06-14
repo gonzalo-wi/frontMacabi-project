@@ -21,13 +21,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { fromDatetimeLocalValue } from '@/features/events/lib/datetimeLocal'
 import { createRequest, listMyRequests } from '@/features/stock/api/requestsApi'
 import { fetchAllResources } from '@/features/stock/api/stockApi'
-import type {
-  RequestStatus,
-  ResourceDTO,
-  ResourceType,
-} from '@/features/stock/model/types'
+import type { RequestStatus, ResourceDTO } from '@/features/stock/model/types'
 import { ProjectStockPanel } from '@/features/stock/components/ProjectStockPanel'
 import { StockRequestsList } from '@/features/stock/components/StockRequestsList'
+import { RESOURCE_TYPE_LABELS } from '@/features/stock/lib/stockLabels'
 import { ProjectScopeTabs } from '@/features/projects/components/ProjectScopeTabs'
 import { useProjectScope } from '@/features/projects/hooks/useProjectScope'
 import { ApiError } from '@/lib/api/apiClient'
@@ -36,11 +33,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { useClientPagination } from '@/hooks/useClientPagination'
 import { REQUEST_STATUS_ORDER, REQUEST_STATUS_FILTER_OPTIONS } from '@/lib/status'
 import { SelectFilter } from '@/components/SelectFilter'
-
-const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
-  returnable: 'Retornable',
-  consumable: 'Consumible',
-}
 
 type RequestForm = {
   project_id: string

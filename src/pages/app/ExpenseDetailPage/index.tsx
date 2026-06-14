@@ -45,28 +45,13 @@ import { canEditExpense, EditExpenseDialog } from '@/features/expenses/component
 import { canDeleteExpense, DeleteExpenseButton } from '@/features/expenses/components/DeleteExpenseButton'
 import { ReceiptLink } from '@/features/expenses/components/ReceiptLink'
 import { wouldExceedBudget } from '@/features/expenses/lib/budget'
-import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { useProjectRole } from '@/hooks/useProjectRole'
 import { ApiError } from '@/lib/api/apiClient'
+import { expenseStatusBannerClass } from '@/lib/status'
 import { formatARS } from '@/lib/currency'
 import { cn } from '@/lib/utils'
 import { formatExpenseDate, formatDateTime } from '@/lib/date'
 import { useAuth } from '@/hooks/useAuth'
-
-// ── Helpers ────────────────────────────────────────────────────
-
-function statusBannerClass(status: ExpenseStatus): string {
-  switch (status) {
-    case 'PENDIENTE':
-      return 'border-amber-200 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-950/20'
-    case 'APROBADO':
-      return 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/60 dark:bg-emerald-950/20'
-    case 'RECHAZADO':
-      return 'border-destructive/20 bg-destructive/5'
-    default:
-      return 'border-border bg-muted/5'
-  }
-}
 
 // ── Page ───────────────────────────────────────────────────────
 
@@ -190,7 +175,7 @@ export default function ExpenseDetailPage() {
         {exp && (
           <>
             {/* ── Status banner ── */}
-            <div className={cn('rounded-2xl border p-4 sm:p-5 space-y-3', statusBannerClass(exp.status))}>
+            <div className={cn('rounded-2xl border p-4 sm:p-5 space-y-3', expenseStatusBannerClass(exp.status))}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-0.5 min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

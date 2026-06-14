@@ -13,21 +13,11 @@ import { ExpensesList } from '@/features/expenses/components/ExpensesList'
 import { ProjectBudgetBanner } from '@/features/expenses/components/ProjectBudgetBanner'
 import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import { formatARS } from '@/lib/currency'
+import { formatMonth } from '@/lib/date'
 import { DATE_PRESETS, DEFAULT_DESDE, DEFAULT_HASTA, type DatePreset } from '@/lib/datePresets'
 import { cn } from '@/lib/utils'
 import { EXPENSE_STATUS_ORDER } from '@/lib/status'
 import { useClientPagination } from '@/hooks/useClientPagination'
-
-// ─── Formatters ───────────────────────────────────────────────
-
-function formatMonth(monthStr: string): string {
-  const parts = monthStr.split('-')
-  if (parts.length < 2) return monthStr
-  const [year, month] = parts
-  const labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-  const idx = parseInt(month, 10) - 1
-  return `${labels[idx] ?? month} ${year.slice(2)}`
-}
 
 // ─── Panel ────────────────────────────────────────────────────
 

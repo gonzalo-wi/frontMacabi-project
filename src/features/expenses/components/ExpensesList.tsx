@@ -9,8 +9,8 @@ import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatus
 import {
   expenseStatusBorderClass,
   formatExpenseDateShort,
-  projectAvatarColor,
 } from '@/features/expenses/lib/expenseHelpers'
+import { projectAvatarColor } from '@/features/projects/lib/projectHelpers'
 import type { ExpenseDTO } from '@/features/expenses/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatARS } from '@/lib/currency'
