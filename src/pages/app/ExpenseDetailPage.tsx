@@ -13,12 +13,13 @@ import {
   User,
   X,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ErrorBanner } from '@/components/data/ErrorBanner'
+import { InfoRow } from '@/components/data/InfoRow'
+import { DetailSkeleton } from '@/components/data/DetailSkeleton'
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
 import { ActionButton } from '@/components/ActionButton'
 import {
@@ -65,30 +66,6 @@ function statusBannerClass(status: ExpenseStatus): string {
     default:
       return 'border-border bg-muted/5'
   }
-}
-
-function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="flex items-start gap-3 py-3">
-      <div className="h-7 w-7 shrink-0 rounded-lg bg-muted/50 flex items-center justify-center mt-0.5">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-      </div>
-      <div className="flex-1 flex items-start justify-between gap-4 min-w-0">
-        <span className="text-sm text-muted-foreground shrink-0">{label}</span>
-        <span className="text-sm font-medium text-right break-words max-w-[55%]">{value}</span>
-      </div>
-    </div>
-  )
-}
-
-function DetailSkeleton() {
-  return (
-    <div className="space-y-4">
-      <div className="h-32 rounded-2xl bg-muted/40 animate-pulse" />
-      <div className="h-52 rounded-2xl bg-muted/40 animate-pulse opacity-70" />
-      <div className="h-24 rounded-2xl bg-muted/40 animate-pulse opacity-50" />
-    </div>
-  )
 }
 
 // ── Page ───────────────────────────────────────────────────────
