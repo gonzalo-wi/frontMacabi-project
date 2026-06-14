@@ -7,11 +7,13 @@ type MetricCardProps = {
   title: string
   value: string
   icon: ReactNode
+  /** Color semántico de la card y la caja del ícono. */
   tone?: 'default' | 'warn' | 'green' | 'red'
   sub?: string
   loading?: boolean
 }
 
+/** Tarjeta de métrica/KPI: título, valor grande, ícono y tono semántico opcional. */
 export function MetricCard({ title, value, icon, tone = 'default', sub, loading }: MetricCardProps) {
   return (
     <Card

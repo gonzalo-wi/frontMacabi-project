@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/PageHeader'
 import { ActionButton } from '@/components/ActionButton'
+import { MetricCard } from '@/components/data/MetricCard'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { createResource, deleteResource, updateResource } from '@/features/stock/api/stockApi'
 import { useAdminStockResources, useAdminStockRequests } from '@/features/stock/hooks/useAdminStock'
@@ -16,7 +17,6 @@ import { useAuth } from '@/hooks/useAuth'
 
 import { InventorySection } from './InventorySection'
 import { RequestsSection } from './RequestsSection'
-import { MetricCard } from './MetricCard'
 import { ResourceForm, type FormState } from './ResourceForm'
 
 type StockSection = 'inventario' | 'pedidos'
@@ -171,24 +171,21 @@ export default function AdminStockPage() {
         {/* ── Metrics ── */}
         <div className="grid gap-3 sm:grid-cols-3">
           <MetricCard
-            icon={Package}
-            iconClass="bg-primary/10 text-primary"
             title="Ítems en inventario"
             value={String(totalItems)}
+            icon={<Package className="h-4 w-4 text-primary" />}
           />
           <MetricCard
-            icon={ArchiveX}
-            iconClass={outOfStock > 0 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}
             title="Sin disponibilidad"
             value={String(outOfStock)}
-            valueClass={outOfStock > 0 ? 'text-destructive' : undefined}
+            tone={outOfStock > 0 ? 'red' : 'default'}
+            icon={<ArchiveX className={cn('h-4 w-4', outOfStock > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground')} />}
           />
           <MetricCard
-            icon={Clock}
-            iconClass={pendingCount > 0 ? 'bg-amber-100 text-amber-600' : 'bg-muted text-muted-foreground'}
             title="Pedidos pendientes"
             value={String(pendingCount)}
-            valueClass={pendingCount > 0 ? 'text-amber-600' : undefined}
+            tone={pendingCount > 0 ? 'warn' : 'default'}
+            icon={<Clock className={cn('h-4 w-4', pendingCount > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')} />}
           />
         </div>
 

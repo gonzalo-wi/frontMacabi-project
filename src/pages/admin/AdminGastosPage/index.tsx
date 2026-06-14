@@ -4,6 +4,7 @@ import { BarChart3, Clock, Download, Receipt, Settings2, TrendingUp, XCircle } f
 import { useQuery } from '@tanstack/react-query'
 
 import { ActionButton } from '@/components/ActionButton'
+import { MetricCard } from '@/components/data/MetricCard'
 import { PageHeader } from '@/components/PageHeader'
 import { getExpenseAnalytics, listAllExpenses } from '@/features/expenses/api/expensesApi'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
@@ -19,7 +20,6 @@ import { AnalyticsCard } from './AnalyticsCard'
 import { CategoriesDialog } from './CategoriesDialog'
 import { ExpensesListCard } from './ExpensesListCard'
 import { ExportDialog } from './ExportDialog'
-import { MetricCard } from './MetricCard'
 import { PeriodFilter } from './PeriodFilter'
 
 export default function AdminGastosPage() {
