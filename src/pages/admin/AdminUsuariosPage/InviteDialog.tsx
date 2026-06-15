@@ -1,9 +1,9 @@
 import { Loader2, UserPlus } from 'lucide-react'
 
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -52,16 +52,13 @@ export function InviteDialog({
           </p>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-name" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Nombre</Label>
+          <FormField label="Nombre" htmlFor="invite-name">
             <Input id="invite-name" value={name} onChange={(e) => onName(e.target.value)} placeholder="Nombre completo" className="h-11" autoComplete="name" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-email" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Correo</Label>
+          </FormField>
+          <FormField label="Correo" htmlFor="invite-email">
             <Input id="invite-email" type="email" value={email} onChange={(e) => onEmail(e.target.value)} placeholder="correo@ejemplo.org" className="h-11" autoComplete="email" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rol inicial</Label>
+          </FormField>
+          <FormField label="Rol inicial">
             <Select value={role} onValueChange={(v) => onRole(v as 'user' | 'admin')}>
               <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -69,7 +66,7 @@ export function InviteDialog({
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
               Cancelar

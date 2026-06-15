@@ -3,10 +3,10 @@ import { Loader2, Paperclip, Pencil, Upload, X } from 'lucide-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -148,10 +148,7 @@ export function EditExpenseDialog({
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-amount" className="text-xs font-semibold">
-                Monto
-              </Label>
+            <FormField label="Monto" htmlFor="edit-amount">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium select-none">
                   $
@@ -165,24 +162,18 @@ export function EditExpenseDialog({
                   inputMode="decimal"
                 />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-date" className="text-xs font-semibold">
-                Fecha
-              </Label>
+            </FormField>
+            <FormField label="Fecha" htmlFor="edit-date">
               <Input
                 id="edit-date"
                 type="date"
                 value={expenseDate}
                 onChange={(e) => setExpenseDate(e.target.value)}
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-description" className="text-xs font-semibold">
-              Descripción
-            </Label>
+          <FormField label="Descripción" htmlFor="edit-description">
             <Textarea
               id="edit-description"
               rows={3}
@@ -190,11 +181,10 @@ export function EditExpenseDialog({
               onChange={(e) => setDescription(e.target.value)}
               className="resize-none"
             />
-          </div>
+          </FormField>
 
           {categories.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Categoría</Label>
+            <FormField label="Categoría">
               <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sin categoría" />
@@ -206,12 +196,11 @@ export function EditExpenseDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           )}
 
           {/* ── Comprobante (los cambios se aplican al guardar) ── */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Comprobante</Label>
+          <FormField label="Comprobante" hint="JPG, PNG, WebP o PDF hasta 2 MB. Se guarda al confirmar.">
             <input
               ref={fileRef}
               type="file"
@@ -295,10 +284,7 @@ export function EditExpenseDialog({
                 )}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground">
-              JPG, PNG, WebP o PDF hasta 2 MB. Se guarda al confirmar.
-            </p>
-          </div>
+          </FormField>
 
           <Button disabled={saveM.isPending} className="w-full" onClick={() => saveM.mutate()}>
             {saveM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}

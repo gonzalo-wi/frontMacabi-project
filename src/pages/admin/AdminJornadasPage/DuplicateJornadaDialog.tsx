@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   duplicateEventFromDetail,
   getEventDetail,
@@ -127,17 +127,19 @@ export function DuplicateJornadaDialog({
         )}
         {dupDetailQ.data && (
           <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="dup-title">Título de la copia</Label>
+            <FormField label="Título de la copia" htmlFor="dup-title">
               <Input
                 id="dup-title"
                 value={dupTitle}
                 onChange={(e) => setDupTitle(e.target.value)}
                 className="h-11"
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="dup-starts">Inicio de la copia</Label>
+            </FormField>
+            <FormField
+              label="Inicio de la copia"
+              htmlFor="dup-starts"
+              hint="Por defecto: misma hora del original, una semana después."
+            >
               <Input
                 id="dup-starts"
                 type="datetime-local"
@@ -145,12 +147,8 @@ export function DuplicateJornadaDialog({
                 onChange={(e) => onDupStartsChange(e.target.value)}
                 className="h-11"
               />
-              <p className="text-xs text-muted-foreground">
-                Por defecto: misma hora del original, una semana después.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="dup-deadline">Límite de respuestas (opcional)</Label>
+            </FormField>
+            <FormField label="Límite de respuestas (opcional)" htmlFor="dup-deadline">
               <Input
                 id="dup-deadline"
                 type="datetime-local"
@@ -158,7 +156,7 @@ export function DuplicateJornadaDialog({
                 onChange={(e) => setDupDeadlineLocal(e.target.value)}
                 className="h-11"
               />
-            </div>
+            </FormField>
             <Button
               className="w-full"
               disabled={dupMut.isPending || !dupStartsLocal}

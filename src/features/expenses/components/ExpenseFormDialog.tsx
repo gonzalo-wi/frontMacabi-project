@@ -6,8 +6,8 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { FormField } from '@/components/FormField'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -143,8 +143,7 @@ export function ExpenseFormDialog({
 
         <div className="space-y-4 pt-1">
           {needsProjectPicker && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Proyecto</Label>
+            <FormField label="Proyecto">
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Elegí un proyecto" />
@@ -157,14 +156,11 @@ export function ExpenseFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-amount" className="text-xs font-semibold">
-                Monto
-              </Label>
+            <FormField label="Monto" htmlFor="exp-amount">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium select-none">
                   $
@@ -178,24 +174,18 @@ export function ExpenseFormDialog({
                   inputMode="decimal"
                 />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-date" className="text-xs font-semibold">
-                Fecha
-              </Label>
+            </FormField>
+            <FormField label="Fecha" htmlFor="exp-date">
               <Input
                 id="exp-date"
                 type="date"
                 value={expenseDate}
                 onChange={(e) => setExpenseDate(e.target.value)}
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-description" className="text-xs font-semibold">
-              Descripción
-            </Label>
+          <FormField label="Descripción" htmlFor="exp-description">
             <Textarea
               id="exp-description"
               rows={3}
@@ -204,11 +194,10 @@ export function ExpenseFormDialog({
               placeholder="¿En qué consistió este gasto?"
               className="resize-none"
             />
-          </div>
+          </FormField>
 
           {categories.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Categoría</Label>
+            <FormField label="Categoría">
               <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sin categoría" />
@@ -220,13 +209,14 @@ export function ExpenseFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-receipt" className="text-xs font-semibold">
-              Comprobante
-            </Label>
+          <FormField
+            label="Comprobante"
+            htmlFor="exp-receipt"
+            hint="Opcional. JPG, PNG, WebP o PDF hasta 2 MB."
+          >
             <Input
               id="exp-receipt"
               ref={fileRef}
@@ -235,10 +225,7 @@ export function ExpenseFormDialog({
               onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
               className="file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-xs"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Opcional. JPG, PNG, WebP o PDF hasta 2 MB.
-            </p>
-          </div>
+          </FormField>
 
           <Button disabled={createM.isPending} className="w-full" onClick={() => createM.mutate()}>
             {createM.isPending ? (

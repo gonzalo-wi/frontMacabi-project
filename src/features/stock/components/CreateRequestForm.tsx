@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react'
 
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -50,13 +50,7 @@ export function CreateRequestForm({
 
   return (
     <div className="space-y-4 pt-1">
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="req-resource"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Ítem de inventario
-        </Label>
+      <FormField label="Ítem de inventario" htmlFor="req-resource">
         <Select value={form.resource_id} onValueChange={(v) => set('resource_id', v)}>
           <SelectTrigger id="req-resource" className="h-11">
             <SelectValue placeholder="Seleccioná un ítem…" />
@@ -72,15 +66,9 @@ export function CreateRequestForm({
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="req-quantity"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Cantidad
-        </Label>
+      <FormField label="Cantidad" htmlFor="req-quantity">
         <Input
           id="req-quantity"
           type="number"
@@ -91,15 +79,9 @@ export function CreateRequestForm({
           className="h-11"
           placeholder="1"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="req-withdrawal"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Fecha de retiro
-        </Label>
+      <FormField label="Fecha de retiro" htmlFor="req-withdrawal">
         <Input
           id="req-withdrawal"
           type="datetime-local"
@@ -107,17 +89,10 @@ export function CreateRequestForm({
           onChange={(e) => set('withdrawal_date', e.target.value)}
           className="h-11"
         />
-      </div>
+      </FormField>
 
       {needsReturn && (
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="req-return"
-            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-          >
-            Fecha de devolución
-            <span className="ml-1 text-destructive">*</span>
-          </Label>
+        <FormField label="Fecha de devolución" htmlFor="req-return" required>
           <Input
             id="req-return"
             type="datetime-local"
@@ -127,17 +102,18 @@ export function CreateRequestForm({
             disabled={!form.withdrawal_date}
             min={form.withdrawal_date}
           />
-        </div>
+        </FormField>
       )}
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="req-notes"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Notas{' '}
-          <span className="normal-case font-normal text-muted-foreground/60">(opcional)</span>
-        </Label>
+      <FormField
+        htmlFor="req-notes"
+        label={
+          <>
+            Notas{' '}
+            <span className="normal-case font-normal text-muted-foreground/60">(opcional)</span>
+          </>
+        }
+      >
         <Textarea
           id="req-notes"
           value={form.notes}
@@ -145,7 +121,7 @@ export function CreateRequestForm({
           rows={2}
           placeholder="Ej: Para el evento del sábado"
         />
-      </div>
+      </FormField>
 
       {error && (
         <p className="text-sm text-destructive rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">

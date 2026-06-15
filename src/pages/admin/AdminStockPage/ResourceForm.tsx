@@ -1,8 +1,8 @@
 import { Loader2 } from 'lucide-react'
 
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -39,13 +39,7 @@ export function ResourceForm({
 
   return (
     <div className="space-y-4 pt-1">
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="resource-name"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Nombre
-        </Label>
+      <FormField label="Nombre" htmlFor="resource-name">
         <Input
           id="resource-name"
           value={form.name}
@@ -53,15 +47,9 @@ export function ResourceForm({
           className="h-11"
           placeholder="Ej: Proyector Epson"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="resource-type"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Tipo
-        </Label>
+      <FormField label="Tipo" htmlFor="resource-type">
         <Select value={form.type} onValueChange={(v) => set('type', v as ResourceType)}>
           <SelectTrigger id="resource-type" className="h-11">
             <SelectValue />
@@ -71,15 +59,9 @@ export function ResourceForm({
             <SelectItem value="consumable">Consumible</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="resource-stock"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
-          Stock total (unidades)
-        </Label>
+      <FormField label="Stock total (unidades)" htmlFor="resource-stock">
         <Input
           id="resource-stock"
           type="number"
@@ -90,7 +72,7 @@ export function ResourceForm({
           className="h-11"
           placeholder="Ej: 5"
         />
-      </div>
+      </FormField>
 
       {error && (
         <p className="text-sm text-destructive rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -62,17 +62,15 @@ export function CreateJornadaDialog({
           <DialogTitle>Nueva jornada</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="create-title">Título</Label>
+          <FormField label="Título" htmlFor="create-title">
             <Input
               id="create-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="h-11"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="create-starts">Inicio</Label>
+          </FormField>
+          <FormField label="Inicio" htmlFor="create-starts">
             <Input
               id="create-starts"
               type="datetime-local"
@@ -80,9 +78,8 @@ export function CreateJornadaDialog({
               onChange={(e) => setStartsLocal(e.target.value)}
               className="h-11"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="create-deadline">Límite de respuestas (opcional)</Label>
+          </FormField>
+          <FormField label="Límite de respuestas (opcional)" htmlFor="create-deadline">
             <Input
               id="create-deadline"
               type="datetime-local"
@@ -90,9 +87,8 @@ export function CreateJornadaDialog({
               onChange={(e) => setDeadlineLocal(e.target.value)}
               className="h-11"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Estado inicial</Label>
+          </FormField>
+          <FormField label="Estado inicial">
             <Select value={statusDraft} onValueChange={setStatusDraft}>
               <SelectTrigger className="h-11">
                 <SelectValue />
@@ -103,7 +99,7 @@ export function CreateJornadaDialog({
                 <SelectItem value="closed">{labelInstanceStatus('closed')}</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
           <Button
             className="w-full"
             disabled={createMut.isPending}
