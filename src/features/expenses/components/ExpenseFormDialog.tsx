@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { CreditCard, Loader2, Plus } from 'lucide-react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
-import { FeedbackBanner } from '@/components/FeedbackBanner'
+import { toast } from 'sonner'
+
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { FormField } from '@/components/FormField'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -14,15 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import {
   createExpense,
-  getCategories,
   validateReceiptFile,
   RECEIPT_ACCEPT,
 } from '@/features/expenses/api/expensesApi'
+import { ExpenseFormFields } from '@/features/expenses/components/ExpenseFormFields'
+import { useExpenseCategories } from '@/features/expenses/hooks/useExpenseCategories'
 import { ApiError } from '@/lib/api/apiClient'
-import { arsToCanonical, formatArsInput } from '@/lib/currency'
+import { arsToCanonical } from '@/lib/currency'
 
 type ProjectOption = { id: string; name: string }
 
@@ -60,15 +61,10 @@ export function ExpenseFormDialog({
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const [categoryId, setCategoryId] = useState('')
-  const [error, setError] = useState<string | null>(null)
 
   const needsProjectPicker = !projectId
 
-  const categoriesQ = useQuery({
-    queryKey: ['expense-categories', token],
-    queryFn: () => getCategories(token),
-    staleTime: 5 * 60_000,
-  })
+  const categoriesQ = useExpenseCategories(token, open)
   const categories = categoriesQ.data ?? []
 
   function reset() {
@@ -78,8 +74,17 @@ export function ExpenseFormDialog({
     setExpenseDate(new Date().toISOString().slice(0, 10))
     setReceiptFile(null)
     setCategoryId('')
-    setError(null)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function pickReceiptFile(file: File) {
+    const err = validateReceiptFile(file)
+    if (err) {
+      toast.error(err)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+    setReceiptFile(file)
   }
 
   const createM = useMutation({
@@ -112,7 +117,7 @@ export function ExpenseFormDialog({
       await onCreated()
     },
     onError: (e) => {
-      setError(
+      toast.error(
         e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'No se pudo cargar el gasto',
       )
     },
@@ -143,11 +148,8 @@ export function ExpenseFormDialog({
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
-          {error && <FeedbackBanner message={error} variant="error" />}
-
           {needsProjectPicker && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Proyecto</Label>
+            <FormField label="Proyecto">
               <Select value={selectedProject} onValueChange={setSelectedProject}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Elegí un proyecto" />
@@ -160,88 +162,41 @@ export function ExpenseFormDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </FormField>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-amount" className="text-xs font-semibold">
-                Monto
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium select-none">
-                  $
-                </span>
-                <Input
-                  id="exp-amount"
-                  value={amount}
-                  onChange={(e) => setAmount(formatArsInput(e.target.value))}
-                  placeholder="1.200,50"
-                  className="pl-7"
-                  inputMode="decimal"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="exp-date" className="text-xs font-semibold">
-                Fecha
-              </Label>
-              <Input
-                id="exp-date"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-              />
-            </div>
-          </div>
+          <ExpenseFormFields
+            idPrefix="exp"
+            amount={amount}
+            onAmountChange={setAmount}
+            expenseDate={expenseDate}
+            onExpenseDateChange={setExpenseDate}
+            description={description}
+            onDescriptionChange={setDescription}
+            categoryId={categoryId}
+            onCategoryIdChange={setCategoryId}
+            categories={categories}
+            descriptionPlaceholder="¿En qué consistió este gasto?"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-description" className="text-xs font-semibold">
-              Descripción
-            </Label>
-            <Textarea
-              id="exp-description"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="¿En qué consistió este gasto?"
-              className="resize-none"
-            />
-          </div>
-
-          {categories.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Categoría</Label>
-              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sin categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-receipt" className="text-xs font-semibold">
-              Comprobante
-            </Label>
+          <FormField
+            label="Comprobante"
+            htmlFor="exp-receipt"
+            hint="Opcional. JPG, PNG, WebP o PDF hasta 2 MB."
+          >
             <Input
               id="exp-receipt"
               ref={fileRef}
               type="file"
               accept={RECEIPT_ACCEPT}
-              onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) pickReceiptFile(file)
+                else setReceiptFile(null)
+              }}
               className="file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-xs"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Opcional. JPG, PNG, WebP o PDF hasta 2 MB.
-            </p>
-          </div>
+          </FormField>
 
           <Button disabled={createM.isPending} className="w-full" onClick={() => createM.mutate()}>
             {createM.isPending ? (

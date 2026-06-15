@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,17 +10,16 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateProject } from '@/features/projects/api/projectsApi'
 import type { ProjectDTO } from '@/features/projects/model/types'
+import { queryKeys } from '@/lib/queryKeys'
 
 export function ProjectMetaForm({
   project,
   token,
   projectId,
-  onFeedback,
 }: {
   project: ProjectDTO
   token: string
   projectId: string
-  onFeedback: (next: { text: string; variant: 'success' | 'error' | 'info' } | null) => void
 }) {
   const qc = useQueryClient()
   const [editName, setEditName] = useState(project.name)
@@ -41,16 +41,12 @@ export function ProjectMetaForm({
       })
     },
     onSuccess: async () => {
-      onFeedback({ text: 'Datos del proyecto guardados.', variant: 'success' })
-      await qc.invalidateQueries({ queryKey: ['project', projectId, token] })
-      await qc.invalidateQueries({ queryKey: ['admin-projects-all'] })
-      await qc.invalidateQueries({ queryKey: ['projects-all-p1'] })
+      toast.success('Datos del proyecto guardados.')
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId, token) })
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.adminListRoot() })
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.allP1Root() })
     },
-    onError: (e) =>
-      onFeedback({
-        text: e instanceof Error ? e.message : 'Error',
-        variant: 'error',
-      }),
+    onError: (e) => toast.error(e instanceof Error ? e.message : 'Error'),
   })
 
   return (
@@ -87,10 +83,7 @@ export function ProjectMetaForm({
         </div>
         <Button
           disabled={saveProject.isPending || !projectDirty}
-          onClick={() => {
-            onFeedback(null)
-            saveProject.mutate()
-          }}
+          onClick={() => saveProject.mutate()}
         >
           {saveProject.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar proyecto'}
         </Button>

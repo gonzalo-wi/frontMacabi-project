@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api/apiClient'
+import { fetchAllPages } from '@/lib/api/fetchAllPages'
 import type { PaginatedResourcesDTO, ResourceDTO, ResourceType } from '../model/types'
 
 export type CreateResourceBody = {
@@ -20,6 +21,11 @@ export function listResources(
 ): Promise<PaginatedResourcesDTO> {
   const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
   return apiRequest<PaginatedResourcesDTO>(`/api/stock/resources?${q}`, { token })
+}
+
+/** Todo el catálogo de recursos (recolecta páginas). */
+export function fetchAllResources(token: string, maxPages = 50): Promise<ResourceDTO[]> {
+  return fetchAllPages((page) => listResources(token, page, 50), maxPages)
 }
 
 export function getResource(token: string, id: string): Promise<ResourceDTO> {

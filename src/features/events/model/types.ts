@@ -149,3 +149,15 @@ export type ModuleResponseSummaryDTO = {
   }
   groups: ModuleResponseSummaryGroupDTO[]
 }
+
+export type EventNotificationDTO = {
+  id: string
+  event_instance_id: string
+  message: string
+  read_at: string | null
+  created_at: string
+}
+
+export type UnreadCountDTO = {
+  unread_count: number
+}

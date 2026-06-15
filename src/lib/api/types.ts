@@ -57,20 +57,6 @@ export type InviteUserCreatedResponseDTO = {
   message?: string
 }
 
-/** GET /api/users/invitations */
-export type PendingInvitationDTO = {
-  id: string
-  email: string
-  name: string
-  role: string
-  expires_at: string
-  created_at: string
-}
-
-export type ListPendingInvitationsDTO = {
-  data: PendingInvitationDTO[]
-}
-
 /** PATCH /api/users/:id/role */
 export type UpdateUserRoleBody = {
   role: 'admin' | 'user'

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchMyProjectMemberships } from '@/features/projects/lib/myMembership'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * Lista de proyectos del usuario actual (nombre + rol para panel / visibilidad de jornadas).
@@ -8,7 +9,7 @@ import { fetchMyProjectMemberships } from '@/features/projects/lib/myMembership'
  */
 export function useMyProjectMemberships(token: string | null | undefined, userId: string | undefined | null, isRestoring = false) {
   return useQuery({
-    queryKey: ['my-project-memberships', userId, token],
+    queryKey: queryKeys.memberships.my(userId, token),
     enabled: Boolean(token && userId) && !isRestoring,
     queryFn: () => fetchMyProjectMemberships(token!, userId!, 15),
     staleTime: 120_000,

@@ -1,22 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Loader2, Paperclip, Pencil, Upload, X } from 'lucide-react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
-import { ExpenseStatusBadge } from '@/components/StatusBadge'
+import { ExpenseStatusBadge } from '@/features/expenses/components/ExpenseStatusBadge'
+import { ExpenseFormFields } from '@/features/expenses/components/ExpenseFormFields'
+import { useExpenseCategories } from '@/features/expenses/hooks/useExpenseCategories'
+import { FormField } from '@/components/FormField'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  getCategories,
   patchExpense,
   removeReceipt,
   uploadReceipt,
@@ -26,7 +18,7 @@ import {
 import { ReceiptLink } from '@/features/expenses/components/ReceiptLink'
 import type { ExpenseDTO } from '@/features/expenses/model/types'
 import { ApiError } from '@/lib/api/apiClient'
-import { arsToCanonical, canonicalToArs, formatArsInput } from '@/lib/currency'
+import { arsToCanonical, canonicalToArs } from '@/lib/currency'
 
 type Props = {
   token: string
@@ -66,11 +58,7 @@ export function EditExpenseDialog({
   const [removeExisting, setRemoveExisting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const categoriesQ = useQuery({
-    queryKey: ['expense-categories', token],
-    queryFn: () => getCategories(token),
-    staleTime: 5 * 60_000,
-  })
+  const categoriesQ = useExpenseCategories(token, open)
   const categories = categoriesQ.data ?? []
 
   useEffect(() => {
@@ -147,71 +135,21 @@ export function EditExpenseDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-amount" className="text-xs font-semibold">
-                Monto
-              </Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium select-none">
-                  $
-                </span>
-                <Input
-                  id="edit-amount"
-                  value={amount}
-                  onChange={(e) => setAmount(formatArsInput(e.target.value))}
-                  placeholder="1.200,50"
-                  className="pl-7"
-                  inputMode="decimal"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-date" className="text-xs font-semibold">
-                Fecha
-              </Label>
-              <Input
-                id="edit-date"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="edit-description" className="text-xs font-semibold">
-              Descripción
-            </Label>
-            <Textarea
-              id="edit-description"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="resize-none"
-            />
-          </div>
-
-          {categories.length > 0 && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Categoría</Label>
-              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sin categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <ExpenseFormFields
+            idPrefix="edit"
+            amount={amount}
+            onAmountChange={setAmount}
+            expenseDate={expenseDate}
+            onExpenseDateChange={setExpenseDate}
+            description={description}
+            onDescriptionChange={setDescription}
+            categoryId={categoryId}
+            onCategoryIdChange={setCategoryId}
+            categories={categories}
+          />
 
           {/* ── Comprobante (los cambios se aplican al guardar) ── */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Comprobante</Label>
+          <FormField label="Comprobante" hint="JPG, PNG, WebP o PDF hasta 2 MB. Se guarda al confirmar.">
             <input
               ref={fileRef}
               type="file"
@@ -295,10 +233,7 @@ export function EditExpenseDialog({
                 )}
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground">
-              JPG, PNG, WebP o PDF hasta 2 MB. Se guarda al confirmar.
-            </p>
-          </div>
+          </FormField>
 
           <Button disabled={saveM.isPending} className="w-full" onClick={() => saveM.mutate()}>
             {saveM.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}

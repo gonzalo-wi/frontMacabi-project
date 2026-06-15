@@ -1,17 +1,7 @@
 import { useState } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { deleteExpense } from '@/features/expenses/api/expensesApi'
 import type { ExpenseDTO } from '@/features/expenses/model/types'
@@ -55,8 +45,10 @@ export function DeleteExpenseButton({
   const pendingOwn = exp.status === 'PENDIENTE' && exp.submitted_by_user_id === viewerUserId
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
         <Button
           type="button"
           size="icon"
@@ -66,41 +58,30 @@ export function DeleteExpenseButton({
         >
           <Trash2 className="w-4 h-4" />
         </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Eliminar este gasto?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {pendingOwn
-              ? 'Se borrará el gasto pendiente y su comprobante, si hay uno. Esta acción no se puede deshacer.'
-              : 'Se borrará el registro del gasto y su comprobante. Esta acción no se puede deshacer.'}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={busy}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={(e) => {
-              e.preventDefault()
-              void (async () => {
-                setBusy(true)
-                try {
-                  await deleteExpense(token, exp.id)
-                  setOpen(false)
-                  await onDeleted()
-                } catch (err) {
-                  onError(err instanceof ApiError ? err.message : 'No se pudo eliminar el gasto')
-                } finally {
-                  setBusy(false)
-                }
-              })()
-            }}
-          >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Eliminar'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      }
+      title="¿Eliminar este gasto?"
+      description={
+        pendingOwn
+          ? 'Se borrará el gasto pendiente y su comprobante, si hay uno. Esta acción no se puede deshacer.'
+          : 'Se borrará el registro del gasto y su comprobante. Esta acción no se puede deshacer.'
+      }
+      confirmLabel="Eliminar"
+      destructive
+      loading={busy}
+      onConfirm={() => {
+        void (async () => {
+          setBusy(true)
+          try {
+            await deleteExpense(token, exp.id)
+            setOpen(false)
+            await onDeleted()
+          } catch (err) {
+            onError(err instanceof ApiError ? err.message : 'No se pudo eliminar el gasto')
+          } finally {
+            setBusy(false)
+          }
+        })()
+      }}
+    />
   )
 }

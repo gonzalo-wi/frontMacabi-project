@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import { receiptViewUrl } from '@/features/expenses/api/expensesApi'
-import { receiptFileNameFromPath } from '@/features/expenses/utils/receipt'
+import { receiptFileNameFromPath } from '@/features/expenses/lib/receipt'
 import { cn } from '@/lib/utils'
 
 type Props = {

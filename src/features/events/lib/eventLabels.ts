@@ -39,11 +39,3 @@ export function labelGroupType(code: string): string {
   }
   return m[code] ?? code
 }
-
-export function labelProjectRole(code: string): string {
-  const m: Record<string, string> = {
-    coordinator: 'Coordinador',
-    madrij: 'Madrijím',
-  }
-  return m[code] ?? code
-}

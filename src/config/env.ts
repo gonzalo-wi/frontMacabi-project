@@ -2,6 +2,8 @@
  * Variables de entorno (Vite: solo las que empiezan con VITE_).
  * En `npm run dev`, suele venir de `.env.development` o `.env.development.local`.
  * En build, de `.env.production`, `.env` o variables del entorno de CI.
+ *
+ * Nota: VITE_SUPABASE_* ya no se usa en el frontend (el almacenamiento va vía API REST).
  */
 const raw = import.meta.env.VITE_API_URL
 

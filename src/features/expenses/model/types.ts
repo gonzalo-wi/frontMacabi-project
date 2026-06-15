@@ -7,6 +7,12 @@ export interface ExpenseCategoryDTO {
   created_at: string
 }
 
+export interface ProjectBudgetDTO {
+  monthly_budget: string | null
+  current_month_approved: string
+  month: string // "YYYY-MM"
+}
+
 export interface ExpenseDTO {
   id: string
   project_id: string
@@ -40,6 +46,12 @@ export interface PaginatedExpensesDTO {
 
 export interface ExpenseSummaryDTO {
   total_approved: string
+  total_count: number
+  approved_count: number
+  pending_count: number
+  pending_total: string
+  rejected_count: number
+  rejected_total: string
   by_month: { month: string; total: string }[]
 }
 
@@ -60,8 +72,10 @@ export interface ExpenseAnalyticsDTO {
   total_approved: string
   total_count: number
   pending_count: number
+  pending_total: string
   approved_count: number
   rejected_count: number
+  rejected_total: string
   granularity: 'day' | 'month'
   by_project: { project_id: string; project_name: string; total: string }[]
   by_bucket: { bucket: string; total: string }[]

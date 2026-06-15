@@ -47,17 +47,3 @@ export async function fetchMyProjectMemberships(
 
   return out
 }
-
-/**
- * IDs donde `userId` es miembro (cualquier rol).
- *
- * Fase 2 (backend): `GET /api/me/projects` puede devolver sólo IDs.
- */
-export async function collectMyProjectIds(
-  token: string,
-  userId: string,
-  maxProjectsPages = 10,
-): Promise<string[]> {
-  const rows = await fetchMyProjectMemberships(token, userId, maxProjectsPages)
-  return rows.map((r) => r.id)
-}
