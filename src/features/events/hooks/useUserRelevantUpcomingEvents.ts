@@ -4,6 +4,7 @@ import { getEventDetail, listEventInstances } from '@/features/events/api/events
 import type { EventDetailDTO } from '@/features/events/model/types'
 import type { MyProjectMembership } from '@/features/projects/lib/myMembership'
 import { userParticipatesInEvent } from '@/features/events/lib/visibility'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Máximo de jornadas con detalle completo cargado desde el panel. */
 export const USER_RELEVANT_UPCOMING_MAX = 8
@@ -73,9 +74,11 @@ export function useUserRelevantUpcomingEvents(
   const fp = memberships ? membershipsFingerprint(memberships) : ''
 
   return useQuery({
-    queryKey: ['user-relevant-upcoming-events', userId, token, fp],
+    queryKey: queryKeys.events.userRelevantUpcoming(userId, token, fp),
     enabled: Boolean(token && userId) && membershipsReady && memberships !== undefined && !isRestoring,
     queryFn: () => fetchUserRelevantUpcomingEvents(token!, memberships!, USER_RELEVANT_UPCOMING_MAX),
-    staleTime: 120_000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   })
 }

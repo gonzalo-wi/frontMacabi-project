@@ -10,7 +10,7 @@ import { RESOURCE_TYPE_LABELS } from '@/features/stock/lib/stockLabels'
 import type { ResourceRequestDTO } from '@/features/stock/model/types'
 import { ApiError } from '@/lib/api/apiClient'
 import { formatShort } from '@/lib/date'
-import { requestStatusBorderClass } from '@/lib/status'
+import { requestStatusBorderClass } from '@/features/stock/lib/status'
 import { cn } from '@/lib/utils'
 
 /**

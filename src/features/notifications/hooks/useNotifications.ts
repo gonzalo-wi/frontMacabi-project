@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -13,6 +13,13 @@ import {
   getExpenseUnreadCount,
   markAllExpenseNotificationsRead,
 } from '@/features/expenses/api/notificationsApi'
+import {
+  listEventNotifications,
+  markEventNotificationRead,
+  getEventUnreadCount,
+  markAllEventNotificationsRead,
+} from '@/features/events/api/notificationsApi'
+import { queryKeys } from '@/lib/queryKeys'
 
 export type AppNotification =
   | {
@@ -32,6 +39,14 @@ export type AppNotification =
       expense_id: string
       project_id: string
     }
+  | {
+      kind: 'event'
+      id: string
+      message: string
+      read_at: string | null
+      created_at: string
+      event_instance_id: string
+    }
 
 export function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -48,32 +63,48 @@ export function useNotifications(token: string, open: boolean) {
   const qc = useQueryClient()
 
   const stockCountQ = useQuery({
-    queryKey: ['stock-notifications-unread', token],
+    queryKey: queryKeys.notifications.stockUnread(token),
     queryFn: () => getStockUnreadCount(token),
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
 
   const expenseCountQ = useQuery({
-    queryKey: ['expense-notifications-unread', token],
+    queryKey: queryKeys.notifications.expenseUnread(token),
     queryFn: () => getExpenseUnreadCount(token),
     refetchInterval: 60_000,
     staleTime: 30_000,
   })
 
+  const eventCountQ = useQuery({
+    queryKey: queryKeys.notifications.eventUnread(token),
+    queryFn: () => getEventUnreadCount(token),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  })
+
   const unread =
-    (stockCountQ.data?.unread_count ?? 0) + (expenseCountQ.data?.unread_count ?? 0)
+    (stockCountQ.data?.unread_count ?? 0) +
+    (expenseCountQ.data?.unread_count ?? 0) +
+    (eventCountQ.data?.unread_count ?? 0)
 
   const stockListQ = useQuery({
-    queryKey: ['stock-notifications-list', token],
+    queryKey: queryKeys.notifications.stockList(token),
     queryFn: () => listStockNotifications(token),
     enabled: open,
     staleTime: 30_000,
   })
 
   const expenseListQ = useQuery({
-    queryKey: ['expense-notifications-list', token],
+    queryKey: queryKeys.notifications.expenseList(token),
     queryFn: () => listExpenseNotifications(token),
+    enabled: open,
+    staleTime: 30_000,
+  })
+
+  const eventListQ = useQuery({
+    queryKey: queryKeys.notifications.eventList(token),
+    queryFn: () => listEventNotifications(token),
     enabled: open,
     staleTime: 30_000,
   })
@@ -82,8 +113,8 @@ export function useNotifications(token: string, open: boolean) {
     mutationFn: (id: string) => markStockNotificationRead(token, id),
     onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['stock-notifications-unread'] }),
-        qc.invalidateQueries({ queryKey: ['stock-notifications-list'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.stockUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.stockListRoot() }),
       ])
     },
   })
@@ -92,8 +123,18 @@ export function useNotifications(token: string, open: boolean) {
     mutationFn: (id: string) => markExpenseNotificationRead(token, id),
     onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['expense-notifications-unread'] }),
-        qc.invalidateQueries({ queryKey: ['expense-notifications-list'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.expenseUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.expenseListRoot() }),
+      ])
+    },
+  })
+
+  const markEventM = useMutation({
+    mutationFn: (id: string) => markEventNotificationRead(token, id),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.eventUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.eventListRoot() }),
       ])
     },
   })
@@ -103,13 +144,16 @@ export function useNotifications(token: string, open: boolean) {
       Promise.all([
         markAllStockNotificationsRead(token),
         markAllExpenseNotificationsRead(token),
+        markAllEventNotificationsRead(token),
       ]),
     onSuccess: async () => {
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['stock-notifications-unread'] }),
-        qc.invalidateQueries({ queryKey: ['stock-notifications-list'] }),
-        qc.invalidateQueries({ queryKey: ['expense-notifications-unread'] }),
-        qc.invalidateQueries({ queryKey: ['expense-notifications-list'] }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.stockUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.stockListRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.expenseUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.expenseListRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.eventUnreadRoot() }),
+        qc.invalidateQueries({ queryKey: queryKeys.notifications.eventListRoot() }),
       ])
     },
   })
@@ -132,25 +176,35 @@ export function useNotifications(token: string, open: boolean) {
       expense_id: n.expense_id,
       project_id: n.project_id,
     }))
-    return [...stock, ...expense].sort(
+    const event: AppNotification[] = (eventListQ.data ?? []).map((n) => ({
+      kind: 'event' as const,
+      id: n.id,
+      message: n.message,
+      read_at: n.read_at,
+      created_at: n.created_at,
+      event_instance_id: n.event_instance_id,
+    }))
+    return [...stock, ...expense, ...event].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )
-  }, [expenseListQ.data, stockListQ.data])
+  }, [eventListQ.data, expenseListQ.data, stockListQ.data])
 
   function markOne(n: AppNotification) {
     if (n.read_at) return
     if (n.kind === 'stock') markStockM.mutate(n.id)
-    else markExpenseM.mutate(n.id)
+    else if (n.kind === 'expense') markExpenseM.mutate(n.id)
+    else markEventM.mutate(n.id)
   }
 
   return {
     notifications,
     unread,
-    isLoading: stockListQ.isLoading || expenseListQ.isLoading,
-    isError: stockListQ.isError || expenseListQ.isError,
+    isLoading: stockListQ.isLoading || expenseListQ.isLoading || eventListQ.isLoading,
+    isError: stockListQ.isError || expenseListQ.isError || eventListQ.isError,
     refetch: () => {
       void stockListQ.refetch()
       void expenseListQ.refetch()
+      void eventListQ.refetch()
     },
     markOne,
     markAll: () => markAllM.mutate(),
@@ -158,10 +212,4 @@ export function useNotifications(token: string, open: boolean) {
   }
 }
 
-// Keep open state + LIMIT logic here so both containers share the same hook call
 export const NOTIFICATIONS_LIMIT = 10
-
-export function useNotificationsPanel() {
-  const [open, setOpen] = useState(false)
-  return { open, setOpen }
-}

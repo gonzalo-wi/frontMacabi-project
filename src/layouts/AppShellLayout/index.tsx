@@ -6,6 +6,7 @@ import { PullToRefresh } from '@/components/PullToRefresh'
 import { GlobalLoadingBar } from '@/components/GlobalLoadingBar'
 import { useAuth } from '@/hooks/useAuth'
 import { useIsMobile, useMediaQuery } from '@/hooks/useIsMobile'
+import { getPullRefreshRoots } from '@/lib/pullRefreshRoots'
 
 import { MobileDrawer } from './MobileDrawer'
 import { MobileNav } from './MobileNav'
@@ -33,7 +34,14 @@ export function AppShellLayout() {
   const canPullToRefresh = Boolean(token) && !drawerOpen && !pwOpen && isMobile
 
   async function handlePullToRefresh() {
-    await queryClient.invalidateQueries({ refetchType: 'active' })
+    const roots = getPullRefreshRoots(pathname)
+    if (!roots) {
+      await queryClient.invalidateQueries({ refetchType: 'active' })
+      return
+    }
+    await Promise.all(
+      roots.map((queryKey) => queryClient.invalidateQueries({ queryKey, refetchType: 'active' })),
+    )
   }
 
   const userInitials = user?.name.split(' ').map((n) => n[0]).join('').slice(0, 2) ?? ''

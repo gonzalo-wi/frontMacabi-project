@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { listEventInstances } from '@/features/events/api/eventsApi'
 import { PAGE_SIZE } from '@/lib/pagination'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Lista paginada de jornadas (vista admin). */
 export function useAdminJornadas(
@@ -10,7 +11,7 @@ export function useAdminJornadas(
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: ['admin-events', token, page],
+    queryKey: queryKeys.events.adminList(token, page),
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => listEventInstances(token!, page, PAGE_SIZE),
   })

@@ -1,6 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 
 import { getMyEventResponse } from '@/features/events/api/eventsApi'
+import { queryKeys } from '@/lib/queryKeys'
 
 /**
  * Carga paralela GET .../responses/me para varias jornadas (panel, chips estado).
@@ -14,7 +15,7 @@ export function useUserEventResponsesMap(
 ) {
   const queries = useQueries({
     queries: eventIds.map((eventId) => ({
-      queryKey: ['event-my-response', eventId, token],
+      queryKey: queryKeys.events.myResponse(eventId, token),
       queryFn: () => getMyEventResponse(token!, eventId),
       enabled: Boolean(token && enabled && eventId && eventIds.length > 0),
       staleTime: 90_000,

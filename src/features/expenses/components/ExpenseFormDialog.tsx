@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { CreditCard, Loader2, Plus } from 'lucide-react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 
 import { toast } from 'sonner'
 
@@ -15,15 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import {
   createExpense,
-  getCategories,
   validateReceiptFile,
   RECEIPT_ACCEPT,
 } from '@/features/expenses/api/expensesApi'
+import { ExpenseFormFields } from '@/features/expenses/components/ExpenseFormFields'
+import { useExpenseCategories } from '@/features/expenses/hooks/useExpenseCategories'
 import { ApiError } from '@/lib/api/apiClient'
-import { arsToCanonical, formatArsInput } from '@/lib/currency'
+import { arsToCanonical } from '@/lib/currency'
 
 type ProjectOption = { id: string; name: string }
 
@@ -64,11 +64,7 @@ export function ExpenseFormDialog({
 
   const needsProjectPicker = !projectId
 
-  const categoriesQ = useQuery({
-    queryKey: ['expense-categories', token],
-    queryFn: () => getCategories(token),
-    staleTime: 5 * 60_000,
-  })
+  const categoriesQ = useExpenseCategories(token, open)
   const categories = categoriesQ.data ?? []
 
   function reset() {
@@ -79,6 +75,16 @@ export function ExpenseFormDialog({
     setReceiptFile(null)
     setCategoryId('')
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function pickReceiptFile(file: File) {
+    const err = validateReceiptFile(file)
+    if (err) {
+      toast.error(err)
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+    setReceiptFile(file)
   }
 
   const createM = useMutation({
@@ -159,58 +165,19 @@ export function ExpenseFormDialog({
             </FormField>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Monto" htmlFor="exp-amount">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium select-none">
-                  $
-                </span>
-                <Input
-                  id="exp-amount"
-                  value={amount}
-                  onChange={(e) => setAmount(formatArsInput(e.target.value))}
-                  placeholder="1.200,50"
-                  className="pl-7"
-                  inputMode="decimal"
-                />
-              </div>
-            </FormField>
-            <FormField label="Fecha" htmlFor="exp-date">
-              <Input
-                id="exp-date"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-              />
-            </FormField>
-          </div>
-
-          <FormField label="Descripción" htmlFor="exp-description">
-            <Textarea
-              id="exp-description"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="¿En qué consistió este gasto?"
-              className="resize-none"
-            />
-          </FormField>
-
-          {categories.length > 0 && (
-            <FormField label="Categoría">
-              <Select value={categoryId || 'none'} onValueChange={(v) => setCategoryId(v === 'none' ? '' : v)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sin categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-          )}
+          <ExpenseFormFields
+            idPrefix="exp"
+            amount={amount}
+            onAmountChange={setAmount}
+            expenseDate={expenseDate}
+            onExpenseDateChange={setExpenseDate}
+            description={description}
+            onDescriptionChange={setDescription}
+            categoryId={categoryId}
+            onCategoryIdChange={setCategoryId}
+            categories={categories}
+            descriptionPlaceholder="¿En qué consistió este gasto?"
+          />
 
           <FormField
             label="Comprobante"
@@ -222,7 +189,11 @@ export function ExpenseFormDialog({
               ref={fileRef}
               type="file"
               accept={RECEIPT_ACCEPT}
-              onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) pickReceiptFile(file)
+                else setReceiptFile(null)
+              }}
               className="file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 text-xs"
             />
           </FormField>

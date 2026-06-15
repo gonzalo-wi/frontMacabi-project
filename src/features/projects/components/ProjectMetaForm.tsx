@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { updateProject } from '@/features/projects/api/projectsApi'
 import type { ProjectDTO } from '@/features/projects/model/types'
+import { queryKeys } from '@/lib/queryKeys'
 
 export function ProjectMetaForm({
   project,
@@ -41,9 +42,9 @@ export function ProjectMetaForm({
     },
     onSuccess: async () => {
       toast.success('Datos del proyecto guardados.')
-      await qc.invalidateQueries({ queryKey: ['project', projectId, token] })
-      await qc.invalidateQueries({ queryKey: ['admin-projects-all'] })
-      await qc.invalidateQueries({ queryKey: ['projects-all-p1'] })
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId, token) })
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.adminListRoot() })
+      await qc.invalidateQueries({ queryKey: queryKeys.projects.allP1Root() })
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Error'),
   })

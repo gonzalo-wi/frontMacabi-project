@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { listProjectRequests } from '@/features/stock/api/requestsApi'
 import { PAGE_SIZE } from '@/lib/pagination'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Pedidos de stock de un proyecto (paginados). */
 export function useProjectStockRequests(
@@ -11,7 +12,7 @@ export function useProjectStockRequests(
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: ['project-stock-requests', projectId, token, page],
+    queryKey: queryKeys.stock.projectRequests(projectId, token, page),
     enabled: Boolean(token && projectId) && !isRestoring,
     queryFn: () => listProjectRequests(token!, projectId!, page, PAGE_SIZE),
   })

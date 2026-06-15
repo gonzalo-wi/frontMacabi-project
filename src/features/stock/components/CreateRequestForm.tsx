@@ -30,6 +30,7 @@ type CreateRequestFormProps = {
   onSubmit: () => void
   isPending: boolean
   error?: string
+  submitDisabled?: boolean
 }
 
 /** Formulario de creación de pedido (proyecto ya conocido por el contexto). */
@@ -41,6 +42,7 @@ export function CreateRequestForm({
   onSubmit,
   isPending,
   error,
+  submitDisabled = false,
 }: CreateRequestFormProps) {
   function set<K extends keyof RequestFormState>(key: K, value: RequestFormState[K]) {
     onChange({ ...form, [key]: value })
@@ -129,7 +131,7 @@ export function CreateRequestForm({
         </p>
       )}
 
-      <Button disabled={isPending} onClick={onSubmit} className="w-full h-11">
+      <Button disabled={isPending || submitDisabled} onClick={onSubmit} className="w-full h-11">
         {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear pedido'}
       </Button>
     </div>

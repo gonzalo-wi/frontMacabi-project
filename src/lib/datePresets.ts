@@ -4,7 +4,7 @@
 export type DatePreset = { label: string; desde: string; hasta: string }
 
 /** Formatea una fecha local como 'YYYY-MM-DD' (sin corrimiento de zona horaria). */
-export function isoDate(d: Date): string {
+function isoDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 

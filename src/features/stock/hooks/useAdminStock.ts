@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { listRequests } from '@/features/stock/api/requestsApi'
 import { listResources } from '@/features/stock/api/stockApi'
 import { PAGE_SIZE } from '@/lib/pagination'
+import { queryKeys } from '@/lib/queryKeys'
 
 /** Inventario paginado (vista admin). */
 export function useAdminStockResources(
@@ -11,7 +12,7 @@ export function useAdminStockResources(
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: ['admin-stock-resources', token, page],
+    queryKey: queryKeys.stock.adminResources(token, page),
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => listResources(token!, page, PAGE_SIZE),
   })
@@ -24,7 +25,7 @@ export function useAdminStockRequests(
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: ['admin-stock-requests-global', token, page],
+    queryKey: queryKeys.stock.adminRequestsGlobal(token, page),
     enabled: Boolean(token) && !isRestoring,
     queryFn: () => listRequests(token!, page, PAGE_SIZE),
   })

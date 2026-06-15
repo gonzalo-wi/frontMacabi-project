@@ -11,6 +11,7 @@ import { budgetStatus } from '@/features/expenses/lib/budget'
 import { ApiError } from '@/lib/api/apiClient'
 import { arsToCanonical, canonicalToArs, formatARS, formatArsInput } from '@/lib/currency'
 import { cn } from '@/lib/utils'
+import { queryKeys } from '@/lib/queryKeys'
 
 const TONE_BAR: Record<string, string> = {
   ok: 'bg-emerald-500',
@@ -34,7 +35,7 @@ export function ProjectBudgetBanner({
   const [error, setError] = useState<string | null>(null)
 
   const q = useQuery({
-    queryKey: ['project-budget', projectId, token],
+    queryKey: queryKeys.expenses.projectBudget(projectId, token),
     queryFn: () => getProjectBudget(token, projectId),
     enabled: Boolean(token && projectId),
   })
@@ -43,7 +44,7 @@ export function ProjectBudgetBanner({
     mutationFn: (monthlyAmount: string | null) => setProjectBudget(token, projectId, monthlyAmount),
     onSuccess: async () => {
       setOpen(false)
-      await qc.invalidateQueries({ queryKey: ['project-budget', projectId] })
+      await qc.invalidateQueries({ queryKey: [...queryKeys.expenses.projectBudgetRoot(), projectId] })
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : 'No se pudo guardar el presupuesto'),
   })
