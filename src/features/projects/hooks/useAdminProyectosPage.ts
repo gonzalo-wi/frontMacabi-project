@@ -1,15 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { createProject, deleteProject, listProjects } from '@/features/projects/api/projectsApi'
 import type { ProjectDTO } from '@/features/projects/model/types'
 import { useAdminUsers } from '@/features/users/hooks/useAdminUsers'
-import { useSortableListPage } from '@/hooks/useSortableListPage'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { queryKeys } from '@/lib/queryKeys'
-
-type ProjectSortKey = 'name' | 'description'
 
 type Args = {
   token: string | null
@@ -23,40 +21,27 @@ export function useAdminProyectosPage({ token, isRestoring }: Args) {
   const [description, setDescription] = useState('')
   const [coordinatorId, setCoordinatorId] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<ProjectDTO | null>(null)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
-  const {
-    page,
-    setPage,
-    search,
-    setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
-    rowsFrom,
-  } = useSortableListPage<ProjectDTO, ProjectSortKey>({
-    defaultSortKey: 'name',
-    defaultSortDir: 'asc',
-    matchSearch: (p, q) =>
-      p.name.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q),
-    compare: (a, b, key) => {
-      const left = key === 'name' ? a.name : a.description ?? ''
-      const right = key === 'name' ? b.name : b.description ?? ''
-      return left.localeCompare(right)
-    },
-  })
+  const debouncedQ = useDebouncedValue(search.trim())
+  const resetKey = debouncedQ
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey)
+    setPage(1)
+  }
 
   const listQ = useQuery({
-    queryKey: queryKeys.projects.adminList(token, page),
+    queryKey: queryKeys.projects.adminList(token, page, debouncedQ),
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => listProjects(token!, page, PAGE_SIZE),
+    queryFn: () => listProjects(token!, { page, pageSize: PAGE_SIZE, q: debouncedQ }),
   })
 
   const usersQ = useAdminUsers(token, isRestoring)
 
-  const filtered = useMemo(
-    () => rowsFrom(listQ.data?.data ?? []),
-    [listQ.data, rowsFrom],
-  )
+  const rows = listQ.data?.data ?? []
+  const totalPages = listQ.data?.total_pages ?? 1
 
   const createM = useMutation({
     mutationFn: async () => {
@@ -93,7 +78,7 @@ export function useAdminProyectosPage({ token, isRestoring }: Args) {
     : 'Todavía no hay proyectos.'
 
   const countLabel = listQ.data
-    ? `Mostrando ${filtered.length} de ${listQ.data.total} proyecto${listQ.data.total === 1 ? '' : 's'}`
+    ? `${listQ.data.total} proyecto${listQ.data.total === 1 ? '' : 's'}`
     : undefined
 
   return {
@@ -101,12 +86,10 @@ export function useAdminProyectosPage({ token, isRestoring }: Args) {
     setPage,
     search,
     setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
     listQ,
     usersQ,
-    filtered,
+    rows,
+    totalPages,
     createOpen,
     setCreateOpen,
     name,

@@ -1,91 +1,32 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Calendar, ChevronRight, Users } from 'lucide-react'
+import { Calendar, ChevronRight, Users } from 'lucide-react'
 
 import { SkeletonRows } from '@/components/data/SkeletonRows'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { RoleBadge, StatusBadge } from '@/features/users/components/admin/UserBadges'
-import { formatUserCreatedAt, type SortKey } from '@/features/users/lib/userHelpers'
+import { formatUserCreatedAt } from '@/features/users/lib/userHelpers'
 import type { UserDTO } from '@/lib/api/types'
 import { cn, getInitials } from '@/lib/utils'
-
-function SortCol({
-  label,
-  colKey,
-  sortKey,
-  sortDir,
-  onSort,
-  className,
-}: {
-  label: string
-  colKey: SortKey
-  sortKey: SortKey
-  sortDir: 'asc' | 'desc'
-  onSort: (k: SortKey) => void
-  className?: string
-}) {
-  const active = sortKey === colKey
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation()
-        onSort(colKey)
-      }}
-      className={cn(
-        'inline-flex items-center gap-1 rounded-md px-1 py-0.5 -mx-1 text-left uppercase tracking-wider',
-        'text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors',
-        className,
-      )}
-    >
-      {label}
-      {active ? (
-        sortDir === 'asc' ? (
-          <ArrowUp className="w-3 h-3 shrink-0" aria-hidden />
-        ) : (
-          <ArrowDown className="w-3 h-3 shrink-0" aria-hidden />
-        )
-      ) : (
-        <ArrowUpDown className="w-3 h-3 shrink-0 opacity-35" aria-hidden />
-      )}
-    </button>
-  )
-}
 
 export function UsersTable({
   pageRows,
   totalUsers,
-  sortKey,
-  sortDir,
-  onColumnSort,
   isPending,
   onOpenDrawer,
 }: {
   pageRows: UserDTO[]
   totalUsers: number
-  sortKey: SortKey
-  sortDir: 'asc' | 'desc'
-  onColumnSort: (k: SortKey) => void
   isPending: boolean
   onOpenDrawer: (u: UserDTO) => void
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-      <div className="hidden md:flex items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/40">
+      <div className="hidden md:flex items-center gap-3 px-5 py-2.5 border-b border-border bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         <div className="w-10 shrink-0" />
-        <div className="flex-1 min-w-[8rem]">
-          <SortCol label="Nombre" colKey="name" sortKey={sortKey} sortDir={sortDir} onSort={onColumnSort} />
-        </div>
-        <div className="w-52 xl:w-60 shrink-0">
-          <SortCol label="Correo" colKey="email" sortKey={sortKey} sortDir={sortDir} onSort={onColumnSort} />
-        </div>
-        <div className="w-[5.5rem] shrink-0 flex justify-end">
-          <SortCol label="Alta" colKey="created_at" sortKey={sortKey} sortDir={sortDir} onSort={onColumnSort} className="text-right" />
-        </div>
-        <div className="w-24 shrink-0 flex justify-center">
-          <SortCol label="Rol" colKey="role" sortKey={sortKey} sortDir={sortDir} onSort={onColumnSort} />
-        </div>
-        <div className="w-24 shrink-0 flex justify-center">
-          <SortCol label="Estado" colKey="status" sortKey={sortKey} sortDir={sortDir} onSort={onColumnSort} />
-        </div>
+        <div className="flex-1 min-w-[8rem]">Nombre</div>
+        <div className="w-52 xl:w-60 shrink-0">Correo</div>
+        <div className="w-[5.5rem] shrink-0 text-right">Alta</div>
+        <div className="w-24 shrink-0 text-center">Rol</div>
+        <div className="w-24 shrink-0 text-center">Estado</div>
         <div className="w-5 shrink-0" />
       </div>
 

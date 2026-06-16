@@ -24,7 +24,6 @@ export function labelModuleType(code: string): string {
     attendance: 'Asistencia',
     meal: 'Comida',
     transport: 'Transporte',
-    materials: 'Materiales',
     custom: 'Personalizado',
   }
   return m[code] ?? code

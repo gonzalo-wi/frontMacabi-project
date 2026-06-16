@@ -36,8 +36,10 @@ export default function AdminStockPage() {
     setEditForm,
     resourcesQ,
     requestsQ,
-    filteredResources,
-    filteredRequests,
+    resourceRows,
+    requestRows,
+    resourceTotalPages,
+    requestTotalPages,
     pendingCount,
     outOfStock,
     totalItems,
@@ -118,25 +120,25 @@ export default function AdminStockPage() {
         {activeSection === 'inventario' ? (
           <InventorySection
             resourcesQ={resourcesQ}
-            filteredResources={filteredResources}
+            rows={resourceRows}
             search={resourceSearch}
             onSearch={setResourceSearch}
             onEdit={openEdit}
             onDelete={(id) => delM.mutate(id)}
             page={resourcePage}
-            totalPages={resourcesQ.data?.total_pages ?? 1}
+            totalPages={resourceTotalPages}
             onPageChange={setResourcePage}
           />
         ) : (
           <RequestsSection
             requestsQ={requestsQ}
-            filteredRequests={filteredRequests}
+            rows={requestRows}
             search={requestSearch}
             onSearch={setRequestSearch}
             status={requestStatus}
             onStatus={setRequestStatus}
             page={requestPage}
-            totalPages={requestsQ.data?.total_pages ?? 1}
+            totalPages={requestTotalPages}
             onPageChange={setRequestPage}
           />
         )}

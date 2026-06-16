@@ -20,12 +20,10 @@ export default function AdminProyectosPage() {
     setPage,
     search,
     setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
     listQ,
     usersQ,
-    filtered,
+    rows,
+    totalPages,
     createOpen,
     setCreateOpen,
     name,
@@ -72,10 +70,7 @@ export default function AdminProyectosPage() {
         )}
 
         <AdminProjectsList
-          rows={filtered}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onSort={handleSort}
+          rows={rows}
           isLoading={listQ.isLoading}
           emptyMessage={emptyMessage}
           onRequestDelete={setDeleteTarget}
@@ -83,7 +78,7 @@ export default function AdminProyectosPage() {
 
         <PaginationControls
           page={page}
-          totalPages={listQ.data?.total_pages ?? 1}
+          totalPages={totalPages}
           onPageChange={setPage}
         />
       </div>

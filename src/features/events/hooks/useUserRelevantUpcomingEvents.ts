@@ -32,7 +32,7 @@ export async function fetchUserRelevantUpcomingEvents(
   let stoppedByCap = false
 
   pageLoop: for (let page = 1; page <= maxPages; page++) {
-    const res = await listEventInstances(token, page, 30)
+    const res = await listEventInstances(token, { page, pageSize: 30 })
     const futureOpen = res.data
       .filter((e) => e.status === 'open')
       .filter((e) => new Date(e.starts_at).getTime() > Date.now())

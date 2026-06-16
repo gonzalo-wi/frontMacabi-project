@@ -1,6 +1,6 @@
 import type { EventOptionDTO, EventOptionGroupDTO, ModuleDetailDTO } from '@/features/events/model/types'
 
-export const MODULE_TYPES = ['attendance', 'meal', 'transport', 'materials', 'custom'] as const
+export const MODULE_TYPES = ['attendance', 'meal', 'transport', 'custom'] as const
 export const GROUP_TYPES = ['single_choice', 'multiple_choice', 'text', 'number'] as const
 
 export type GroupState = { name: string; type: string; required: boolean }

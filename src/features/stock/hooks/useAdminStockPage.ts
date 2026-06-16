@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -6,8 +6,8 @@ import { toast } from 'sonner'
 import { createResource, deleteResource, updateResource } from '@/features/stock/api/stockApi'
 import { useAdminStockResources, useAdminStockRequests } from '@/features/stock/hooks/useAdminStock'
 import type { RequestStatus, ResourceDTO } from '@/features/stock/model/types'
-import { REQUEST_STATUS_ORDER } from '@/features/stock/lib/status'
 import type { FormState } from '@/features/stock/components/admin/ResourceForm'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { queryKeys } from '@/lib/queryKeys'
 
 export type StockSection = 'inventario' | 'pedidos'
@@ -30,48 +30,44 @@ export function useAdminStockPage({ token, isRestoring }: UseAdminStockPageArgs)
   const [resourcePage, setResourcePage] = useState(1)
   const [requestPage, setRequestPage] = useState(1)
 
-  useEffect(() => { setResourcePage(1) }, [resourceSearch])
-  useEffect(() => { setRequestPage(1) }, [requestSearch, requestStatus])
+  const debouncedResourceQ = useDebouncedValue(resourceSearch.trim())
+  const debouncedRequestQ = useDebouncedValue(requestSearch.trim())
+
+  const resourceResetKey = debouncedResourceQ
+  const [prevResourceResetKey, setPrevResourceResetKey] = useState(resourceResetKey)
+  if (resourceResetKey !== prevResourceResetKey) {
+    setPrevResourceResetKey(resourceResetKey)
+    setResourcePage(1)
+  }
+
+  const requestResetKey = [debouncedRequestQ, requestStatus].join('\0')
+  const [prevRequestResetKey, setPrevRequestResetKey] = useState(requestResetKey)
+  if (requestResetKey !== prevRequestResetKey) {
+    setPrevRequestResetKey(requestResetKey)
+    setRequestPage(1)
+  }
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM)
   const [editTarget, setEditTarget] = useState<ResourceDTO | null>(null)
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM)
 
-  const resourcesQ = useAdminStockResources(token, resourcePage, isRestoring)
-  const requestsQ = useAdminStockRequests(token, requestPage, isRestoring)
+  const resourcesQ = useAdminStockResources(token, resourcePage, debouncedResourceQ, isRestoring)
+  const requestsQ = useAdminStockRequests(
+    token,
+    requestPage,
+    debouncedRequestQ,
+    requestStatus,
+    isRestoring,
+  )
 
-  const filteredResources = useMemo(() => {
-    const q = resourceSearch.trim().toLowerCase()
-    const rows = resourcesQ.data?.data ?? []
-    if (!q) return rows
-    return rows.filter((r) => r.name.toLowerCase().includes(q))
-  }, [resourcesQ.data, resourceSearch])
+  const resourceRows = resourcesQ.data?.data ?? []
+  const requestRows = requestsQ.data?.data ?? []
+  const resourceTotalPages = resourcesQ.data?.total_pages ?? 1
+  const requestTotalPages = requestsQ.data?.total_pages ?? 1
 
-  const sortedRequests = useMemo(() => {
-    const order = REQUEST_STATUS_ORDER
-    return [...(requestsQ.data?.data ?? [])].sort((a, b) => {
-      const byStatus = order[a.status] - order[b.status]
-      if (byStatus !== 0) return byStatus
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    })
-  }, [requestsQ.data])
-
-  const filteredRequests = useMemo(() => {
-    const term = requestSearch.trim().toLowerCase()
-    return sortedRequests.filter((req) => {
-      if (requestStatus !== 'all' && req.status !== requestStatus) return false
-      if (!term) return true
-      return (
-        req.resource_name.toLowerCase().includes(term) ||
-        req.project_name.toLowerCase().includes(term) ||
-        req.requester_name.toLowerCase().includes(term)
-      )
-    })
-  }, [requestSearch, requestStatus, sortedRequests])
-
-  const pendingCount = (requestsQ.data?.data ?? []).filter((req) => req.status === 'PENDIENTE').length
-  const outOfStock = (resourcesQ.data?.data ?? []).filter((r) => r.available_stock === 0).length
+  const pendingCount = requestRows.filter((req) => req.status === 'PENDIENTE').length
+  const outOfStock = resourceRows.filter((r) => r.available_stock === 0).length
   const totalItems = resourcesQ.data?.total ?? 0
 
   const createM = useMutation({
@@ -162,8 +158,10 @@ export function useAdminStockPage({ token, isRestoring }: UseAdminStockPageArgs)
     setEditForm,
     resourcesQ,
     requestsQ,
-    filteredResources,
-    filteredRequests,
+    resourceRows,
+    requestRows,
+    resourceTotalPages,
+    requestTotalPages,
     pendingCount,
     outOfStock,
     totalItems,

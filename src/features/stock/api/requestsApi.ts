@@ -27,18 +27,27 @@ export function listProjectRequests(
   return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests?${q}`, { token })
 }
 
+export type RequestListParams = {
+  page?: number
+  pageSize?: number
+  projectId?: string
+  q?: string
+  status?: string
+}
+
 export function listRequests(
   token: string,
-  page = 1,
-  pageSize = 50,
-  projectId?: string,
+  params: RequestListParams = {},
 ): Promise<PaginatedRequestsDTO> {
-  const q = new URLSearchParams({
+  const { page = 1, pageSize = 50, projectId, q, status } = params
+  const search = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
   })
-  if (projectId) q.set('project_id', projectId)
-  return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests?${q}`, { token })
+  if (projectId) search.set('project_id', projectId)
+  if (q?.trim()) search.set('q', q.trim())
+  if (status?.trim() && status !== 'all') search.set('status', status.trim())
+  return apiRequest<PaginatedRequestsDTO>(`/api/stock/requests?${search}`, { token })
 }
 
 export function listMyRequests(

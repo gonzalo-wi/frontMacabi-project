@@ -9,12 +9,13 @@ import { queryKeys } from '@/lib/queryKeys'
 export function useAdminStockResources(
   token: string | null | undefined,
   page: number,
+  q: string,
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: queryKeys.stock.adminResources(token, page),
+    queryKey: queryKeys.stock.adminResources(token, page, q),
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => listResources(token!, page, PAGE_SIZE),
+    queryFn: () => listResources(token!, { page, pageSize: PAGE_SIZE, q }),
   })
 }
 
@@ -22,11 +23,19 @@ export function useAdminStockResources(
 export function useAdminStockRequests(
   token: string | null | undefined,
   page: number,
+  q: string,
+  status: string,
   isRestoring: boolean,
 ) {
   return useQuery({
-    queryKey: queryKeys.stock.adminRequestsGlobal(token, page),
+    queryKey: queryKeys.stock.adminRequestsGlobal(token, page, q, status),
     enabled: Boolean(token) && !isRestoring,
-    queryFn: () => listRequests(token!, page, PAGE_SIZE),
+    queryFn: () =>
+      listRequests(token!, {
+        page,
+        pageSize: PAGE_SIZE,
+        q,
+        status: status === 'all' ? undefined : status,
+      }),
   })
 }

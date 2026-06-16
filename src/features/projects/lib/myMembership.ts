@@ -22,7 +22,7 @@ export async function fetchMyProjectMemberships(
   const out: MyProjectMembership[] = []
 
   for (let page = 1; page <= maxProjectsPages; page++) {
-    const res = await listProjects(token, page, 40)
+    const res = await listProjects(token, { page, pageSize: 40 })
     const withMembers = await Promise.all(
       res.data.map((p) =>
         listProjectMembers(token, p.id).then(({ data: members }) => ({ p, members })),

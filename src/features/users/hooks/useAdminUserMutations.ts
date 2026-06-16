@@ -17,8 +17,10 @@ type SetSelected = React.Dispatch<React.SetStateAction<UserDTO | null>>
 export function useAdminUserMutations(token: string | null, setSelected: SetSelected) {
   const queryClient = useQueryClient()
 
-  const invalidateUsers = () =>
+  const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.users.allRoot() })
+    queryClient.invalidateQueries({ queryKey: queryKeys.users.adminListRoot() })
+  }
 
   const roleMutation = useMutation({
     mutationFn: ({ id, role }: { id: string; role: UpdateUserRoleBody['role'] }) =>

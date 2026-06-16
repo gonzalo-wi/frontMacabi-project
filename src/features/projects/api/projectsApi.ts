@@ -23,18 +23,25 @@ export type AddMemberBody = {
   role: string
 }
 
+export type ProjectListParams = {
+  page?: number
+  pageSize?: number
+  q?: string
+}
+
 export function listProjects(
   token: string,
-  page = 1,
-  pageSize = 20,
+  params: ProjectListParams = {},
 ): Promise<PaginatedProjectsDTO> {
-  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
-  return apiRequest<PaginatedProjectsDTO>(`/api/projects?${q}`, { token })
+  const { page = 1, pageSize = 20, q } = params
+  const search = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (q?.trim()) search.set('q', q.trim())
+  return apiRequest<PaginatedProjectsDTO>(`/api/projects?${search}`, { token })
 }
 
 /** Todos los proyectos (recolecta páginas). */
 export function fetchAllProjects(token: string, maxPages = 20): Promise<ProjectDTO[]> {
-  return fetchAllPages((page) => listProjects(token, page, 50), maxPages)
+  return fetchAllPages((page) => listProjects(token, { page, pageSize: 50 }), maxPages)
 }
 
 export function getProject(token: string, id: string): Promise<ProjectDTO> {

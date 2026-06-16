@@ -16,7 +16,7 @@ export async function fetchUserProjectsByUser(token: string): Promise<UserProjec
   const idx: UserProjectsByUserId = {}
   let page = 1
   while (page <= 25) {
-    const r = await listProjects(token, page, 50)
+    const r = await listProjects(token, { page, pageSize: 50 })
     await Promise.all(
       r.data.map(async (p) => {
         const { data: members } = await listProjectMembers(token, p.id)

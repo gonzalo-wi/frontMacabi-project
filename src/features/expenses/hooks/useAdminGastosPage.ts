@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { getExpenseAnalytics, listAllExpenses } from '@/features/expenses/api/expensesApi'
 import type { ExpenseStatus } from '@/features/expenses/model/types'
 import { listProjects } from '@/features/projects/api/projectsApi'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { queryKeys } from '@/lib/queryKeys'
 
@@ -24,7 +25,9 @@ export function useAdminGastosPage(
   const { query, projectFilter, statusFilter, desde, hasta } = filters
   const [page, setPage] = useState(1)
 
-  const resetKey = [query, projectFilter, statusFilter, desde, hasta].join('\0')
+  const debouncedQuery = useDebouncedValue(query.trim())
+
+  const resetKey = [debouncedQuery, projectFilter, statusFilter, desde, hasta].join('\0')
   const [prevResetKey, setPrevResetKey] = useState(resetKey)
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey)
@@ -42,11 +45,19 @@ export function useAdminGastosPage(
   const projectsQ = useQuery({
     queryKey: queryKeys.projects.allMin(token),
     enabled,
-    queryFn: () => listProjects(token!, 1, 100),
+    queryFn: () => listProjects(token!, { page: 1, pageSize: 100 }),
   })
 
   const listQ = useQuery({
-    queryKey: queryKeys.expenses.adminList(token, page, projectFilter, statusFilter, desde, hasta, query),
+    queryKey: queryKeys.expenses.adminList(
+      token,
+      page,
+      projectFilter,
+      statusFilter,
+      desde,
+      hasta,
+      debouncedQuery,
+    ),
     enabled,
     queryFn: () =>
       listAllExpenses(token!, {
@@ -56,7 +67,7 @@ export function useAdminGastosPage(
         status: statusFilter,
         from: desde || undefined,
         to: hasta || undefined,
-        q: query,
+        q: debouncedQuery,
       }),
   })
 
