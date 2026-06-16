@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -9,11 +9,9 @@ import {
 } from '@/features/events/api/eventsApi'
 import { useAdminJornadas } from '@/features/events/hooks/useAdminJornadas'
 import type { EventInstanceDTO } from '@/features/events/model/types'
-import { labelInstanceStatus } from '@/features/events/lib/eventLabels'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { queryKeys } from '@/lib/queryKeys'
-import { useSortableListPage } from '@/hooks/useSortableListPage'
 
-export type JornadaSortKey = 'title' | 'starts_at' | 'status'
 export type JornadaStatusFilter = 'all' | 'draft' | 'open' | 'closed' | 'cancelled'
 
 type Args = {
@@ -29,39 +27,20 @@ export function useAdminJornadasPage({ token, isRestoring }: Args) {
   const [deleteTarget, setDeleteTarget] = useState<EventInstanceDTO | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [dupSeedId, setDupSeedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
-  const {
-    page,
-    setPage,
-    search,
-    setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
-    rowsFrom,
-  } = useSortableListPage<EventInstanceDTO, JornadaSortKey>({
-    defaultSortKey: 'starts_at',
-    defaultSortDir: 'desc',
-    sortDirForKey: (key) => (key === 'starts_at' ? 'desc' : 'asc'),
-    resetDeps: [statusFilter],
-    matchSearch: (row, q) => row.title.toLowerCase().includes(q),
-    matchFilters: (row) => statusFilter === 'all' || row.status === statusFilter,
-    compare: (a, b, key) => {
-      if (key === 'title') return a.title.localeCompare(b.title)
-      if (key === 'status') {
-        return labelInstanceStatus(a.status).localeCompare(labelInstanceStatus(b.status))
-      }
-      return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
-    },
-  })
+  const debouncedQ = useDebouncedValue(search.trim())
+  const resetKey = `${debouncedQ}|${statusFilter}`
+  const [prevResetKey, setPrevResetKey] = useState(resetKey)
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey)
+    setPage(1)
+  }
 
-  const listQ = useAdminJornadas(token, page, isRestoring)
+  const listQ = useAdminJornadas(token, page, debouncedQ, statusFilter, isRestoring)
 
-  const filteredSorted = useMemo(
-    () => rowsFrom(listQ.data?.data ?? []),
-    [listQ.data, rowsFrom],
-  )
-
+  const rows = listQ.data?.data ?? []
   const totalPages = listQ.data?.total_pages ?? 1
 
   const patchStatus = useMutation({
@@ -139,10 +118,7 @@ export function useAdminJornadasPage({ token, isRestoring }: Args) {
     setPage,
     search,
     setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
-    filteredSorted,
+    rows,
     totalPages,
     listQ,
     patchStatus,

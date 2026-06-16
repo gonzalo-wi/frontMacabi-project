@@ -4,6 +4,9 @@ export const queryKeys = {
   users: {
     allRoot: () => ['admin-users-all'] as const,
     all: (token: string | null | undefined) => ['admin-users-all', token] as const,
+    adminListRoot: () => ['admin-users-list'] as const,
+    adminList: (token: string | null | undefined, page: number, q: string) =>
+      ['admin-users-list', token, page, q] as const,
     byUserProjectsRoot: () => ['user-projects-by-user'] as const,
     byUserProjects: (token: string | null | undefined) => ['user-projects-by-user', token] as const,
   },
@@ -12,8 +15,8 @@ export const queryKeys = {
     detail: (id: string | undefined, token: string | null | undefined) =>
       ['project', id, token] as const,
     adminListRoot: () => ['admin-projects-all'] as const,
-    adminList: (token: string | null | undefined, page: number) =>
-      ['admin-projects-all', token, page] as const,
+    adminList: (token: string | null | undefined, page: number, q: string) =>
+      ['admin-projects-all', token, page, q] as const,
     linkedEventsRoot: () => ['project-linked-events'] as const,
     linkedEvents: (projectId: string | undefined, token: string | null | undefined) =>
       ['project-linked-events', projectId, token] as const,
@@ -75,11 +78,15 @@ export const queryKeys = {
     projectRequests: (projectId: string | undefined, token: string | null | undefined, page: number) =>
       ['project-stock-requests', projectId, token, page] as const,
     adminResourcesRoot: () => ['admin-stock-resources'] as const,
-    adminResources: (token: string | null | undefined, page: number) =>
-      ['admin-stock-resources', token, page] as const,
+    adminResources: (token: string | null | undefined, page: number, q: string) =>
+      ['admin-stock-resources', token, page, q] as const,
     adminRequestsGlobalRoot: () => ['admin-stock-requests-global'] as const,
-    adminRequestsGlobal: (token: string | null | undefined, page: number) =>
-      ['admin-stock-requests-global', token, page] as const,
+    adminRequestsGlobal: (
+      token: string | null | undefined,
+      page: number,
+      q: string,
+      status: string,
+    ) => ['admin-stock-requests-global', token, page, q, status] as const,
   },
   events: {
     detailRoot: () => ['event-detail'] as const,
@@ -87,8 +94,12 @@ export const queryKeys = {
       ['event-detail', id, token] as const,
     detailDup: (seedId: string | null | undefined) => ['admin-event-detail-dup', seedId] as const,
     adminListRoot: () => ['admin-events'] as const,
-    adminList: (token: string | null | undefined, page: number) =>
-      ['admin-events', token, page] as const,
+    adminList: (
+      token: string | null | undefined,
+      page: number,
+      q: string,
+      status: string,
+    ) => ['admin-events', token, page, q, status] as const,
     participantResponsesRoot: () => ['event-participant-responses'] as const,
     participantResponses: (eventId: string | undefined, token: string | null | undefined) =>
       ['event-participant-responses', eventId, token] as const,

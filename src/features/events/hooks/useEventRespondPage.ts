@@ -57,7 +57,7 @@ export function useEventRespondPage({
       const map = new Map<string, string>()
       let pg = 1
       while (pg <= 20) {
-        const r = await listProjects(token!, pg, 50)
+        const r = await listProjects(token!, { page: pg, pageSize: 50 })
         for (const p of r.data) map.set(p.id, p.name)
         if (pg >= r.total_pages) break
         pg++

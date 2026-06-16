@@ -14,18 +14,25 @@ export type UpdateResourceBody = {
   total_stock: number
 }
 
+export type ResourceListParams = {
+  page?: number
+  pageSize?: number
+  q?: string
+}
+
 export function listResources(
   token: string,
-  page = 1,
-  pageSize = 50,
+  params: ResourceListParams = {},
 ): Promise<PaginatedResourcesDTO> {
-  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
-  return apiRequest<PaginatedResourcesDTO>(`/api/stock/resources?${q}`, { token })
+  const { page = 1, pageSize = 50, q } = params
+  const search = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (q?.trim()) search.set('q', q.trim())
+  return apiRequest<PaginatedResourcesDTO>(`/api/stock/resources?${search}`, { token })
 }
 
 /** Todo el catálogo de recursos (recolecta páginas). */
 export function fetchAllResources(token: string, maxPages = 50): Promise<ResourceDTO[]> {
-  return fetchAllPages((page) => listResources(token, page, 50), maxPages)
+  return fetchAllPages((page) => listResources(token, { page, pageSize: 50 }), maxPages)
 }
 
 export function getResource(token: string, id: string): Promise<ResourceDTO> {

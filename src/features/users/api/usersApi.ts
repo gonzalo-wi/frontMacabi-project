@@ -20,16 +20,23 @@ export async function createUserInvitation(
   })
 }
 
+export type UserListParams = {
+  page?: number
+  pageSize?: number
+  q?: string
+}
+
 /**
- * GET /api/users?page=1&page_size=20
+ * GET /api/users?page=1&page_size=20&q=
  */
 export async function getUsers(
   token: string,
-  page = 1,
-  pageSize = 20,
+  params: UserListParams = {},
 ): Promise<PaginatedUsersDTO> {
-  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
-  return apiRequest<PaginatedUsersDTO>(`/api/users?${q}`, { method: 'GET', token })
+  const { page = 1, pageSize = 20, q } = params
+  const search = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (q?.trim()) search.set('q', q.trim())
+  return apiRequest<PaginatedUsersDTO>(`/api/users?${search}`, { method: 'GET', token })
 }
 
 /**

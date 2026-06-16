@@ -15,7 +15,7 @@ import { ResourceActions } from '@/features/stock/components/admin/ResourceActio
 
 export function InventorySection({
   resourcesQ,
-  filteredResources,
+  rows,
   search,
   onSearch,
   onEdit,
@@ -25,7 +25,7 @@ export function InventorySection({
   onPageChange,
 }: {
   resourcesQ: { isLoading: boolean; isError: boolean; error: unknown }
-  filteredResources: ResourceDTO[]
+  rows: ResourceDTO[]
   search: string
   onSearch: (value: string) => void
   onEdit: (resource: ResourceDTO) => void
@@ -65,9 +65,9 @@ export function InventorySection({
 
         {resourcesQ.isLoading && <SkeletonRows count={4} className="h-[72px]" />}
 
-        {!resourcesQ.isLoading && filteredResources.length > 0 && (
+        {!resourcesQ.isLoading && rows.length > 0 && (
           <div className="space-y-2">
-            {filteredResources.map((r) => {
+            {rows.map((r) => {
               const pct = r.total_stock > 0 ? (r.available_stock / r.total_stock) * 100 : 0
               return (
                 <div
@@ -125,7 +125,7 @@ export function InventorySection({
           </div>
         )}
 
-        {!resourcesQ.isLoading && filteredResources.length === 0 && !resourcesQ.isError && (
+        {!resourcesQ.isLoading && rows.length === 0 && !resourcesQ.isError && (
           <div className="flex flex-col items-center gap-2.5 py-10 text-center border border-dashed rounded-xl">
             <Package className="w-9 h-9 text-muted-foreground/25" />
             <p className="text-sm text-muted-foreground">

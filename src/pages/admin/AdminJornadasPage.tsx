@@ -48,10 +48,7 @@ export default function AdminJornadasPage() {
     setPage,
     search,
     setSearch,
-    sortKey,
-    sortDir,
-    handleSort,
-    filteredSorted,
+    rows,
     totalPages,
     listQ,
     patchStatus,
@@ -103,7 +100,7 @@ export default function AdminJornadasPage() {
           searchPlaceholder="Buscar jornada"
           countLabel={
             listQ.data
-              ? `Mostrando ${filteredSorted.length} de ${listQ.data.total} jornada${listQ.data.total === 1 ? '' : 's'}`
+              ? `${listQ.data.total} jornada${listQ.data.total === 1 ? '' : 's'}`
               : undefined
           }
           filters={
@@ -123,12 +120,11 @@ export default function AdminJornadasPage() {
         />
 
         <SortableTable
-          rows={filteredSorted}
+          rows={rows}
           columns={[
             {
               id: 'title',
               header: 'Jornada',
-              sortKey: 'title',
               render: (row) => (
                 <Link to={`/app/admin/jornadas/${row.id}`} className="font-semibold text-primary hover:underline">
                   {row.title}
@@ -138,13 +134,11 @@ export default function AdminJornadasPage() {
             {
               id: 'starts_at',
               header: 'Inicio',
-              sortKey: 'starts_at',
               render: (row) => <span className="text-xs text-muted-foreground">{formatStartsAR(row.starts_at)}</span>,
             },
             {
               id: 'status',
               header: 'Estado',
-              sortKey: 'status',
               render: (row) => <EventStatusBadge status={row.status} />,
             },
             {
@@ -156,15 +150,12 @@ export default function AdminJornadasPage() {
             },
           ]}
           getRowKey={(row) => row.id}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onSort={handleSort}
           isLoading={listQ.isLoading}
           emptyMessage={emptyMessage}
         />
 
         <MobileList
-          rows={filteredSorted}
+          rows={rows}
           getRowKey={(row) => row.id}
           isLoading={listQ.isLoading}
           emptyMessage={emptyMessage}

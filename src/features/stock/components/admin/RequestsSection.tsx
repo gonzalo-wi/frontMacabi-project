@@ -14,7 +14,7 @@ import type { RequestStatus, ResourceRequestDTO } from '@/features/stock/model/t
 
 export function RequestsSection({
   requestsQ,
-  filteredRequests,
+  rows,
   search,
   onSearch,
   status,
@@ -24,7 +24,7 @@ export function RequestsSection({
   onPageChange,
 }: {
   requestsQ: { isLoading: boolean; isError: boolean; error: unknown }
-  filteredRequests: ResourceRequestDTO[]
+  rows: ResourceRequestDTO[]
   search: string
   onSearch: (value: string) => void
   status: RequestStatus | 'all'
@@ -72,7 +72,7 @@ export function RequestsSection({
         </div>
 
         <StockRequestsList
-          requests={filteredRequests}
+          requests={rows}
           isLoading={requestsQ.isLoading}
           isError={requestsQ.isError}
           error={requestsQ.error}

@@ -7,13 +7,8 @@ import { projectAvatarColor, projectInitial } from '@/features/projects/lib/proj
 import type { ProjectDTO } from '@/features/projects/model/types'
 import { cn } from '@/lib/utils'
 
-type ProjectSortKey = 'name' | 'description'
-
 type Props = {
   rows: ProjectDTO[]
-  sortKey: ProjectSortKey
-  sortDir: 'asc' | 'desc'
-  onSort: (key: ProjectSortKey) => void
   isLoading: boolean
   emptyMessage: string
   onRequestDelete: (project: ProjectDTO) => void
@@ -21,9 +16,6 @@ type Props = {
 
 export function AdminProjectsList({
   rows,
-  sortKey,
-  sortDir,
-  onSort,
   isLoading,
   emptyMessage,
   onRequestDelete,
@@ -36,7 +28,6 @@ export function AdminProjectsList({
           {
             id: 'name',
             header: 'Proyecto',
-            sortKey: 'name',
             render: (project) => (
               <div className="flex items-center gap-3">
                 <div
@@ -59,7 +50,6 @@ export function AdminProjectsList({
           {
             id: 'description',
             header: 'Descripción',
-            sortKey: 'description',
             render: (project) => (
               <span className="line-clamp-2 text-muted-foreground text-sm">
                 {project.description ?? '—'}
@@ -77,9 +67,6 @@ export function AdminProjectsList({
           },
         ]}
         getRowKey={(project) => project.id}
-        sortKey={sortKey}
-        sortDir={sortDir}
-        onSort={onSort}
         isLoading={isLoading}
         emptyMessage={emptyMessage}
       />

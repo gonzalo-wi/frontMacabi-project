@@ -14,7 +14,7 @@ export async function loadEventDetailsForProject(
   const out: EventDetailDTO[] = []
   let page = 1
   while (page <= 25) {
-    const r = await listEventInstances(token, page, 40)
+    const r = await listEventInstances(token, { page, pageSize: 40 })
     const details = await Promise.all(r.data.map((i) => getEventDetail(token, i.id)))
     for (const d of details) {
       if (d.project_ids.includes(projectId)) {

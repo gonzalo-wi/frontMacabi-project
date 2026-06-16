@@ -7,19 +7,11 @@ import { DataToolbar } from '@/components/data/DataToolbar'
 import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { BulkInviteDialog } from '@/features/users/components/BulkInviteDialog'
 import { InviteDialog } from '@/features/users/components/admin/InviteDialog'
 import { UserDrawerContent } from '@/features/users/components/admin/UserDrawerContent'
 import { UsersTable } from '@/features/users/components/admin/UsersTable'
 import { useAdminUsuariosPage } from '@/features/users/hooks/useAdminUsuariosPage'
-import { SORT_MOBILE_VALUES, sortMobileLabel } from '@/features/users/lib/userHelpers'
 import { useAuth } from '@/hooks/useAuth'
 import { useIsDesktop } from '@/hooks/useIsMobile'
 
@@ -45,10 +37,15 @@ export default function AdminUsuariosPage() {
     roleMutation,
     statusMutation,
     drawer,
-    list,
+    search,
+    setSearch,
+    page,
+    setPage,
+    totalPages,
+    pageRows,
+    countLabel,
     handleInviteSubmit,
     closeInviteDialog,
-    sortMobileValue,
     totalUsers,
     isOwnAccount,
     userProjectsByUser,
@@ -85,51 +82,25 @@ export default function AdminUsuariosPage() {
           <>
             {!usersQuery.isPending && (
               <DataToolbar
-                search={list.search}
-                onSearch={list.setSearch}
+                search={search}
+                onSearch={setSearch}
                 searchPlaceholder="Buscar por nombre o correo"
-                countLabel={
-                  list.search.trim()
-                    ? `${list.filteredSorted.length} resultado${list.filteredSorted.length !== 1 ? 's' : ''} de ${totalUsers} usuario${totalUsers !== 1 ? 's' : ''}`
-                    : `${totalUsers} usuario${totalUsers !== 1 ? 's' : ''} en total`
-                }
-                filters={
-                  <div className="shrink-0 w-full sm:w-auto md:hidden">
-                    <Select
-                      value={SORT_MOBILE_VALUES.includes(sortMobileValue) ? sortMobileValue : 'created_at:desc'}
-                      onValueChange={list.handleMobileSortValue}
-                    >
-                      <SelectTrigger className="h-10 w-full sm:min-w-[14rem]" aria-label="Ordenar usuarios">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SORT_MOBILE_VALUES.map((v) => (
-                          <SelectItem key={v} value={v}>
-                            {sortMobileLabel(v)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                }
+                countLabel={countLabel}
               />
             )}
 
             <UsersTable
-              pageRows={list.pageItems}
+              pageRows={pageRows}
               totalUsers={totalUsers}
-              sortKey={list.sortKey}
-              sortDir={list.sortDir}
-              onColumnSort={list.handleColumnSort}
               isPending={usersQuery.isPending}
               onOpenDrawer={drawer.openDrawer}
             />
 
-            {list.totalPages > 1 && list.pageItems.length > 0 && (
+            {totalPages > 1 && pageRows.length > 0 && (
               <PaginationControls
-                page={list.page}
-                totalPages={list.totalPages}
-                onPageChange={list.setPage}
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
                 compact
               />
             )}

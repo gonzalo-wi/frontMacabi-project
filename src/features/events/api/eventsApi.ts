@@ -97,13 +97,22 @@ export type EventOptionGroupJson = {
  * Listado paginado global de instancias (participante y admin ven el mismo listado hasta que exista
  * algo tipo `GET /api/me/event-instances` por membresías).
  */
+export type EventListParams = {
+  page?: number
+  pageSize?: number
+  q?: string
+  status?: string
+}
+
 export function listEventInstances(
   token: string,
-  page = 1,
-  pageSize = 20,
+  params: EventListParams = {},
 ): Promise<PaginatedEventInstancesDTO> {
-  const q = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
-  return apiRequest<PaginatedEventInstancesDTO>(`/api/event-instances?${q}`, { token })
+  const { page = 1, pageSize = 20, q, status } = params
+  const search = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  if (q?.trim()) search.set('q', q.trim())
+  if (status?.trim() && status !== 'all') search.set('status', status.trim())
+  return apiRequest<PaginatedEventInstancesDTO>(`/api/event-instances?${search}`, { token })
 }
 
 export function getEventDetail(token: string, id: string): Promise<EventDetailDTO> {
