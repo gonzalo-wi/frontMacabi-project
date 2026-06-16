@@ -12,7 +12,8 @@ Está pensado para alguien con **poco conocimiento de React**. Combina:
 
 No hace falta memorizar línea por línea: hay que poder **ubicar** cada archivo y **explicar** qué hace el bloque clave (router → hook → api → mutation).
 
-Para contexto general del stack y carpetas, ver [`GUIA-FRONTEND.md`](./GUIA-FRONTEND.md).
+Para contexto general del stack y carpetas, ver [`GUIA-FRONTEND.md`](./GUIA-FRONTEND.md).  
+Para auth, login y admin gastos (otro compañero), ver [`GUIA-FLUJOS-AUTH-GASTOS.md`](./GUIA-FLUJOS-AUTH-GASTOS.md).
 
 > **Tip:** Si el profesor abre el IDE, empezá por la [sección 7](#7-apéndice--código-importante-para-cuando-el-profesor-abre-el-repo) y seguí el hilo router → hook → `*Api.ts`.
 
@@ -513,7 +514,7 @@ features/projects/components/ProjectPicker.tsx
 | Aspecto | Usuarios | Jornadas |
 |---------|----------|----------|
 | Pantalla principal | Una (`AdminUsuariosPage`) | Tres (listado, ficha, editor) |
-| Paginación | Cliente (trae todos los usuarios) | Servidor (página por página) |
+| Paginación | Servidor (`GET /api/users?q=`) | Servidor (`q` + `status`) |
 | Creación inicial | Dialog invitación o Excel | Dialog “Nueva jornada” |
 | Edición profunda | Drawer lateral | Editor con 3 pestañas |
 | Flujo externo | Invitado en `/aceptar-invitacion` | Participante en `/app/jornadas/:id/responder` |

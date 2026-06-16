@@ -16,6 +16,13 @@ Aplicación web para **madrijim y coordinadores** de Macabi Argentina: panel per
 | Gestor de paquetes | **pnpm** (no usar `npm install` en este repo) |
 | Alias de imports | `@/` → `src/` |
 
+### Guías de defensa (examen / presentación)
+
+| Documento | Contenido |
+|-----------|-----------|
+| [`GUIA-FLUJOS-ADMIN-USUARIOS-JORNADAS.md`](./GUIA-FLUJOS-ADMIN-USUARIOS-JORNADAS.md) | Admin usuarios + jornadas |
+| [`GUIA-FLUJOS-AUTH-GASTOS.md`](./GUIA-FLUJOS-AUTH-GASTOS.md) | Auth (login, sesión, reset) + admin gastos |
+
 ---
 
 ## 2. Stack tecnológico
