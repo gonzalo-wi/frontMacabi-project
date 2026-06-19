@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { usePanelPage } from '@/features/dashboard/hooks/usePanelPage'
 import { UserPanelJornadasBlock } from '@/features/events/components/UserPanelJornadasBlock'
 import { UserPanelProjectsBlock } from '@/features/projects/components/UserPanelProjectsBlock'
+import { LatestNewsBlock } from '@/features/news/components/LatestNewsBlock'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function PanelPage() {
@@ -64,6 +65,7 @@ export default function PanelPage() {
         </div>
 
         <div className="space-y-8">
+          {token && <LatestNewsBlock token={token} />}
           <UserPanelProjectsBlock memberships={membershipsQ.data} isLoading={membershipsQ.isPending} />
           <UserPanelJornadasBlock upcomingQ={upcomingQ} responseMap={responseMap} />
         </div>

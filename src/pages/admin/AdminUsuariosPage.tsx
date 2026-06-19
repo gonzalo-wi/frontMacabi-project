@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Upload, UserPlus, Users } from 'lucide-react'
 
 import { PageHeader } from '@/components/PageHeader'
@@ -7,6 +9,7 @@ import { DataToolbar } from '@/components/data/DataToolbar'
 import { ErrorBanner } from '@/components/data/ErrorBanner'
 import { PaginationControls } from '@/components/data/PaginationControls'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
+import { listPendingInvitations } from '@/features/users/api/usersApi'
 import { BulkInviteDialog } from '@/features/users/components/BulkInviteDialog'
 import { InviteDialog } from '@/features/users/components/admin/InviteDialog'
 import { UserDrawerContent } from '@/features/users/components/admin/UserDrawerContent'
@@ -14,14 +17,18 @@ import { UsersTable } from '@/features/users/components/admin/UsersTable'
 import { useAdminUsuariosPage } from '@/features/users/hooks/useAdminUsuariosPage'
 import { useAuth } from '@/hooks/useAuth'
 import { useIsDesktop } from '@/hooks/useIsMobile'
+import { queryKeys } from '@/lib/queryKeys'
 
 export default function AdminUsuariosPage() {
   const { token, user: me, isRestoring } = useAuth()
   const isDesktop = useIsDesktop()
+  const queryClient = useQueryClient()
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   const {
     isAdmin,
     selected,
+    setSelected,
     inviteOpen,
     setInviteOpen,
     bulkOpen,
@@ -36,6 +43,10 @@ export default function AdminUsuariosPage() {
     userProjectsQuery,
     roleMutation,
     statusMutation,
+    sendInviteMutation,
+    resendInviteMutation,
+    revokeInviteMutation,
+    deleteUserMutation,
     drawer,
     search,
     setSearch,
@@ -44,21 +55,34 @@ export default function AdminUsuariosPage() {
     totalPages,
     pageRows,
     countLabel,
-    handleInviteSubmit,
+    handleAddUser,
+    handleAddAndInvite,
     closeInviteDialog,
     totalUsers,
     isOwnAccount,
     userProjectsByUser,
-    inviteMutation,
+    addDialogPending,
     invalidateUsers,
   } = useAdminUsuariosPage({ token, me, isRestoring })
+
+  function handleDeleteUser() {
+    if (!selected) return
+    if (selected.is_orphan_invitation && selected.pending_invitation_id) {
+      revokeInviteMutation.mutate(selected.pending_invitation_id, {
+        onSuccess: () => setSelected(null),
+      })
+    } else if (!selected.is_orphan_invitation) {
+      deleteUserMutation.mutate(selected.id)
+    }
+    setConfirmDeleteOpen(false)
+  }
 
   return (
     <div className="min-h-screen">
       <PageHeader
         icon={Users}
         title="Usuarios"
-        subtitle="Invitaciones, permisos y estado de cuenta."
+        subtitle="Alta, invitaciones, permisos y estado de cuenta."
         action={
           <div className="flex items-center gap-2">
             <ActionButton intent="secondary" onClick={() => setBulkOpen(true)}>
@@ -126,7 +150,43 @@ export default function AdminUsuariosPage() {
               onClose={drawer.closeDrawer}
               onConfirmDeactivate={() => drawer.setConfirmDeactivateOpen(true)}
               onReactivate={() => statusMutation.mutate({ id: selected.id, active: true })}
+              onConfirmDelete={() => setConfirmDeleteOpen(true)}
+              onSendInvite={() =>
+                sendInviteMutation.mutate(
+                  {
+                    name: selected.name,
+                    email: selected.email,
+                    role: selected.role as 'user' | 'admin',
+                  },
+                  {
+                    onSuccess: async () => {
+                      await queryClient.invalidateQueries({ queryKey: queryKeys.users.pendingInvitationsRoot() })
+                      if (!token) return
+                      const pending = await listPendingInvitations(token)
+                      const match = pending.data.find(
+                        (inv) => inv.email.toLowerCase() === selected.email.toLowerCase(),
+                      )
+                      setSelected((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              invitation_status: 'invited',
+                              pending_invitation_id: match?.id ?? prev.pending_invitation_id,
+                            }
+                          : prev,
+                      )
+                    },
+                  },
+                )
+              }
+              onResendInvite={() => {
+                if (!selected.pending_invitation_id) return
+                resendInviteMutation.mutate(selected.pending_invitation_id)
+              }}
               statusPending={statusMutation.isPending}
+              invitePending={sendInviteMutation.isPending}
+              resendPending={resendInviteMutation.isPending}
+              deletePending={deleteUserMutation.isPending || revokeInviteMutation.isPending}
               onRoleChange={(role) => roleMutation.mutate({ id: selected.id, role })}
               rolePending={roleMutation.isPending}
             />
@@ -150,9 +210,10 @@ export default function AdminUsuariosPage() {
         onName={setInviteName}
         onEmail={setInviteEmail}
         onRole={setInviteRole}
-        onSubmit={handleInviteSubmit}
+        onAdd={handleAddUser}
+        onAddAndInvite={handleAddAndInvite}
         onCancel={() => setInviteOpen(false)}
-        isPending={inviteMutation.isPending}
+        isPending={addDialogPending}
       />
 
       <ConfirmDialog
@@ -178,6 +239,26 @@ export default function AdminUsuariosPage() {
           statusMutation.mutate({ id: selected.id, active: false })
           drawer.setConfirmDeactivateOpen(false)
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="¿Borrar este usuario?"
+        description={
+          selected ? (
+            <>
+              Se eliminará{' '}
+              <span className="font-medium text-foreground">{selected.name}</span>
+              {' '}y sus asignaciones de proyectos. Podés volver a agregarlo después si lo necesitás.
+            </>
+          ) : null
+        }
+        confirmLabel="Borrar"
+        loadingLabel="Borrar"
+        destructive
+        loading={deleteUserMutation.isPending || revokeInviteMutation.isPending}
+        onConfirm={handleDeleteUser}
       />
     </div>
   )

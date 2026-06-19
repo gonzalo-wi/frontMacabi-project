@@ -33,7 +33,7 @@ export function BulkInviteDialog({ open, onOpenChange, token, onDone }: BulkInvi
             </div>
             Importar usuarios desde Excel
           </DialogTitle>
-          {flow.phase === 'idle' && (
+          {(flow.phase === 'idle' || flow.phase === 'mode') && (
             <p className="text-sm text-muted-foreground pt-1">
               Subí un Excel o CSV con columnas{' '}
               <span className="font-medium text-foreground">Nombre completo</span> y{' '}
@@ -100,10 +100,61 @@ export function BulkInviteDialog({ open, onOpenChange, token, onDone }: BulkInvi
           </div>
         )}
 
+        {flow.phase === 'mode' && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Elegí cómo importar {flow.validCount} usuario{flow.validCount !== 1 ? 's' : ''} válido
+              {flow.validCount !== 1 ? 's' : ''}:
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                className={cn(
+                  'rounded-xl border p-4 text-left transition-colors',
+                  flow.mode === 'add'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/40',
+                )}
+                onClick={() => flow.setMode('add')}
+              >
+                <p className="text-sm font-semibold">Solo agregar</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Carga usuarios sin enviar correo. Podés invitarlos después.
+                </p>
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'rounded-xl border p-4 text-left transition-colors',
+                  flow.mode === 'invite'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/40',
+                )}
+                onClick={() => flow.setMode('invite')}
+              >
+                <p className="text-sm font-semibold">Agregar e invitar</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Carga usuarios y envía invitación por correo a cada uno.
+                </p>
+              </button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={flow.reset}>
+                Volver
+              </Button>
+              <Button onClick={flow.confirmMode}>
+                Continuar
+              </Button>
+            </div>
+          </div>
+        )}
+
         {flow.phase === 'preview' && (
           <>
             <div className="flex items-center gap-3 text-sm py-1 shrink-0">
-              <span className="text-emerald-600 font-medium">{flow.validCount} para enviar</span>
+              <span className="text-emerald-600 font-medium">
+                {flow.validCount} para {flow.mode === 'add' ? 'agregar' : 'invitar'}
+              </span>
               {flow.invalidCount > 0 && (
                 <span className="text-destructive font-medium">
                   · {flow.invalidCount} con error (se omitirán)
@@ -133,12 +184,14 @@ export function BulkInviteDialog({ open, onOpenChange, token, onDone }: BulkInvi
             </div>
 
             <div className="flex justify-end gap-2 pt-1 shrink-0">
-              <Button variant="outline" onClick={flow.reset}>
+              <Button variant="outline" onClick={flow.goBackToMode}>
                 Volver
               </Button>
               <Button onClick={flow.handleSend} disabled={flow.validCount === 0}>
                 <Users className="w-4 h-4 mr-1.5" />
-                Enviar {flow.validCount} invitación{flow.validCount !== 1 ? 'es' : ''}
+                {flow.mode === 'add'
+                  ? `Agregar ${flow.validCount} usuario${flow.validCount !== 1 ? 's' : ''}`
+                  : `Enviar ${flow.validCount} invitación${flow.validCount !== 1 ? 'es' : ''}`}
               </Button>
             </div>
           </>
@@ -148,7 +201,9 @@ export function BulkInviteDialog({ open, onOpenChange, token, onDone }: BulkInvi
           <div className="flex flex-col items-center justify-center gap-5 py-10">
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
             <div className="text-center">
-              <p className="font-medium">Enviando invitaciones…</p>
+              <p className="font-medium">
+                {flow.mode === 'add' ? 'Agregando usuarios…' : 'Enviando invitaciones…'}
+              </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {flow.progress} de {flow.totalValid}
               </p>
@@ -171,7 +226,10 @@ export function BulkInviteDialog({ open, onOpenChange, token, onDone }: BulkInvi
                 <div className="flex items-center gap-2 text-sm text-emerald-600">
                   <CheckCircle2 className="w-4 h-4" />
                   <span className="font-medium">
-                    {flow.successCount} enviada{flow.successCount !== 1 ? 's' : ''}
+                    {flow.successCount}{' '}
+                    {flow.mode === 'add'
+                      ? `agregada${flow.successCount !== 1 ? 's' : ''}`
+                      : `enviada${flow.successCount !== 1 ? 's' : ''}`}
                   </span>
                 </div>
               )}

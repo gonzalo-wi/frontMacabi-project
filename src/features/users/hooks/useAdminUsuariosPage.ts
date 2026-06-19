@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { getUsers } from '@/features/users/api/usersApi'
+import { getUsers, listPendingInvitations } from '@/features/users/api/usersApi'
 import { useAdminUserDrawer } from '@/features/users/hooks/useAdminUserDrawer'
 import { useAdminUserMutations } from '@/features/users/hooks/useAdminUserMutations'
 import { useUserProjectsByUser } from '@/features/users/hooks/useUserProjectsByUser'
+import { mergeUsersWithOrphanInvitations } from '@/features/users/lib/userInvitationHelpers'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PAGE_SIZE } from '@/lib/pagination'
 import { queryKeys } from '@/lib/queryKeys'
@@ -44,34 +45,71 @@ export function useAdminUsuariosPage({ token, me, isRestoring }: Args) {
     staleTime: 2 * 60_000,
   })
 
+  const pendingInvitationsQuery = useQuery({
+    queryKey: queryKeys.users.pendingInvitations(token),
+    enabled: Boolean(token) && !isRestoring && !debouncedQ,
+    queryFn: () => listPendingInvitations(token!),
+    staleTime: 2 * 60_000,
+  })
+
   const userProjectsQuery = useUserProjectsByUser(token, isRestoring)
 
-  const { roleMutation, statusMutation, editMutation, pwMutation, inviteMutation, invalidateUsers } =
-    useAdminUserMutations(token, setSelected)
+  const {
+    roleMutation,
+    statusMutation,
+    editMutation,
+    pwMutation,
+    createUserMutation,
+    inviteMutation,
+    sendInviteMutation,
+    resendInviteMutation,
+    revokeInviteMutation,
+    deleteUserMutation,
+    invalidateUsers,
+  } = useAdminUserMutations(token, setSelected)
 
   const drawer = useAdminUserDrawer({ selected, setSelected, editMutation, pwMutation })
 
-  function handleInviteSubmit(e: React.FormEvent) {
+  function handleAddUser(e: React.FormEvent) {
     e.preventDefault()
     if (!inviteName.trim() || !inviteEmail.trim()) {
       toast.error('Nombre y email son obligatorios')
       return
     }
-    inviteMutation.mutate(
-      {
-        name: inviteName.trim(),
-        email: inviteEmail.trim().toLowerCase(),
-        role: inviteRole,
+    const body = {
+      name: inviteName.trim(),
+      email: inviteEmail.trim().toLowerCase(),
+      role: inviteRole,
+    }
+    createUserMutation.mutate(body, {
+      onSuccess: () => {
+        setInviteOpen(false)
+        setInviteName('')
+        setInviteEmail('')
+        setInviteRole('user')
       },
-      {
-        onSuccess: () => {
-          setInviteOpen(false)
-          setInviteName('')
-          setInviteEmail('')
-          setInviteRole('user')
-        },
+    })
+  }
+
+  function handleAddAndInvite(e: React.FormEvent) {
+    e.preventDefault()
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      toast.error('Nombre y email son obligatorios')
+      return
+    }
+    const body = {
+      name: inviteName.trim(),
+      email: inviteEmail.trim().toLowerCase(),
+      role: inviteRole,
+    }
+    inviteMutation.mutate(body, {
+      onSuccess: () => {
+        setInviteOpen(false)
+        setInviteName('')
+        setInviteEmail('')
+        setInviteRole('user')
       },
-    )
+    })
   }
 
   function closeInviteDialog(open: boolean) {
@@ -80,13 +118,20 @@ export function useAdminUsuariosPage({ token, me, isRestoring }: Args) {
       setInviteName('')
       setInviteEmail('')
       setInviteRole('user')
+      createUserMutation.reset()
       inviteMutation.reset()
     }
   }
 
   const totalUsers = usersQuery.data?.total ?? 0
   const totalPages = usersQuery.data?.total_pages ?? 1
-  const pageRows = usersQuery.data?.data ?? []
+  const pageRows = useMemo(() => {
+    const users = usersQuery.data?.data ?? []
+    if (debouncedQ) return users
+    const invitations = pendingInvitationsQuery.data?.data ?? []
+    return mergeUsersWithOrphanInvitations(users, invitations)
+  }, [usersQuery.data?.data, pendingInvitationsQuery.data?.data, debouncedQ])
+
   const isOwnAccount = Boolean(selected && me && selected.id === me.id)
 
   const countLabel = useMemo(() => {
@@ -94,12 +139,21 @@ export function useAdminUsuariosPage({ token, me, isRestoring }: Args) {
     if (search.trim()) {
       return `${totalUsers} resultado${totalUsers !== 1 ? 's' : ''} de búsqueda`
     }
-    return `${totalUsers} usuario${totalUsers !== 1 ? 's' : ''} en total`
-  }, [search, totalUsers, usersQuery.isPending])
+    const orphanCount = debouncedQ
+      ? 0
+      : (pendingInvitationsQuery.data?.data ?? []).filter(
+          (inv) => !(usersQuery.data?.data ?? []).some((u) => u.email.toLowerCase() === inv.email.toLowerCase()),
+        ).length
+    const total = totalUsers + orphanCount
+    return `${total} usuario${total !== 1 ? 's' : ''} en total`
+  }, [search, totalUsers, usersQuery.isPending, debouncedQ, pendingInvitationsQuery.data?.data, usersQuery.data?.data])
+
+  const addDialogPending = createUserMutation.isPending || inviteMutation.isPending
 
   return {
     isAdmin,
     selected,
+    setSelected,
     inviteOpen,
     setInviteOpen,
     bulkOpen,
@@ -114,6 +168,10 @@ export function useAdminUsuariosPage({ token, me, isRestoring }: Args) {
     userProjectsQuery,
     roleMutation,
     statusMutation,
+    sendInviteMutation,
+    resendInviteMutation,
+    revokeInviteMutation,
+    deleteUserMutation,
     drawer,
     search,
     setSearch,
@@ -122,12 +180,13 @@ export function useAdminUsuariosPage({ token, me, isRestoring }: Args) {
     totalPages,
     pageRows,
     countLabel,
-    handleInviteSubmit,
+    handleAddUser,
+    handleAddAndInvite,
     closeInviteDialog,
     totalUsers,
     isOwnAccount,
     userProjectsByUser: userProjectsQuery.data,
-    inviteMutation,
+    addDialogPending,
     invalidateUsers,
     token,
   }

@@ -15,6 +15,8 @@ import RestablecerContrasenaPage from '@/pages/auth/RestablecerContrasenaPage'
 import AceptarInvitacionPage from '@/pages/auth/AceptarInvitacionPage'
 import PanelPage from '@/pages/app/PanelPage'
 import EventRespondPage from '@/pages/app/EventRespondPage'
+import NoticiasPage from '@/pages/app/NoticiasPage'
+import NoticiaDetailPage from '@/pages/app/NoticiaDetailPage'
 import MisGastosPage from '@/pages/app/MisGastosPage'
 import MisMaterialesPage from '@/pages/app/MisMaterialesPage'
 import ExpenseDetailPage from '@/pages/app/ExpenseDetailPage'
@@ -26,6 +28,7 @@ import AdminJornadaBuilderPage from '@/pages/admin/AdminJornadaBuilderPage'
 import AdminProyectosPage from '@/pages/admin/AdminProyectosPage'
 import AdminGastosPage from '@/pages/admin/AdminGastosPage'
 import AdminStockPage from '@/pages/admin/AdminStockPage'
+import AdminNoticiasPage from '@/pages/admin/AdminNoticiasPage'
 
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage /> },
@@ -40,6 +43,8 @@ export const router = createBrowserRouter([
         element: <AppShellLayout />,
         children: [
           { index: true, element: <PanelPage /> },
+          { path: 'noticias', element: <NoticiasPage /> },
+          { path: 'noticias/:id', element: <NoticiaDetailPage /> },
           { path: 'jornadas/:id/responder', element: <EventRespondPage /> },
           { path: 'stock', element: <MisMaterialesPage /> },
           { path: 'stock/requests/:id', element: <StockRequestDetailPage /> },
@@ -50,6 +55,7 @@ export const router = createBrowserRouter([
             element: <RequireAdmin />,
             children: [
               { index: true, element: <Navigate to="jornadas" replace /> },
+              { path: 'noticias', element: <AdminNoticiasPage /> },
               { path: 'jornadas', element: <AdminJornadasPage /> },
               { path: 'jornadas/:id', element: <AdminJornadaDetailPage /> },
               { path: 'jornadas/:id/editar', element: <AdminJornadaBuilderPage /> },
