@@ -2,8 +2,9 @@ import { Calendar, ChevronRight, Users } from 'lucide-react'
 
 import { SkeletonRows } from '@/components/data/SkeletonRows'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { RoleBadge, StatusBadge } from '@/features/users/components/admin/UserBadges'
+import { InvitationStatusBadge, RoleBadge } from '@/features/users/components/admin/UserBadges'
 import { formatUserCreatedAt } from '@/features/users/lib/userHelpers'
+import { getEffectiveInvitationStatus } from '@/features/users/lib/userInvitationHelpers'
 import type { UserDTO } from '@/lib/api/types'
 import { cn, getInitials } from '@/lib/utils'
 
@@ -26,7 +27,7 @@ export function UsersTable({
         <div className="w-52 xl:w-60 shrink-0">Correo</div>
         <div className="w-[5.5rem] shrink-0 text-right">Alta</div>
         <div className="w-24 shrink-0 text-center">Rol</div>
-        <div className="w-24 shrink-0 text-center">Estado</div>
+        <div className="w-36 shrink-0 text-center">Estado</div>
         <div className="w-5 shrink-0" />
       </div>
 
@@ -50,14 +51,15 @@ export function UsersTable({
       {!isPending && pageRows.length > 0 && (
         <ul className="p-2 space-y-1.5">
           {pageRows.map((u) => {
-            const isActive = u.active !== false
+            const status = getEffectiveInvitationStatus(u)
+            const dimmed = status === 'inactive' || status === 'draft'
             return (
               <li
                 key={u.id}
                 onClick={() => onOpenDrawer(u)}
                 className={cn(
                   'group flex flex-wrap md:flex-nowrap items-start md:items-center gap-3 rounded-xl border border-border/70 bg-card px-3 md:px-4 py-3 cursor-pointer hover:bg-muted/30 hover:border-border transition-colors',
-                  !isActive && 'opacity-55',
+                  dimmed && 'opacity-80',
                 )}
               >
                 <div className="relative shrink-0">
@@ -69,7 +71,10 @@ export function UsersTable({
                   <span
                     className={cn(
                       'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card',
-                      isActive ? 'bg-emerald-500' : 'bg-slate-300',
+                      status === 'active' && 'bg-emerald-500',
+                      status === 'invited' && 'bg-amber-400',
+                      status === 'draft' && 'bg-sky-400',
+                      status === 'inactive' && 'bg-slate-300',
                     )}
                   />
                 </div>
@@ -87,9 +92,10 @@ export function UsersTable({
                 <div className="flex-1 min-w-0 md:hidden">
                   <p className="text-sm font-semibold leading-snug truncate">{u.name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</p>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <Calendar className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-hidden />
-                    <span className="text-[11px] text-muted-foreground">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <InvitationStatusBadge status={status} />
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Calendar className="w-3 h-3 shrink-0 text-muted-foreground/60" aria-hidden />
                       Alta {formatUserCreatedAt(u.created_at)}
                     </span>
                   </div>
@@ -103,8 +109,8 @@ export function UsersTable({
                   <RoleBadge role={u.role} />
                 </div>
 
-                <div className="hidden md:flex w-24 justify-center">
-                  <StatusBadge active={isActive} />
+                <div className="hidden md:flex w-36 justify-center">
+                  <InvitationStatusBadge status={status} />
                 </div>
 
                 <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0 self-center group-hover:text-muted-foreground/60 transition-colors" />

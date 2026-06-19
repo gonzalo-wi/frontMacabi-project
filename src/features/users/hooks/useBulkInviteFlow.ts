@@ -1,10 +1,20 @@
 import { useState, useRef, useCallback } from 'react'
 
-import { BATCH_SIZE, parseBulkInviteSheet, sendBulkInviteBatch } from '@/features/users/lib/bulkInviteSheet'
-import type { BulkInvitePhase, ParsedInviteRow, RowInviteResult } from '@/features/users/lib/bulkInviteSheet'
+import {
+  BATCH_SIZE,
+  parseBulkInviteSheet,
+  sendBulkUserBatch,
+} from '@/features/users/lib/bulkInviteSheet'
+import type {
+  BulkImportMode,
+  BulkInvitePhase,
+  ParsedInviteRow,
+  RowInviteResult,
+} from '@/features/users/lib/bulkInviteSheet'
 
 export function useBulkInviteFlow(token: string, onDone: () => void) {
   const [phase, setPhase] = useState<BulkInvitePhase>('idle')
+  const [mode, setMode] = useState<BulkImportMode>('add')
   const [rows, setRows] = useState<ParsedInviteRow[]>([])
   const [results, setResults] = useState<RowInviteResult[]>([])
   const [progress, setProgress] = useState(0)
@@ -14,6 +24,7 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
 
   const reset = useCallback(() => {
     setPhase('idle')
+    setMode('add')
     setRows([])
     setResults([])
     setProgress(0)
@@ -31,7 +42,7 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
         return
       }
       setRows(parsed)
-      setPhase('preview')
+      setPhase('mode')
     } catch {
       setParseError('No se pudo leer el archivo. Verificá que sea .xlsx, .xls o .csv válido.')
     }
@@ -47,7 +58,7 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
 
     for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
       const batch = validRows.slice(i, i + BATCH_SIZE)
-      const batchResults = await sendBulkInviteBatch(token, batch)
+      const batchResults = await sendBulkUserBatch(token, batch, mode)
       allResults.push(...batchResults)
       setProgress(allResults.length)
     }
@@ -59,7 +70,7 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
     setResults([...allResults, ...skippedRows])
     setPhase('done')
     onDone()
-  }, [rows, token, onDone])
+  }, [rows, token, onDone, mode])
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -71,6 +82,14 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
     [handleFile],
   )
 
+  const confirmMode = useCallback(() => {
+    setPhase('preview')
+  }, [])
+
+  const goBackToMode = useCallback(() => {
+    setPhase('mode')
+  }, [])
+
   const validCount = rows.filter((r) => !r.error).length
   const invalidCount = rows.filter((r) => r.error).length
   const successCount = results.filter((r) => r.status === 'success').length
@@ -79,6 +98,8 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
 
   return {
     phase,
+    mode,
+    setMode,
     rows,
     results,
     progress,
@@ -90,6 +111,8 @@ export function useBulkInviteFlow(token: string, onDone: () => void) {
     handleFile,
     handleSend,
     handleDrop,
+    confirmMode,
+    goBackToMode,
     validCount,
     invalidCount,
     successCount,

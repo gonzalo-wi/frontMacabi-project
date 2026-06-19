@@ -1,4 +1,4 @@
-import { Check, Package, Receipt, Bell, X, RefreshCw, CalendarDays } from 'lucide-react'
+import { Check, Package, Receipt, Bell, X, RefreshCw, CalendarDays, Newspaper } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { DrawerClose } from '@/components/ui/drawer'
@@ -158,15 +158,19 @@ function NotificationRow({
             ? 'bg-primary/10 text-primary'
             : n.kind === 'expense'
               ? 'bg-accent/10 text-accent-foreground'
-              : 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+              : n.kind === 'event'
+                ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400'
+                : 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
         )}
       >
         {n.kind === 'stock' ? (
           <Package className="w-3.5 h-3.5" />
         ) : n.kind === 'expense' ? (
           <Receipt className="w-3.5 h-3.5" />
-        ) : (
+        ) : n.kind === 'event' ? (
           <CalendarDays className="w-3.5 h-3.5" />
+        ) : (
+          <Newspaper className="w-3.5 h-3.5" />
         )}
       </div>
 

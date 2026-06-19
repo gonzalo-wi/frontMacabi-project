@@ -21,7 +21,8 @@ export function InviteDialog({
   onName,
   onEmail,
   onRole,
-  onSubmit,
+  onAdd,
+  onAddAndInvite,
   onCancel,
   isPending,
 }: {
@@ -33,7 +34,8 @@ export function InviteDialog({
   onName: (v: string) => void
   onEmail: (v: string) => void
   onRole: (v: 'user' | 'admin') => void
-  onSubmit: (e: React.FormEvent) => void
+  onAdd: (e: React.FormEvent) => void
+  onAddAndInvite: (e: React.FormEvent) => void
   onCancel: () => void
   isPending: boolean
 }) {
@@ -41,43 +43,70 @@ export function InviteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-              <UserPlus className="w-4 h-4 text-primary" />
-            </div>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-primary" />
             Agregar usuario
           </DialogTitle>
-          <p className="text-sm text-muted-foreground pt-1">
-            Se envía una invitación por correo. La persona definirá su contraseña al aceptar.
-          </p>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
+
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">Agregar sin invitar</span> lo carga en el sistema
+            para asignarlo a proyectos. Después, desde su ficha, usá{' '}
+            <span className="font-medium text-foreground">Enviar invitación</span> para mandarle el acceso por correo.
+          </p>
+
           <FormField label="Nombre" htmlFor="invite-name">
-            <Input id="invite-name" value={name} onChange={(e) => onName(e.target.value)} placeholder="Nombre completo" className="h-11" autoComplete="name" />
+            <Input
+              id="invite-name"
+              value={name}
+              onChange={(e) => onName(e.target.value)}
+              placeholder="Nombre completo"
+              className="h-10"
+              autoComplete="name"
+            />
           </FormField>
+
           <FormField label="Correo" htmlFor="invite-email">
-            <Input id="invite-email" type="email" value={email} onChange={(e) => onEmail(e.target.value)} placeholder="correo@ejemplo.org" className="h-11" autoComplete="email" />
+            <Input
+              id="invite-email"
+              type="email"
+              value={email}
+              onChange={(e) => onEmail(e.target.value)}
+              placeholder="correo@ejemplo.org"
+              className="h-10"
+              autoComplete="email"
+            />
           </FormField>
+
           <FormField label="Rol inicial">
             <Select value={role} onValueChange={(v) => onRole(v as 'user' | 'admin')}>
-              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-10">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">Usuario</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
           </FormField>
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isPending}>
+
+          <div className="space-y-2 pt-1">
+            <Button type="button" className="w-full" disabled={isPending} onClick={onAddAndInvite}>
               {isPending
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando…</>
-                : <><UserPlus className="mr-2 h-4 w-4" />Enviar invitación</>}
+                : <><UserPlus className="mr-2 h-4 w-4" />Agregar e invitar</>}
+            </Button>
+            <Button type="button" variant="secondary" className="w-full" disabled={isPending} onClick={onAdd}>
+              {isPending
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Agregando…</>
+                : 'Agregar sin invitar'}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" onClick={onCancel} disabled={isPending}>
+              Cancelar
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

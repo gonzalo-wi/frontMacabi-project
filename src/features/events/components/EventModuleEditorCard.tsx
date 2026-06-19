@@ -78,6 +78,10 @@ export function EventModuleEditorCard({
   const [expanded, setExpanded] = useState(() => defaultOpen !== false)
   const [vizOpen, setVizOpen] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Snapshot de los valores que se acaban de guardar con éxito. Limpia el indicador
+  // de inmediato sin depender del refetch del servidor (que puede tardar o llegar
+  // desfasado). Cualquier edición posterior cambia el snapshot y lo reactiva.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null)
 
   const moduleDirty =
     local.title !== m.title ||
@@ -101,7 +105,22 @@ export function EventModuleEditorCard({
     }),
   )
 
-  const anyDirty = moduleDirty || groupsDirty || optionsDirty || visibilityDirty
+  const rawDirty = moduleDirty || groupsDirty || optionsDirty || visibilityDirty
+
+  // Representación estable de los valores editables actuales (mismo orden siempre
+  // dentro de esta instancia, así comparar "ahora" vs "al guardar" es válido).
+  const currentSnapshot = JSON.stringify({
+    title: local.title,
+    type: local.type,
+    sort: local.sort,
+    required: local.required,
+    proj: [...mProj].sort(),
+    groups: [...groupStates.entries()],
+    options: [...optionStates.entries()],
+  })
+
+  // Tras guardar, savedSnapshot === currentSnapshot ⇒ no marcamos "Sin guardar".
+  const anyDirty = rawDirty && savedSnapshot !== currentSnapshot
 
   const handleSaveAll = async () => {
     setSaveError(null)
@@ -150,6 +169,8 @@ export function EventModuleEditorCard({
       }
 
       await Promise.all(calls)
+      // Marcamos limpio de inmediato (no esperamos el refetch del servidor).
+      setSavedSnapshot(currentSnapshot)
       onSaved()
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'Error al guardar')

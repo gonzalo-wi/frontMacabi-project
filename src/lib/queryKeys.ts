@@ -7,6 +7,8 @@ export const queryKeys = {
     adminListRoot: () => ['admin-users-list'] as const,
     adminList: (token: string | null | undefined, page: number, q: string) =>
       ['admin-users-list', token, page, q] as const,
+    pendingInvitationsRoot: () => ['admin-pending-invitations'] as const,
+    pendingInvitations: (token: string | null | undefined) => ['admin-pending-invitations', token] as const,
     byUserProjectsRoot: () => ['user-projects-by-user'] as const,
     byUserProjects: (token: string | null | undefined) => ['user-projects-by-user', token] as const,
   },
@@ -121,6 +123,18 @@ export const queryKeys = {
     my: (userId: string | undefined | null, token: string | null | undefined) =>
       ['my-project-memberships', userId, token] as const,
   },
+  news: {
+    latestRoot: () => ['news-latest'] as const,
+    latest: (token: string | null | undefined) => ['news-latest', token] as const,
+    feedRoot: () => ['news-feed'] as const,
+    feed: (token: string | null | undefined, page: number) => ['news-feed', token, page] as const,
+    adminListRoot: () => ['admin-news-list'] as const,
+    adminList: (token: string | null | undefined, page: number) =>
+      ['admin-news-list', token, page] as const,
+    detailRoot: () => ['news-detail'] as const,
+    detail: (id: string | undefined, token: string | null | undefined) =>
+      ['news-detail', id, token] as const,
+  },
   notifications: {
     stockUnreadRoot: () => ['stock-notifications-unread'] as const,
     stockUnread: (token: string | null | undefined) => ['stock-notifications-unread', token] as const,
@@ -134,5 +148,9 @@ export const queryKeys = {
     expenseList: (token: string | null | undefined) => ['expense-notifications-list', token] as const,
     eventListRoot: () => ['event-notifications-list'] as const,
     eventList: (token: string | null | undefined) => ['event-notifications-list', token] as const,
+    newsUnreadRoot: () => ['news-notifications-unread'] as const,
+    newsUnread: (token: string | null | undefined) => ['news-notifications-unread', token] as const,
+    newsListRoot: () => ['news-notifications-list'] as const,
+    newsList: (token: string | null | undefined) => ['news-notifications-list', token] as const,
   },
 } as const

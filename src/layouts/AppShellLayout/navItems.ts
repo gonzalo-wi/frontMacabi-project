@@ -2,6 +2,7 @@ import {
   CalendarDays,
   FolderKanban,
   LayoutDashboard,
+  Newspaper,
   Package,
   Receipt,
   Users,
@@ -23,6 +24,12 @@ const participantNavRoutes = [
     isActive: (p: string) => p === '/app',
   },
   {
+    label: 'Noticias',
+    href: '/app/noticias',
+    icon: Newspaper,
+    isActive: (p: string) => p.startsWith('/app/noticias'),
+  },
+  {
     label: 'Materiales',
     href: '/app/stock',
     icon: Package,
@@ -42,6 +49,7 @@ export const participantNavItems: NavItem[] = [...participantNavRoutes]
 export const mobileNavItems: NavItem[] = [...participantNavRoutes]
 
 export const adminNavItems = [
+  { label: 'Noticias', href: '/app/admin/noticias', icon: Newspaper },
   { label: 'Jornadas', href: '/app/admin/jornadas', icon: CalendarDays },
   { label: 'Proyectos', href: '/app/admin/proyectos', icon: FolderKanban },
   { label: 'Gastos', href: '/app/admin/gastos', icon: Receipt },

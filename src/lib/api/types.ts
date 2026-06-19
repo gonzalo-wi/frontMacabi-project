@@ -1,11 +1,18 @@
 /** Alineado al backend: user/infrastructure/http/dto.go */
 
+export type UserInvitationStatus = 'draft' | 'invited' | 'active' | 'inactive'
+
 export type UserDTO = {
   id: string
   name: string
   email: string
   role: string
   active?: boolean
+  password_set?: boolean
+  invitation_status?: UserInvitationStatus
+  pending_invitation_id?: string | null
+  /** Invitación legacy sin fila en users (solo UI admin). */
+  is_orphan_invitation?: boolean
   created_at: string
 }
 
@@ -24,6 +31,26 @@ export type CreateUserInvitationBody = {
   name: string
   email: string
   role?: string
+}
+
+/** POST /api/users */
+export type CreateUserBody = {
+  name: string
+  email: string
+  role?: string
+}
+
+export type PendingInvitationDTO = {
+  id: string
+  email: string
+  name: string
+  role: string
+  expires_at: string
+  created_at: string
+}
+
+export type PendingInvitationsDTO = {
+  data: PendingInvitationDTO[]
 }
 
 export type LoginResponseDTO = {

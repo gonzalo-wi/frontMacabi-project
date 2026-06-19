@@ -1,13 +1,27 @@
 import { apiRequest } from '@/lib/api/apiClient'
 import type {
-  PaginatedUsersDTO,
-  UpdateUserRoleBody,
-  UpdateUserStatusBody,
-  UpdateUserBody,
-  UserDTO,
+  CreateUserBody,
   CreateUserInvitationBody,
   InviteUserCreatedResponseDTO,
+  MessageResponseDTO,
+  PaginatedUsersDTO,
+  PendingInvitationsDTO,
+  UpdateUserBody,
+  UpdateUserRoleBody,
+  UpdateUserStatusBody,
+  UserDTO,
 } from '@/lib/api/types'
+
+export async function createUser(
+  token: string,
+  body: CreateUserBody,
+): Promise<UserDTO> {
+  return apiRequest<UserDTO>('/api/users', {
+    method: 'POST',
+    token,
+    body,
+  })
+}
 
 export async function createUserInvitation(
   token: string,
@@ -17,6 +31,40 @@ export async function createUserInvitation(
     method: 'POST',
     token,
     body,
+  })
+}
+
+export async function deleteUser(token: string, id: string): Promise<MessageResponseDTO> {
+  return apiRequest<MessageResponseDTO>(`/api/users/${id}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+export async function listPendingInvitations(token: string): Promise<PendingInvitationsDTO> {
+  return apiRequest<PendingInvitationsDTO>('/api/users/invitations', {
+    method: 'GET',
+    token,
+  })
+}
+
+export async function resendInvitation(
+  token: string,
+  invitationId: string,
+): Promise<MessageResponseDTO> {
+  return apiRequest<MessageResponseDTO>(`/api/users/invitations/${invitationId}/resend`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export async function revokeInvitation(
+  token: string,
+  invitationId: string,
+): Promise<MessageResponseDTO> {
+  return apiRequest<MessageResponseDTO>(`/api/users/invitations/${invitationId}`, {
+    method: 'DELETE',
+    token,
   })
 }
 

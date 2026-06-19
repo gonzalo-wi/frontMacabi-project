@@ -51,6 +51,11 @@ export function NotificationsBell({ token, className }: Props) {
       return
     }
 
+    if (n.kind === 'news') {
+      navigate(`/app/noticias/${n.news_id}`)
+      return
+    }
+
     if (user?.role === 'admin') {
       navigate(`/app/admin/gastos/${n.expense_id}`)
     } else {

@@ -1,11 +1,13 @@
 import * as XLSX from 'xlsx'
 
-import { createUserInvitation } from '@/features/users/api/usersApi'
+import { createUser, createUserInvitation } from '@/features/users/api/usersApi'
 import { ApiError } from '@/lib/api/apiClient'
 
 export const BATCH_SIZE = 10
 
-export type BulkInvitePhase = 'idle' | 'preview' | 'sending' | 'done'
+export type BulkImportMode = 'add' | 'invite'
+
+export type BulkInvitePhase = 'idle' | 'mode' | 'preview' | 'sending' | 'done'
 
 export type ParsedInviteRow = {
   index: number
@@ -62,14 +64,18 @@ export function parseBulkInviteSheet(file: File): Promise<ParsedInviteRow[]> {
   })
 }
 
-export async function sendBulkInviteBatch(
+export async function sendBulkUserBatch(
   token: string,
   batch: ParsedInviteRow[],
+  mode: BulkImportMode,
 ): Promise<RowInviteResult[]> {
   const settled = await Promise.allSettled(
-    batch.map((row) =>
-      createUserInvitation(token, { name: row.name, email: row.email, role: 'user' }),
-    ),
+    batch.map((row) => {
+      const body = { name: row.name, email: row.email, role: 'user' as const }
+      return mode === 'add'
+        ? createUser(token, body)
+        : createUserInvitation(token, body)
+    }),
   )
   return settled.map((r, i) => ({
     ...batch[i],
@@ -83,6 +89,14 @@ export async function sendBulkInviteBatch(
             : 'Error desconocido'
         : undefined,
   }))
+}
+
+/** @deprecated use sendBulkUserBatch */
+export async function sendBulkInviteBatch(
+  token: string,
+  batch: ParsedInviteRow[],
+): Promise<RowInviteResult[]> {
+  return sendBulkUserBatch(token, batch, 'invite')
 }
 
 export function downloadBulkInviteTemplate() {
