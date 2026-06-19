@@ -21,7 +21,15 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>{children}</AuthProvider>
-      <Toaster richColors position="top-center" closeButton />
+      <Toaster
+        richColors
+        position="top-center"
+        closeButton
+        offset={16}
+        mobileOffset={{
+          top: 'calc(env(safe-area-inset-top) + 12px)',
+        }}
+      />
       {import.meta.env.DEV ? <ReactQueryDevtools initialIsOpen={false} /> : null}
     </QueryClientProvider>
   )
